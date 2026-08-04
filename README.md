@@ -1,0 +1,75 @@
+# AH-64
+
+A custom Risk of Rain 2 survivor: **AH-64**, an attack helicopter that hovers,
+never lands, and carries a full weapons load.
+
+[Store page copy](Build/README.md) · [Changelog](CHANGELOG.md) · [Licence](LICENSE)
+
+---
+
+## Layout
+
+| Path | What it is |
+| --- | --- |
+| `AH64Mod/` | The C# BepInEx plugin. Builds `AH64.dll`. |
+| `AH64UnityProject/` | Unity **2021.3.33f1**, Built-In pipeline. Owns the `ah64` assetbundle. |
+| `Art/Blender/` | `AH64.blend` and `build_ah64.py`, the procedural airframe build. |
+| `Build/` | Thunderstore package inputs: `manifest.json`, `README.md`, `icon.png`. |
+| `tools/pack.ps1` | Builds and validates the release zip. |
+
+Build output (`Build/plugins/`, `AH64UnityProject/AssetBundles/`, `dist/`) is
+generated, not tracked. A fresh clone needs Unity opened once before it can
+produce a package.
+
+## Building
+
+**1. The assetbundle** — open the Unity project, pinning the path (a bare
+`Unity.exe` opens and immediately exits, because the project is not registered
+in Unity Hub):
+
+```bash
+"C:/Program Files/Unity 2021.3.33f1/Editor/Unity.exe" -projectPath "<repo>/AH64UnityProject"
+```
+
+Then run **AH64 → Build AssetBundle** (`Ctrl+Alt+B`). It writes
+`AH64UnityProject/AssetBundles/ah64` and installs it to the local r2modman
+profile.
+
+> Open this project **only** with 2021.3.33f1. A wrong-version open silently
+> rewrites every `.meta` file.
+
+**2. The plugin:**
+
+```bash
+dotnet build AH64Mod/AH64.csproj -c Release
+```
+
+Dependencies come from NuGet, so no Steam install is required to compile. The
+post-build step copies the DLL to `Build/plugins` and, if present, to the local
+r2modman profile.
+
+**3. The release zip:**
+
+```bash
+pwsh -File tools/pack.ps1
+```
+
+This checks that `MODVERSION` matches `manifest.json`, that the icon is exactly
+256×256, and that the zip has no enclosing folder — then writes
+`dist/AH64-<version>.zip`. It does not upload anything.
+
+## Versioning
+
+`AH64Plugin.MODVERSION` and `Build/manifest.json` must always agree.
+`NetworkCompatibility` is `EveryoneNeedSameModVersion`, so a mismatch reaches
+players as a lobby rejection. `tools/pack.ps1` refuses to package if they drift.
+
+Use plain `major.minor.patch`. A pre-release suffix like `1.0.0-rc1` is not
+parseable as a `System.Version`, and BepInEx skips the plugin silently — which
+presents as the game hanging at 99% load.
+
+## Notes for contributors
+
+`CLAUDE.md` records the hard-won engine constraints — one renderer/one material,
+how `ChildLocator` resolves, assetbundle tagging rules, and the FBX export traps.
+Read it before touching the model or the bundle.

@@ -1,0 +1,8 @@
+# Blender writes an incrementing backup beside every save (.blend1, .blend2, ...).
+# They are byte-for-byte near-duplicates of a 150 KB binary and would churn the
+# history on every single re-run of build_ah64.py.
+*.blend[0-9]
+
+# FBX exports are build output - they are regenerated from the .blend on the way
+# into the Unity project's Assets/. The .blend and build_ah64.py are the sources.
+*.fbx

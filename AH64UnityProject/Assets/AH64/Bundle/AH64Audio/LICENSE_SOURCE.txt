@@ -1,0 +1,63 @@
+AH-64 GROUNDED ROTOR HOVER BED
+
+Runtime asset:
+sfxAH64RotorHoverGrounded.wav
+(was sfxAH64RotorHoverGrounded.mp3 until 2026-08-03; the mp3 is retained
+unmodified at Assets/AH64Archive/ as the provenance original.
+The shipped WAV is that same audio with the MP3 encoder's 45ms leading and 15ms
+trailing padding trimmed off, plus a 3ms fade at each cut edge. The padding made
+the loop go silent for 60ms every 6.38s. Same source, same licence - no new
+material was introduced.)
+
+Title: Helicopter Rotor Loop
+Creator: qubodup
+Original source:
+https://freesound.org/people/qubodup/sounds/187681/
+Distribution source:
+https://pixabay.com/sound-effects/city-helicopter-rotor-loop-105796/
+
+License:
+Creative Commons Zero (CC0 / public domain) on the original Freesound page.
+The distribution page also identifies the download as available under the
+Pixabay Content License. Game use, modification, and redistribution as part of
+this mod are permitted. Attribution is not required, but this record is retained
+for provenance.
+
+Retrieved: 2026-07-30
+SHA-256:
+CA58E5FA8838F8B17DB5D7616C550DAD936DF9CE5857DC0A1F5B5C8DABC58955
+
+Integration decision:
+Approved as the sole continuous hover-bed source for 0.1.1. The alternative
+Chinook/high-wind rotor-slap audition was explicitly rejected and is not copied
+into runtime assets. Runtime playback starts at a deliberately conservative
+volume because the unprocessed source is intense. Speed/collective layers are
+reserved for a later mix pass.
+
+---
+
+AH-64 MOVEMENT LAYERS (added 2026-08-03)
+
+Runtime asset:
+sfxAH64RotorInFlight.mp3
+
+Title: Helicopter Loop
+Creator: qubodup
+Source: https://freesound.org/people/qubodup/sounds/187678/
+License: CC0 (public domain), same US-government-sourced pack as the grounded
+bed above. Fuller engine+rotor blend than the grounded loop; fades in with
+horizontal speed to read as forward flight.
+
+Runtime asset:
+sfxAH64RotorClimb.mp3
+
+Title: OH-58 Helicopter Loop
+Creator: qubodup
+Source: https://freesound.org/people/qubodup/sounds/184412/
+License: CC0 (public domain), same pack. Lighter tone than the AH-64 bed;
+used purely as a texture layer that fades in with climb intent (collective
+input / ascent), not as a realism claim about the OH-58.
+
+Both retrieved as Freesound's own 192kbps preview encode (no login available
+in the session that added them) — swap for the full-quality FLAC from the
+source pages above if a cleaner master is wanted before a public release.

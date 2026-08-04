@@ -1,0 +1,1097 @@
+using R2API;
+using RoR2;
+using UnityEngine;
+using UnityEngine.AddressableAssets;
+using AH64.Modules;
+using RoR2.Projectile;
+
+namespace AH64.Survivors
+{
+    public static class AH64Assets
+    {
+        // particle effects
+        public static GameObject hellfireMuzzleFlashEffect;
+        public static GameObject hellfireExplosionEffect;
+        public static GameObject longbowExplosionEffect;
+        public static GameObject hydraMuzzleFlashEffect;
+        public static GameObject hydraExplosionEffect;
+
+        public static GameObject chaingunTracerEffect;
+        public static GameObject chaingunMuzzleFlashEffect;
+        public static GameObject chaingunHitEffect;
+        public static GameObject chaingunShellEjectEffect;
+
+        public static GameObject dashThrusterEffect;
+        public static GameObject dashDustEffect;
+        public static GameObject dashFlareEffect;
+        public static GameObject chaingunSplashEffect;
+        public static GameObject gatlingSplashEffect;
+        public static GameObject cannonSplashEffect;
+
+        /// <summary>
+        /// Set by <c>AH64Survivor.AddPrimarySkills</c>. <see cref="Components.AH64GatlingSpin"/>
+        /// compares the equipped primary against this to decide which barrel to show, so it
+        /// has to be reachable from a component that has no reference to the survivor class.
+        /// </summary>
+        public static RoR2.Skills.SkillDef gatlingSkillDef;
+        public static AudioClip rotorHoverLoop;
+        public static AudioClip rotorInFlightLoop;
+        public static AudioClip rotorClimbLoop;
+
+        //projectiles
+        public static GameObject hellfireProjectilePrefab;
+        public static GameObject hydraRocketProjectilePrefab;
+
+        private static AssetBundle _assetBundle;
+        private static GameObject _smokePuffEffect;
+        private static GameObject _rotorWashEffect;
+        private static GameObject _longbowProjectile;
+        private static GameObject _longbowLockIndicatorPrefab;
+        private static GameObject _radarPaintIndicatorPrefab;
+        private static GameObject _longbowCrosshair;
+        //Registered in CreateEffects — clones strip ShakeEmitter (camera + gamepad rumble) and
+        //EffectComponent.soundName so the passive never thumps through the donor VFX.
+        public static GameObject radarPulseEffect;
+        public static GameObject radarPaintPingEffect;
+
+        //Threat-red for radar pulse / paint-ping — deliberately not Engi's yellow lock rings.
+        public static readonly Color32 RadarEffectColor = new Color32(255, 55, 40, 255);
+
+        /// <summary>
+        /// The lunar golem's blast smoke — a registered vanilla effect, so it can go straight through
+        /// EffectManager. Used by the chain gun's reload.
+        /// </summary>
+        public static GameObject SmokePuffEffect
+        {
+            get
+            {
+                if (!_smokePuffEffect)
+                {
+                    _smokePuffEffect = LoadLegacy("Prefabs/Effects/ImpactEffects/ExplosionLunarGolem")
+                        ?? LoadLegacy("Prefabs/Effects/OmniExplosionVFX");
+                }
+
+                return _smokePuffEffect;
+            }
+        }
+
+        /// <summary>Dust kicked under the rotor disc when hugging the ground.</summary>
+        public static GameObject RotorWashEffect
+        {
+            get
+            {
+                if (!_rotorWashEffect)
+                    _rotorWashEffect = LoadLegacy("Prefabs/GenericFootstepDust")
+                        ?? LoadLegacy("Prefabs/GenericLargeFootstepDust");
+
+                return _rotorWashEffect;
+            }
+        }
+
+        /// <summary>
+        /// AH-64 visual clone of Engineer's guided harpoon. Guidance and hit behavior stay vanilla;
+        /// CreateLongbowProjectile swaps the ghost, clears the Engi launch cue, and installs our AGM warhead.
+        /// </summary>
+        public static GameObject LongbowProjectile
+        {
+            get
+            {
+                if (!_longbowProjectile)
+                {
+                    _longbowProjectile = EntityStates.Engi.EngiMissilePainter.Fire.projectilePrefab;
+                    if (!_longbowProjectile)
+                        _longbowProjectile = LoadLegacy("Prefabs/Projectiles/EngiHarpoon");
+                    if (!_longbowProjectile)
+                        Log.Error("LongbowProjectile failed to load from Engi Fire.projectilePrefab and LegacyResources. Special will not fire.");
+                }
+
+                return _longbowProjectile;
+            }
+        }
+
+        /// <summary>The ring drawn on a painted Longbow target. Engi ring + dots.</summary>
+        public static GameObject LongbowLockIndicatorPrefab
+        {
+            get
+            {
+                if (!_longbowLockIndicatorPrefab)
+                {
+                    //same path Engi's own Paint state uses
+                    _longbowLockIndicatorPrefab = LoadLegacy("Prefabs/EngiMissileTrackingIndicator");
+                    if (!_longbowLockIndicatorPrefab)
+                        _longbowLockIndicatorPrefab = EntityStates.Engi.EngiMissilePainter.Paint.stickyTargetIndicatorPrefab;
+                }
+
+                return _longbowLockIndicatorPrefab;
+            }
+        }
+
+        /// <summary>
+        /// Fire Control Radar paint marker. Huntress tracker (arrow/diamond), deliberately different
+        /// from Longbow's Engi ring so passive paint and special locks never read as the same VFX.
+        /// </summary>
+        public static GameObject RadarPaintIndicatorPrefab
+        {
+            get
+            {
+                if (!_radarPaintIndicatorPrefab)
+                {
+                    _radarPaintIndicatorPrefab = LoadLegacy("Prefabs/HuntressTrackingIndicator");
+                    if (!_radarPaintIndicatorPrefab)
+                        _radarPaintIndicatorPrefab = LongbowLockIndicatorPrefab;
+                }
+
+                return _radarPaintIndicatorPrefab;
+            }
+        }
+
+        /// <summary>Reticle shown while the radar is painting, so the slot swap is visible at a glance.</summary>
+        public static GameObject LongbowCrosshair
+        {
+            get
+            {
+                if (!_longbowCrosshair)
+                {
+                    _longbowCrosshair = EntityStates.Engi.EngiMissilePainter.Paint.crosshairOverridePrefab;
+                    if (!_longbowCrosshair)
+                        _longbowCrosshair = LoadLegacy("Prefabs/Crosshair/EngiPaintCrosshair");
+                }
+
+                return _longbowCrosshair;
+            }
+        }
+
+        /// <summary>
+        /// Expanding scan pulse from the mast dome. Prefer the Init-time clone (parents to the dome);
+        /// lazy fallbacks stay world-anchored if Init somehow missed.
+        /// </summary>
+        public static GameObject RadarPulseEffect
+        {
+            get
+            {
+                if (radarPulseEffect)
+                    return radarPulseEffect;
+
+                return LoadLegacy("Prefabs/Effects/ImpactEffects/BootShockwave")
+                    ?? LoadLegacy("Prefabs/Effects/OmniImpactVFX")
+                    ?? SmokePuffEffect;
+            }
+        }
+
+        /// <summary>
+        /// Brief ping on the painted enemy when Fire Control Radar acquires them — deliberately
+        /// not the Engi lock ring Longbow uses. Prefer the Init-time clone (no shake / no rumble).
+        /// </summary>
+        public static GameObject RadarPaintPingEffect
+        {
+            get
+            {
+                if (radarPaintPingEffect)
+                    return radarPaintPingEffect;
+
+                return LoadLegacy("Prefabs/Effects/OmniImpactVFX")
+                    ?? RadarPulseEffect;
+            }
+        }
+
+        /// <summary>
+        /// Load a vanilla prefab. <see cref="LegacyResourcesAPI"/> first — it is what Engi itself uses
+        /// and what this project's tracers/pods already rely on. Addressables with the
+        /// <c>Assets/RoR2/Base/...</c> catalog paths throw <c>InvalidKeyException</c> at runtime in this
+        /// profile (verified in BepInEx LogOutput), so they are a last resort only.
+        /// </summary>
+        private static GameObject LoadLegacy(string legacyPath)
+        {
+            GameObject loaded = LegacyResourcesAPI.Load<GameObject>(legacyPath);
+            return loaded;
+        }
+
+        /// <summary>
+        /// M230 tracer — a warm-tinted clone of Commando's, never the vanilla prefab itself.
+        ///
+        /// <para>The stock tracers all read cold blue-white, which is what the "tracer is blue"
+        /// playtest note was about. It cannot be fixed by tinting what <see cref="LoadVanilla"/>
+        /// returns: that hands back the shared vanilla prefab, so recolouring it would repaint
+        /// Commando's tracers for every player in the run.</para>
+        ///
+        /// <para><see cref="Modules.Asset.CloneTracer"/> gives us our own prefab and registers the
+        /// EffectDef. Both the LineRenderer vertex colours <em>and</em> its material tint are set:
+        /// which one the streak actually honours depends on the tracer's shader, so setting one
+        /// alone silently does nothing on some of them.</para>
+        /// </summary>
+        private static GameObject CreateChaingunTracer()
+        {
+            //30mm API burns yellow-orange. Kept bright rather than saturated so it still reads
+            //against Verdant Falls' daylight, not just against a night sky.
+            //Pulled back twice on playtest 2026-08-03. 0.80/0.57/0.19 was still reported as
+            //"way too intense" — and the gatling variant fires at ~18 rounds/sec against the
+            //M230's 11, so the same tracer stacks nearly twice as densely. This is roughly
+            //half the original brightness and a little over half the alpha.
+            Color warm = new Color(0.52f, 0.36f, 0.12f, 0.55f);
+
+            GameObject tracer = Modules.Asset.CloneTracer("TracerCommandoShotgun", "AH64ChaingunTracer")
+                ?? Modules.Asset.CloneTracer("TracerCommandoDefault", "AH64ChaingunTracer");
+
+            if (!tracer)
+            {
+                Log.Warning("Could not clone a vanilla tracer — falling back to the untinted vanilla prefab.");
+                return LoadVanilla(
+                    "Prefabs/Effects/Tracers/TracerCommandoShotgun",
+                    "Prefabs/Effects/Tracers/TracerCommandoDefault");
+            }
+
+            foreach (LineRenderer line in tracer.GetComponentsInChildren<LineRenderer>(true))
+            {
+                line.startColor = warm;
+                line.endColor = new Color(warm.r, warm.g * 0.6f, warm.b * 0.35f, 0f);
+
+                //Instantiate before tinting: sharedMaterial here is still the vanilla asset.
+                if (line.sharedMaterial)
+                {
+                    Material tinted = UnityEngine.Object.Instantiate(line.sharedMaterial);
+                    if (tinted.HasProperty("_TintColor"))
+                        tinted.SetColor("_TintColor", warm);
+                    if (tinted.HasProperty("_Color"))
+                        tinted.SetColor("_Color", warm);
+                    line.material = tinted;
+                }
+            }
+
+            TintVfxHierarchy(tracer, warm);
+            return tracer;
+        }
+
+        private static GameObject LoadVanilla(params string[] paths)
+        {
+            for (int i = 0; i < paths.Length; i++)
+            {
+                string path = paths[i];
+                GameObject loaded = null;
+
+                if (path.StartsWith("Prefabs/", System.StringComparison.Ordinal)
+                    || path.StartsWith("Shaders/", System.StringComparison.Ordinal))
+                {
+                    loaded = LoadLegacy(path);
+                }
+                else
+                {
+                    //Addressables last — log only once per miss via LoadAddressable
+                    loaded = LoadAddressable(path);
+                }
+
+                if (loaded)
+                    return loaded;
+            }
+
+            Log.Error($"Failed to load vanilla prefab. Tried: {string.Join(" | ", paths)}");
+            return null;
+        }
+
+        private static GameObject LoadAddressable(string addressablePath)
+        {
+            try
+            {
+                var handle = Addressables.LoadAssetAsync<GameObject>(addressablePath);
+                GameObject loaded = handle.WaitForCompletion();
+                if (loaded)
+                    return loaded;
+            }
+            catch (System.Exception)
+            {
+                //InvalidKeyException is expected for several catalog paths on this install
+            }
+
+            return null;
+        }
+
+        public static void Init(AssetBundle assetBundle)
+        {
+            _assetBundle = assetBundle;
+            rotorHoverLoop = _assetBundle.LoadAsset<AudioClip>("sfxAH64RotorHoverGrounded");
+            if (!rotorHoverLoop)
+                Log.Warning("Approved grounded rotor hover clip was not found in the ah64 bundle; flight audio will stay silent.");
+
+            //Movement layers: fade in on top of the grounded bed above. Missing either is non-fatal —
+            //AH64FlightAudio just skips the layer and keeps the grounded bed.
+            rotorInFlightLoop = _assetBundle.LoadAsset<AudioClip>("sfxAH64RotorInFlight");
+            if (!rotorInFlightLoop)
+                Log.Warning("Rotor in-flight layer clip was not found in the ah64 bundle; forward-speed layer will stay silent.");
+
+            rotorClimbLoop = _assetBundle.LoadAsset<AudioClip>("sfxAH64RotorClimb");
+            if (!rotorClimbLoop)
+                Log.Warning("Rotor climb layer clip was not found in the ah64 bundle; collective layer will stay silent.");
+
+            //effects must exist before projectiles: the rockets' impact explosions reference them
+            CreateEffects();
+
+            CreateProjectiles();
+        }
+
+        #region effects
+        private static void CreateEffects()
+        {
+            LoadWeaponEffects();
+            CreateRocketExplosionEffect();
+            CreateChaingunSplashEffect();
+            hydraExplosionEffect = CreateHydraExplosionEffect();
+            CreateGatlingSplashEffect();
+            CreateCannonSplashEffect();
+            CreateLongbowExplosionEffect();
+            radarPulseEffect = CreateRadarPulseEffect();
+            radarPaintPingEffect = CreateRadarPaintPingEffect();
+        }
+
+        /// <summary>
+        /// Presentation for every weapon slot. Paths are LegacyResourcesAPI <c>Prefabs/...</c> keys —
+        /// the same API Engi and the rest of this mod already use successfully for tracers and pods.
+        /// </summary>
+        private static void LoadWeaponEffects()
+        {
+            //Warm tracers only — ClayBruiserMinigun reads purple/pink and was the "purple bloom" on M230.
+            chaingunTracerEffect = CreateChaingunTracer();
+
+            //Merc strong impact is energy-coloured; Hitspark reads as hot metal.
+            chaingunHitEffect = LoadVanilla(
+                "Prefabs/Effects/ImpactEffects/Hitspark1",
+                "Prefabs/Effects/OmniImpactVFX");
+
+            chaingunMuzzleFlashEffect = CreateChaingunMuzzleFlash();
+
+            //Never fall back to MuzzleflashBarrage — MUL-T purple reads as "wrong gun" on the M230.
+            //Bandit2 is casing + smoke; if it misses we just skip the eject flash.
+            chaingunShellEjectEffect = LoadVanilla(
+                "Prefabs/Effects/MuzzleFlashes/MuzzleflashBandit2",
+                "Assets/RoR2/Base/Characters/Bandit2/VFX/MuzzleflashBandit2.prefab");
+
+            hydraMuzzleFlashEffect = LoadVanilla("Prefabs/Effects/MuzzleFlashes/MuzzleflashSmokeRing");
+            //hydraExplosionEffect + chaingunSplashEffect: custom AH64*Explosion prefabs, after Hellfire loads.
+
+            hellfireMuzzleFlashEffect = LoadWarmMuzzleFlash();
+            if (!hellfireMuzzleFlashEffect)
+                hellfireMuzzleFlashEffect = _assetBundle.LoadEffect("AH64HellfireMuzzleFlash", true);
+
+            dashThrusterEffect = LoadVanilla("Prefabs/Effects/MuzzleFlashes/MuzzleflashSmokeRing");
+            dashDustEffect = LoadVanilla("Prefabs/GenericFootstepDust");
+
+            dashFlareEffect = LoadVanilla(
+                "Prefabs/Effects/ImpactEffects/ExplosionFirework",
+                "Prefabs/Effects/ImpactEffects/CritsparkHeavy",
+                "Prefabs/Effects/OmniExplosionVFX");
+        }
+
+        /// <summary>
+        /// Warm orange/yellow rifle flashes only. <c>MuzzleflashBarrage</c> (MUL-T) is deliberately
+        /// excluded — it is purple and was the prior M230 regression.
+        /// </summary>
+        private static GameObject LoadWarmMuzzleFlash()
+        {
+            return LoadVanilla(
+                "Prefabs/Effects/MuzzleFlashes/Muzzleflash1",
+                "Assets/RoR2/Base/Common/VFX/MuzzleFlashes/Muzzleflash1.prefab",
+                "Prefabs/Effects/MuzzleFlashes/MuzzleflashFMJ",
+                "Assets/RoR2/Base/Characters/Commando/Skills/MuzzleflashFMJ.prefab");
+        }
+
+        /// <summary>
+        /// The chain gun's muzzle flash with a tiny per-shot camera shake riding on it.
+        ///
+        /// <para>Cloned, not modified in place: adding a ShakeEmitter to a shared vanilla asset would
+        /// hand camera shake to every user of that flash. A cloned prefab is not in the EffectCatalog and
+        /// <c>EffectManager.SpawnEffect</c> refuses unregistered prefabs outright, hence the explicit
+        /// <c>CreateAndAddEffectDef</c>.</para>
+        /// </summary>
+        private static GameObject CreateChaingunMuzzleFlash()
+        {
+            GameObject vanilla = LoadWarmMuzzleFlash();
+            if (!vanilla)
+            {
+                Log.Error("AH64ChaingunMuzzleFlash: no warm muzzle flash loaded (FMJ/Muzzleflash1). Primary will fire without a barrel flash.");
+                return null;
+            }
+
+            GameObject flash = PrefabAPI.InstantiateClone(vanilla, "AH64ChaingunMuzzleFlash", false);
+
+            ShakeEmitter shake = flash.AddComponent<ShakeEmitter>();
+            shake.amplitudeTimeDecay = true;
+            shake.duration = AH64StaticValues.chaingunShakeDuration;
+            shake.radius = AH64StaticValues.chaingunShakeRadius;
+            shake.scaleShakeRadiusWithLocalScale = false;
+            shake.wave = new Wave
+            {
+                amplitude = AH64StaticValues.chaingunShakeAmplitude,
+                frequency = AH64StaticValues.chaingunShakeFrequency,
+                cycleOffset = 0f
+            };
+
+            Content.CreateAndAddEffectDef(flash);
+            return flash;
+        }
+
+        /// <summary>
+        /// Scan ring that parents to the referenced mast transform so it rides with the chopper.
+        /// BootShockwave carries shake + rumble and a stomp sound — strip those; we beep ourselves.
+        /// </summary>
+        private static GameObject CreateRadarPulseEffect()
+        {
+            GameObject vanilla = LoadLegacy("Prefabs/Effects/ImpactEffects/BootShockwave")
+                ?? LoadLegacy("Prefabs/Effects/TreebotShockwaveEffect")
+                ?? LoadLegacy("Prefabs/Effects/OmniImpactVFX")
+                ?? LoadLegacy("Prefabs/Effects/OmniExplosionVFX");
+            if (!vanilla)
+            {
+                Log.Error("AH64RadarPulse: no donor shockwave/impact VFX found.");
+                return null;
+            }
+
+            GameObject pulse = PrefabAPI.InstantiateClone(vanilla, "AH64RadarPulse", false);
+            StripEffectFeedback(pulse);
+
+            EffectComponent effect = pulse.GetComponent<EffectComponent>();
+            if (effect)
+            {
+                effect.parentToReferencedTransform = true;
+                effect.positionAtReferencedTransform = true;
+                effect.applyScale = true;
+            }
+
+            Content.CreateAndAddEffectDef(pulse);
+            return pulse;
+        }
+
+        /// <summary>
+        /// Soft acquire flash on the painted enemy. Avoid OmniImpactVFXLightning — its ShakeEmitter
+        /// is what made lock feel like a combat hit.
+        /// </summary>
+        private static GameObject CreateRadarPaintPingEffect()
+        {
+            GameObject vanilla = LoadLegacy("Prefabs/Effects/OmniImpactVFX")
+                ?? LoadLegacy("Prefabs/Effects/ImpactEffects/OmniImpactVFX")
+                ?? LoadLegacy("Prefabs/Effects/ImpactEffects/BootShockwave");
+            if (!vanilla)
+            {
+                Log.Error("AH64RadarPaintPing: no donor impact VFX found.");
+                return null;
+            }
+
+            GameObject ping = PrefabAPI.InstantiateClone(vanilla, "AH64RadarPaintPing", false);
+            StripEffectFeedback(ping);
+
+            EffectComponent effect = ping.GetComponent<EffectComponent>();
+            if (effect)
+                effect.applyScale = true;
+
+            Content.CreateAndAddEffectDef(ping);
+            return ping;
+        }
+
+        /// <summary>
+        /// ShakeEmitter drives both camera shake and <see cref="ShakeEmitter.ApplySpacialRumble"/>
+        /// gamepad vibration. EffectComponent.soundName fires even when we play our own UI beep.
+        /// </summary>
+        private static void StripEffectFeedback(GameObject root)
+        {
+            if (!root)
+                return;
+
+            foreach (ShakeEmitter shake in root.GetComponentsInChildren<ShakeEmitter>(true))
+                UnityEngine.Object.Destroy(shake);
+
+            EffectComponent effect = root.GetComponent<EffectComponent>();
+            if (effect)
+                effect.soundName = string.Empty;
+        }
+
+        /// <summary>
+        /// Hydra impact — custom <c>AH64HydraExplosion</c> from the bundle (orange blob burst at 0.55×).
+        /// Falls back to a scaled Hellfire clone (never OmniImpact — that vanished in playtest).
+        /// </summary>
+        private static GameObject CreateHydraExplosionEffect()
+        {
+            GameObject fx = _assetBundle.LoadEffect("AH64HydraExplosion", "Play_engi_M1_explo");
+            if (fx)
+            {
+                EffectComponent effect = fx.GetComponent<EffectComponent>();
+                if (effect)
+                    effect.applyScale = false;
+
+                DestroyOnTimer timer = fx.GetComponent<DestroyOnTimer>();
+                if (timer)
+                    timer.duration = 1.4f;
+
+                return fx;
+            }
+
+            Log.Warning("AH64HydraExplosion missing from bundle — falling back to scaled Hellfire warhead.");
+            if (!hellfireExplosionEffect)
+                return null;
+
+            fx = PrefabAPI.InstantiateClone(hellfireExplosionEffect, "AH64HydraExplosionFallback", false);
+            ScaleVfxHierarchy(fx, 0.28f);
+            TintVfxHierarchy(fx, new Color(1f, 0.75f, 0.35f, 1f));
+
+            ShakeEmitter[] shakes = fx.GetComponents<ShakeEmitter>();
+            for (int i = 0; i < shakes.Length; i++)
+                UnityEngine.Object.DestroyImmediate(shakes[i]);
+
+            EffectComponent fallback = fx.GetComponent<EffectComponent>();
+            if (fallback)
+            {
+                fallback.soundName = "Play_engi_M1_explo";
+                fallback.applyScale = false;
+            }
+
+            fx.transform.localScale = Vector3.one * 0.55f;
+            Content.CreateAndAddEffectDef(fx);
+            return fx;
+        }
+
+        /// <summary>
+        /// M789 cannon impact — the M230's composition at 1.15x, and the only primary impact
+        /// allowed to linger. Silent here: the report is played by the skill state, and the
+        /// blast timer is longer than the other two because the effect itself runs longer.
+        /// </summary>
+        private static void CreateCannonSplashEffect()
+        {
+            GameObject splash = _assetBundle.LoadEffect("AH64CannonExplosion", string.Empty);
+            if (!splash)
+            {
+                Log.Warning("AH64CannonExplosion missing from bundle — reusing the M230 splash.");
+                cannonSplashEffect = chaingunSplashEffect;
+                return;
+            }
+
+            EffectComponent effect = splash.GetComponent<EffectComponent>();
+            if (effect)
+            {
+                effect.soundName = string.Empty;
+                effect.applyScale = true;
+            }
+
+            DestroyOnTimer timer = splash.GetComponent<DestroyOnTimer>();
+            if (timer)
+                timer.duration = 1.8f;
+
+            cannonSplashEffect = splash;
+        }
+
+        /// <summary>
+        /// XM301 gatling impact — the M230's splash composition at half size. Silent: the gun
+        /// audio is a spool/loop set owned by <see cref="Components.AH64GatlingSpin"/>, and a
+        /// per-impact one-shot on top of it at 18 rps would be mush.
+        /// </summary>
+        private static void CreateGatlingSplashEffect()
+        {
+            GameObject splash = _assetBundle.LoadEffect("AH64GatlingExplosion", string.Empty);
+            if (!splash)
+            {
+                //Fall back to the M230's rather than dropping impact feedback entirely; it is
+                //oversized for this gun but visible, which is the property that matters.
+                Log.Warning("AH64GatlingExplosion missing from bundle — reusing the M230 splash.");
+                gatlingSplashEffect = chaingunSplashEffect;
+                return;
+            }
+
+            EffectComponent effect = splash.GetComponent<EffectComponent>();
+            if (effect)
+            {
+                effect.soundName = string.Empty;
+                effect.applyScale = true;
+            }
+
+            DestroyOnTimer timer = splash.GetComponent<DestroyOnTimer>();
+            if (timer)
+                timer.duration = 1.0f;
+
+            gatlingSplashEffect = splash;
+        }
+
+        /// <summary>
+        /// M230 HE tip — custom <c>AH64HeExplosion</c> (orange/yellow blob burst). Silent at 11 rps.
+        /// </summary>
+        private static void CreateChaingunSplashEffect()
+        {
+            GameObject splash = _assetBundle.LoadEffect("AH64HeExplosion", string.Empty);
+            if (splash)
+            {
+                EffectComponent effect = splash.GetComponent<EffectComponent>();
+                if (effect)
+                {
+                    effect.soundName = string.Empty;
+                    effect.applyScale = true;
+                }
+
+                DestroyOnTimer timer = splash.GetComponent<DestroyOnTimer>();
+                if (timer)
+                    timer.duration = 1.2f;
+
+                chaingunSplashEffect = splash;
+                return;
+            }
+
+            Log.Warning("AH64HeExplosion missing from bundle — falling back to tinted Hellfire clone.");
+            if (hellfireExplosionEffect)
+            {
+                splash = PrefabAPI.InstantiateClone(
+                    hellfireExplosionEffect,
+                    "AH64ChaingunSplash",
+                    false);
+
+                ScaleVfxHierarchy(splash, AH64StaticValues.chaingunSplashParticleMult);
+                TintVfxHierarchy(splash, new Color(1f, 0.72f, 0.28f, 1f));
+
+                ShakeEmitter[] shakes = splash.GetComponents<ShakeEmitter>();
+                for (int i = 0; i < shakes.Length; i++)
+                    UnityEngine.Object.DestroyImmediate(shakes[i]);
+
+                EffectComponent effect = splash.GetComponent<EffectComponent>();
+                if (effect)
+                {
+                    effect.soundName = string.Empty;
+                    effect.applyScale = true;
+                }
+
+                Content.CreateAndAddEffectDef(splash);
+                chaingunSplashEffect = splash;
+                return;
+            }
+
+            chaingunSplashEffect = hydraExplosionEffect;
+        }
+
+        /// <summary>
+        /// Clone a vanilla explosion. When <paramref name="ignoreBlastRadiusScale"/> is set,
+        /// <c>EffectComponent.applyScale</c> is cleared and a fixed local scale is baked in — otherwise
+        /// <c>ProjectileExplosion</c> would stretch the FX to <c>blastRadius</c> (Hydra = 5 → debris storm).
+        /// Particle start sizes are always multiplied: many RoR2 explosion systems simulate in world
+        /// space, so transform scale alone does almost nothing.
+        /// </summary>
+        private static GameObject CreateScaledExplosionEffect(
+            string cloneName,
+            float particleMult,
+            bool ignoreBlastRadiusScale,
+            float fixedScale,
+            params string[] legacyPaths)
+        {
+            GameObject vanilla = LoadVanilla(legacyPaths);
+            if (!vanilla)
+                return null;
+
+            GameObject clone = PrefabAPI.InstantiateClone(vanilla, cloneName, false);
+            ScaleVfxHierarchy(clone, particleMult);
+            StripDebrisChildren(clone);
+
+            EffectComponent effect = clone.GetComponent<EffectComponent>();
+            if (!effect)
+                effect = clone.AddComponent<EffectComponent>();
+
+            if (ignoreBlastRadiusScale)
+            {
+                effect.applyScale = false;
+                clone.transform.localScale = Vector3.one * Mathf.Max(fixedScale, 0.01f);
+            }
+            else
+            {
+                //Chaingun path: EffectData.scale from the hit callback must apply.
+                effect.applyScale = true;
+            }
+
+            Content.CreateAndAddEffectDef(clone);
+            return clone;
+        }
+
+        private static void ScaleVfxHierarchy(GameObject root, float mult)
+        {
+            if (!root || Mathf.Approximately(mult, 1f))
+                return;
+
+            foreach (ParticleSystem ps in root.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startSizeMultiplier *= mult;
+                main.startSpeedMultiplier *= mult;
+            }
+
+            foreach (TrailRenderer trail in root.GetComponentsInChildren<TrailRenderer>(true))
+            {
+                trail.startWidth *= mult;
+                trail.endWidth *= mult;
+            }
+        }
+
+        private static void TintVfxHierarchy(GameObject root, Color tint)
+        {
+            if (!root)
+                return;
+
+            foreach (ParticleSystem ps in root.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new ParticleSystem.MinMaxGradient(tint);
+            }
+        }
+
+        /// <summary>
+        /// ExplosionMissile (and cousins) ship mesh-debris / spark / flare children. Disable by name
+        /// so Hydra keeps flash+smoke without a lingering rubble / firework field.
+        /// </summary>
+        private static void StripDebrisChildren(GameObject root)
+        {
+            if (!root)
+                return;
+
+            Transform[] children = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < children.Length; i++)
+            {
+                Transform child = children[i];
+                if (!child || child == root.transform)
+                    continue;
+
+                string name = child.name;
+                if (name.IndexOf("debris", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("rubble", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("rock", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("chunk", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("shard", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("flare", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("spark", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("ember", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("firework", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("shrapnel", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("fragment", System.StringComparison.OrdinalIgnoreCase) < 0
+                    && name.IndexOf("gravel", System.StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+
+                child.gameObject.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Hellfire-sized bazooka ghost, scaled down for Hydra so the smoke trail doesn't read as a
+        /// special-grade missile.
+        /// </summary>
+        private static GameObject CreateHydraRocketGhost()
+        {
+            if (_assetBundle.LoadAsset<GameObject>("AH64HellfireGhost") == null)
+                return null;
+
+            //CreateProjectileGhostPrefab mutates the bundle asset — clone first so Hellfire keeps full size.
+            GameObject source = _assetBundle.CreateProjectileGhostPrefab("AH64HellfireGhost");
+            if (!source)
+                return null;
+
+            GameObject ghost = PrefabAPI.InstantiateClone(source, "AH64HydraRocketGhost", false);
+            float scale = AH64StaticValues.hydraGhostScale;
+            ghost.transform.localScale = Vector3.one * scale;
+            ScaleVfxHierarchy(ghost, scale);
+            return ghost;
+        }
+
+        private static void CreateRocketExplosionEffect()
+        {
+            //Clay Dunestrider heavy blast — Global bank, always loaded (no custom soundbank).
+            hellfireExplosionEffect = _assetBundle.LoadEffect("AH64HellfireExplosion", "Play_clayboss_M1_explo");
+
+            if (!hellfireExplosionEffect)
+                return;
+
+            ShakeEmitter shakeEmitter = hellfireExplosionEffect.AddComponent<ShakeEmitter>();
+            shakeEmitter.amplitudeTimeDecay = true;
+            shakeEmitter.duration = 0.5f;
+            shakeEmitter.radius = 200f;
+            shakeEmitter.scaleShakeRadiusWithLocalScale = false;
+
+            shakeEmitter.wave = new Wave
+            {
+                amplitude = 1f,
+                frequency = 40f,
+                cycleOffset = 0f
+            };
+        }
+
+        /// <summary>
+        /// Longbow is the default special but inherited EngiHarpoon's tiny seeker pop — no readable boom
+        /// or thump from hover distance. Clone the Hellfire warhead VFX and pin a loud Global-bank
+        /// grenade boom onto the EffectDef (lifetimeExpiredSound only plays near lifetime end, not on hit).
+        /// </summary>
+        private static void CreateLongbowExplosionEffect()
+        {
+            const string longbowBoomSound = "Play_commando_M2_grenade_explo";
+
+            if (hellfireExplosionEffect)
+            {
+                longbowExplosionEffect = PrefabAPI.InstantiateClone(
+                    hellfireExplosionEffect,
+                    "AH64LongbowExplosion",
+                    false);
+
+                EffectComponent effect = longbowExplosionEffect.GetComponent<EffectComponent>();
+                if (effect)
+                    effect.soundName = longbowBoomSound;
+
+                ShakeEmitter shake = longbowExplosionEffect.GetComponent<ShakeEmitter>();
+                if (shake)
+                {
+                    shake.duration = 0.40f;
+                    shake.wave = new Wave
+                    {
+                        amplitude = 0.75f,
+                        frequency = 36f,
+                        cycleOffset = 0f
+                    };
+                }
+
+                Content.CreateAndAddEffectDef(longbowExplosionEffect);
+                return;
+            }
+
+            longbowExplosionEffect = CreateScaledExplosionEffect(
+                "AH64LongbowExplosion",
+                2.4f,
+                ignoreBlastRadiusScale: true,
+                1.35f,
+                "Prefabs/Effects/ImpactEffects/ExplosionFirework",
+                "Prefabs/Effects/OmniExplosionVFX",
+                "Prefabs/Effects/OmniImpactVFX");
+            if (!longbowExplosionEffect)
+                return;
+
+            EffectComponent fallback = longbowExplosionEffect.GetComponent<EffectComponent>();
+            if (fallback)
+                fallback.soundName = longbowBoomSound;
+
+            ShakeEmitter fallbackShake = longbowExplosionEffect.AddComponent<ShakeEmitter>();
+            fallbackShake.amplitudeTimeDecay = true;
+            fallbackShake.duration = 0.40f;
+            fallbackShake.radius = 160f;
+            fallbackShake.scaleShakeRadiusWithLocalScale = false;
+            fallbackShake.wave = new Wave
+            {
+                amplitude = 0.75f,
+                frequency = 36f,
+                cycleOffset = 0f
+            };
+        }
+        #endregion effects
+
+        #region projectiles
+        private static void CreateProjectiles()
+        {
+            CreateHellfireProjectile();
+
+            if (hellfireProjectilePrefab)
+                Content.AddProjectilePrefab(hellfireProjectilePrefab);
+
+            CreateLongbowProjectile();
+
+            if (_longbowProjectile)
+                Content.AddProjectilePrefab(_longbowProjectile);
+
+            CreateHydraRocketProjectile();
+
+            if (hydraRocketProjectilePrefab)
+                Content.AddProjectilePrefab(hydraRocketProjectilePrefab);
+        }
+
+        /// <summary>
+        /// Preserve Engineer harpoon guidance while giving Longbow the AH-64 missile silhouette and a
+        /// real AGM warhead boom. Cloning avoids changing Engineer's shared projectile for every player.
+        /// </summary>
+        private static void CreateLongbowProjectile()
+        {
+            GameObject source = LoadLegacy("Prefabs/Projectiles/EngiHarpoon");
+            if (!source)
+                source = EntityStates.Engi.EngiMissilePainter.Fire.projectilePrefab;
+            if (!source)
+            {
+                Log.Error("AH64LongbowProjectile: EngiHarpoon source was not available.");
+                return;
+            }
+
+            _longbowProjectile = PrefabAPI.InstantiateClone(
+                source,
+                "AH64LongbowProjectile",
+                false);
+
+            ProjectileController controller = _longbowProjectile
+                ? _longbowProjectile.GetComponent<ProjectileController>()
+                : null;
+            ProjectileController hellfireController = hellfireProjectilePrefab
+                ? hellfireProjectilePrefab.GetComponent<ProjectileController>()
+                : null;
+
+            if (controller && hellfireController && hellfireController.ghostPrefab)
+                controller.ghostPrefab = hellfireController.ghostPrefab;
+            if (controller)
+                controller.startSound = string.Empty;
+
+            //EngiHarpoon's stock impact is a quiet seeker pop — invisible/inaudible from hover cam.
+            //DestroyImmediate: deferred Destroy left Engi's ProjectileImpactExplosion alive on the
+            //prefab beside ours, so hits kept the tiny silent Engi detonation.
+            ProjectileImpactExplosion[] oldExplosions =
+                _longbowProjectile.GetComponents<ProjectileImpactExplosion>();
+            for (int i = 0; i < oldExplosions.Length; i++)
+            {
+                if (oldExplosions[i])
+                    UnityEngine.Object.DestroyImmediate(oldExplosions[i]);
+            }
+
+            ProjectileSingleTargetImpact singleTarget =
+                _longbowProjectile.GetComponent<ProjectileSingleTargetImpact>();
+            if (singleTarget)
+                UnityEngine.Object.DestroyImmediate(singleTarget);
+
+            ProjectileImpactExplosion explosion = _longbowProjectile.AddComponent<ProjectileImpactExplosion>();
+            explosion.blastRadius = AH64StaticValues.longbowBlastRadius;
+            explosion.blastDamageCoefficient = 1f;
+            explosion.blastProcCoefficient = 1f;
+            explosion.falloffModel = BlastAttack.FalloffModel.Linear;
+            explosion.destroyOnEnemy = true;
+            explosion.destroyOnWorld = true;
+            explosion.timerAfterImpact = false;
+            explosion.fireChildren = false;
+            explosion.explodeOnLifeTimeExpiration = true;
+            explosion.impactEffect = longbowExplosionEffect
+                ? longbowExplosionEffect
+                : hellfireExplosionEffect;
+            explosion.blastImpactEffect = null;
+            //lifetimeExpiredSound only fires near lifetime end — impact boom is EffectComponent.soundName
+            //on longbowExplosionEffect (Play_commando_M2_grenade_explo). Keep this as a backup thump.
+            explosion.lifetimeExpiredSound =
+                Content.CreateAndAddNetworkSoundEventDef("Play_commando_M2_grenade_explo");
+            explosion.offsetForLifetimeExpiredSound = 0f;
+
+            if (explosion.lifetime <= 0f)
+                explosion.lifetime = 15f;
+        }
+
+        /// <summary>
+        /// Shared setup for both rockets: strip the cloned grenade's arc and tumble and drive it forwards
+        /// at a constant speed instead. Returns null if the clone failed, so callers can bail loudly.
+        /// </summary>
+        private static GameObject CreateFlatFlyingRocket(string newPrefabName, float speed, float lifetime)
+        {
+            GameObject prefab = Asset.CloneProjectilePrefab("CommandoGrenadeProjectile", newPrefabName);
+
+            if (!prefab)
+            {
+                Log.Error($"Failed to clone CommandoGrenadeProjectile for {newPrefabName}. That skill will not fire.");
+                return null;
+            }
+
+            //the grenade we cloned arcs and tumbles. a rocket flies flat and fast, so strip the gravity
+            //and the spin, and drive it forwards at a constant speed instead
+            Rigidbody rigidbody = prefab.GetComponent<Rigidbody>();
+            if (rigidbody)
+            {
+                //useGravity is serialized so it sticks to the clone. don't bother zeroing angularVelocity
+                //here — that's runtime state on a prefab we never instantiate, so it wouldn't carry over.
+                //ApplyTorqueOnStart below is what actually makes the grenade tumble.
+                rigidbody.useGravity = false;
+            }
+
+            ApplyTorqueOnStart tumble = prefab.GetComponent<ApplyTorqueOnStart>();
+            if (tumble)
+                UnityEngine.Object.Destroy(tumble);
+
+            ProjectileSimple flight = prefab.GetComponent<ProjectileSimple>();
+            if (!flight)
+                flight = prefab.AddComponent<ProjectileSimple>();
+
+            flight.desiredForwardSpeed = speed;
+            flight.lifetime = lifetime;
+            flight.updateAfterFiring = true;
+
+            return prefab;
+        }
+
+        /// <summary>
+        /// The special: one heavy anti-armour missile. Same warhead the wrist rocket carried — the shot
+        /// was already the right weight, it was just called the wrong thing and left from the wrong place.
+        /// </summary>
+        private static void CreateHellfireProjectile()
+        {
+            hellfireProjectilePrefab = CreateFlatFlyingRocket(
+                "AH64HellfireProjectile",
+                AH64StaticValues.hellfireSpeed,
+                AH64StaticValues.hellfireLifetime);
+
+            if (!hellfireProjectilePrefab)
+                return;
+
+            //remove their ProjectileImpactExplosion component and start from default values
+            UnityEngine.Object.Destroy(hellfireProjectilePrefab.GetComponent<ProjectileImpactExplosion>());
+            ProjectileImpactExplosion explosion = hellfireProjectilePrefab.AddComponent<ProjectileImpactExplosion>();
+
+            explosion.blastRadius = AH64StaticValues.hellfireBlastRadius;
+            explosion.blastDamageCoefficient = 1f;
+            explosion.falloffModel = BlastAttack.FalloffModel.None;
+            explosion.destroyOnEnemy = true;
+            explosion.destroyOnWorld = true;
+            explosion.lifetime = AH64StaticValues.hellfireLifetime;
+            explosion.impactEffect = hellfireExplosionEffect;
+            explosion.lifetimeExpiredSound = Content.CreateAndAddNetworkSoundEventDef("Play_clayboss_M1_explo");
+            //detonate on contact rather than sitting as a live charge
+            explosion.timerAfterImpact = false;
+
+            ProjectileController controller = hellfireProjectilePrefab.GetComponent<ProjectileController>();
+
+            if (_assetBundle.LoadAsset<GameObject>("AH64HellfireGhost") != null)
+                controller.ghostPrefab = _assetBundle.CreateProjectileGhostPrefab("AH64HellfireGhost");
+
+            controller.startSound = "";
+            //same hazard as the Hydra rocket: the Commando grenade clone's procCoefficient must not
+            //be left inherited. Set explicitly so on-hit items see the special's intended weight.
+            controller.procCoefficient = AH64StaticValues.hellfireProcCoefficient;
+        }
+
+        /// <summary>
+        /// The secondary: one rocket out of the Hydra-70 pods. Six of these go out per activation, so it
+        /// is deliberately a much smaller warhead than the Hellfire — six overlapping 12u blasts would
+        /// fill the screen and delete the distinction between the two skills.
+        /// </summary>
+        private static void CreateHydraRocketProjectile()
+        {
+            hydraRocketProjectilePrefab = CreateFlatFlyingRocket(
+                "AH64HydraRocketProjectile",
+                AH64StaticValues.hydraSpeed,
+                AH64StaticValues.hydraLifetime);
+
+            if (!hydraRocketProjectilePrefab)
+                return;
+
+            UnityEngine.Object.Destroy(hydraRocketProjectilePrefab.GetComponent<ProjectileImpactExplosion>());
+            ProjectileImpactExplosion explosion = hydraRocketProjectilePrefab.AddComponent<ProjectileImpactExplosion>();
+
+            explosion.blastRadius = AH64StaticValues.hydraBlastRadius;
+            explosion.blastDamageCoefficient = 1f;
+            explosion.falloffModel = BlastAttack.FalloffModel.None;
+            explosion.destroyOnEnemy = true;
+            explosion.destroyOnWorld = true;
+            explosion.lifetime = AH64StaticValues.hydraLifetime;
+            //own smaller missile blast — sharing the Hellfire's artillery explosion made every Hydra
+            //hit read as another special
+            //Never fall back to Hellfire's artillery boom — that was the "Hydra still huge" report.
+            if (!hydraExplosionEffect)
+                Log.Error("AH64HydraExplosion failed to build; Hydra impacts will have no VFX.");
+            explosion.impactEffect = hydraExplosionEffect;
+            explosion.blastImpactEffect = null;
+            explosion.fireChildren = false;
+            explosion.timerAfterImpact = false;
+
+            ProjectileController controller = hydraRocketProjectilePrefab.GetComponent<ProjectileController>();
+
+            GameObject hydraGhost = CreateHydraRocketGhost();
+            if (hydraGhost)
+                controller.ghostPrefab = hydraGhost;
+            else if (_assetBundle.LoadAsset<GameObject>("AH64HellfireGhost") != null)
+                controller.ghostPrefab = _assetBundle.CreateProjectileGhostPrefab("AH64HellfireGhost");
+
+            controller.startSound = "";
+            //carried over explicitly rather than inherited from the grenade — six rockets land per
+            //activation, so leaving this at the clone's value would quietly change how every on-hit item
+            //behaves around the secondary
+            controller.procCoefficient = AH64StaticValues.hydraProcCoefficient;
+        }
+        #endregion projectiles
+    }
+}

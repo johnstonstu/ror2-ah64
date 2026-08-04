@@ -1,0 +1,761 @@
+using BepInEx.Configuration;
+using AH64.Modules;
+using AH64.Modules.Characters;
+using AH64.Survivors.Components;
+using AH64.Survivors.SkillStates;
+using RoR2;
+using RoR2.Skills;
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace AH64.Survivors
+{
+    public class AH64Survivor : SurvivorBase<AH64Survivor>
+    {
+        //used to load the assetbundle for this character. must be unique
+        public override string assetBundleName => "ah64";
+
+        //the name of the prefab we will create. conventionally ending in "Body". must be unique
+        public override string bodyName => "AH64Body";
+
+        //name of the ai master for vengeance and goobo. must be unique
+        public override string masterName => "AH64Monster";
+
+        //prefabs authored by AH64Phase4Builder from the Blender FBX
+        public override string modelPrefabName => "mdlAH64";
+        public override string displayPrefabName => "AH64Display";
+
+        public const string AH64_PREFIX = "AH64_";
+
+        //used when registering your survivor's language tokens
+        public override string survivorTokenPrefix => AH64_PREFIX;
+        
+        public override BodyInfo bodyInfo => new BodyInfo
+        {
+            bodyName = bodyName,
+            bodyNameToken = AH64_PREFIX + "NAME",
+            subtitleNameToken = AH64_PREFIX + "SUBTITLE",
+
+            //baked from AH64Display by AH64 -> Bake Character Portrait
+            characterPortrait = assetBundle.LoadAsset<Texture>("texAH64Icon"),
+            //olive drab — UI accent, not the model
+            bodyColor = new Color(0.22f, 0.28f, 0.18f),
+            sortPosition = 100,
+
+            crosshair = Asset.LoadCrosshair("Standard"),
+            podPrefab = LegacyResourcesAPI.Load<GameObject>("Prefabs/NetworkedObjects/SurvivorPod"),
+
+            //Gunship: more hull than a human survivor. The large model and pulled-back camera make
+            //human-survivor speeds read slower, so 10 is a noticeable but bounded first-test value.
+            //Fire Control Radar can add another 15% while facing its paint. Higher acceleration sharpens
+            //cyclic reversals without changing the hover controller or top speed. Armor stays 0 here;
+            //the passive owns it.
+            maxHealth = 155f,
+            healthRegen = 1.5f,
+            armor = 0f,
+
+            moveSpeed = AH64PlaytestConfig.BaseMoveSpeed,
+            acceleration = AH64PlaytestConfig.Acceleration,
+
+            jumpCount = 1,
+
+            //FBX origin is at ground contact under the main gear. Capsule MUST stay centred on the
+            //transform (center = 0): CharacterBody.footPosition is transform.y - height/2 and does NOT
+            //read capsuleYOffset. A non-zero center made the hover probe start underground on spawn,
+            //miss the floor, and void-descend straight through the map.
+            capsuleRadius = 1.0f,
+            capsuleHeight = 2.2f,
+            capsuleCenter = Vector3.zero,
+            modelBasePosition = new Vector3(0f, -1.1f, 0f), // -height/2 so the gear sits on footPosition
+            aimOriginPosition = new Vector3(0f, 1.45f, 0.8f),
+            cameraPivotPosition = new Vector3(0f, 1.2f, 0f),
+            cameraParamsVerticalOffset = 1.6f,
+            cameraParamsDepth = -14f,
+        };
+
+        public override CustomRendererInfo[] customRendererInfos => new CustomRendererInfo[]
+        {
+            //material left null: Prefabs.SetupCustomRendererInfos hopoo-converts the FBX import material
+            //in place. LoadMaterial matches with Contains, so never request the bare "matAH64".
+            new CustomRendererInfo { childName = "Airframe" },
+            new CustomRendererInfo { childName = "AirframeDark" },
+            new CustomRendererInfo { childName = "Canopy", ignoreOverlays = true },
+            new CustomRendererInfo { childName = "AirframeMarkings" },
+            new CustomRendererInfo { childName = "NoseOptics", ignoreOverlays = true },
+            new CustomRendererInfo { childName = "MainRotor" },
+            new CustomRendererInfo { childName = "TailRotor" },
+            new CustomRendererInfo { childName = "ChinTurret" },
+            new CustomRendererInfo { childName = "ChinBarrel" },
+            //Alternate primary's barrel cluster. Ships with its renderer disabled; it still
+            //needs an entry here so elite/on-fire overlays reach it once the loadout enables it.
+            new CustomRendererInfo { childName = "ChinGatling" },
+            new CustomRendererInfo { childName = "PodRocketL" },
+            new CustomRendererInfo { childName = "PodRocketR" },
+            new CustomRendererInfo { childName = "PodMissileL" },
+            new CustomRendererInfo { childName = "PodMissileR" },
+            //Individual Hellfires. AH64PylonMissiles hides these as the special is
+            //spent, but they still need entries here so elite/on-fire overlays reach
+            //whichever ones remain on the rail.
+            new CustomRendererInfo { childName = "MissileL0" },
+            new CustomRendererInfo { childName = "MissileL1" },
+            new CustomRendererInfo { childName = "MissileL2" },
+            new CustomRendererInfo { childName = "MissileL3" },
+            new CustomRendererInfo { childName = "MissileR0" },
+            new CustomRendererInfo { childName = "MissileR1" },
+            new CustomRendererInfo { childName = "MissileR2" },
+            new CustomRendererInfo { childName = "MissileR3" },
+            //Teal FCR bubble — ignoreOverlays so elite/cloak never replace the radome glass look.
+            new CustomRendererInfo { childName = "RadarDome", ignoreOverlays = true },
+            //RotorBlurMain/RotorBlurTail are deliberately absent: they carry a transparent FX
+            //material that CharacterModel must never manage (UpdateRendererMaterials would hand it
+            //overlays and stomp the fade). AH64FlightVisuals owns them via ChildLocator instead.
+        };
+        public override UnlockableDef characterUnlockableDef => AH64Unlockables.characterUnlockableDef;
+        
+        public override ItemDisplaysBase itemDisplays => new AH64ItemDisplays();
+
+        //set in base classes
+        public override AssetBundle assetBundle { get; protected set; }
+
+        public override GameObject bodyPrefab { get; protected set; }
+        public override CharacterBody prefabCharacterBody { get; protected set; }
+        public override GameObject characterModelObject { get; protected set; }
+        public override CharacterModel prefabCharacterModel { get; protected set; }
+        public override GameObject displayPrefab { get; protected set; }
+
+        public override void Initialize()
+        {
+            base.Initialize();
+        }
+
+        public override void InitializeCharacter()
+        {
+            //need the character unlockable before you initialize the survivordef
+            AH64Unlockables.Init();
+
+            base.InitializeCharacter();
+
+            AH64States.Init();
+            AH64Tokens.Init();
+
+            AH64Assets.Init(assetBundle);
+            AH64Buffs.Init(assetBundle);
+
+            InitializeEntityStateMachines();
+            InitializeSkills();
+            InitializeSkins();
+            InitializeCharacterMaster();
+
+            AdditionalBodySetup();
+
+            AddHooks();
+        }
+
+        private void AdditionalBodySetup()
+        {
+            //No hitbox group any more. It existed solely for Piston Punch, and was built from the
+            //placeholder bundle's "SwordHitbox" child - which won't exist on the helicopter model either.
+            //A future melee state would need to set BaseMeleeAttack.hitboxGroupName explicitly; the
+            //default is still "SwordGroup", which has never existed here, and it fails silently.
+
+            //marks this body as ours so the stat hook below only buffs AH64s, and owns the
+            //Plasma Reactive Armor charge
+            bodyPrefab.AddComponent<AH64PassiveComponent>();
+            //Commando's cloned Interactor is 1u — unreachable from hover. See interactionDistance.
+            Interactor interactor = bodyPrefab.GetComponent<Interactor>();
+            if (interactor)
+                interactor.maxInteractionDistance = AH64StaticValues.interactionDistance;
+            //the chopper never touches the ground: this switches CharacterMotor into flight + anti-gravity
+            //and holds a fixed altitude above terrain. Driven from AH64Main, not from its own FixedUpdate.
+            bodyPrefab.AddComponent<AH64HoverController>();
+            //presentation: rotors, chin turret, flight lean/wash, engine audio, gun heat glow
+            bodyPrefab.AddComponent<AH64RotorSpin>();
+            bodyPrefab.AddComponent<AH64ChinTurret>();
+            //Harmless while the M230 is equipped — it finds ChinGatling, sees no fire
+            //input, and holds at 0 rpm without touching the transform.
+            bodyPrefab.AddComponent<AH64GatlingSpin>();
+            bodyPrefab.AddComponent<AH64PylonMissiles>();
+            bodyPrefab.AddComponent<AH64FlightVisuals>();
+            bodyPrefab.AddComponent<AH64FlightAudio>();
+            bodyPrefab.AddComponent<AH64HeatVisuals>();
+            PolishAirframeMaterials(characterModelObject ? characterModelObject.GetComponent<CharacterModel>() : null, lobbyReadability: false);
+        }
+
+        //Smoothness/specular don't survive the Standard->HGStandard swap (nothing maps them), so the
+        //airframe would render dead flat without this. Values are per-material by name.
+        //Order matters: "matAH64Body" must not be matched by a bare "matAH64" Contains check elsewhere.
+        //
+        //Character select is lit much darker than stages. Lobby mats are cloned + boosted so we do not
+        //wash out the in-game airframe (hopoo conversion can share material instances across prefabs).
+        private static void PolishAirframeMaterials(CharacterModel characterModel, bool lobbyReadability)
+        {
+            if (!characterModel || characterModel.baseRendererInfos == null) return;
+
+            CharacterModel.RendererInfo[] infos = characterModel.baseRendererInfos;
+            for (int i = 0; i < infos.Length; i++)
+            {
+                CharacterModel.RendererInfo info = infos[i];
+                Material source = info.defaultMaterial;
+                if (!source) continue;
+
+                Material mat = source;
+                if (lobbyReadability)
+                {
+                    mat = UnityEngine.Object.Instantiate(source);
+                    mat.name = source.name.Replace(" (Instance)", "");
+                    info.defaultMaterial = mat;
+                    if (info.renderer)
+                        info.renderer.sharedMaterial = mat;
+                }
+
+                ApplyAirframeMaterialPolish(mat, lobbyReadability);
+                infos[i] = info;
+            }
+
+            characterModel.baseRendererInfos = infos;
+        }
+
+        private static void ApplyAirframeMaterialPolish(Material mat, bool lobbyReadability)
+        {
+            string name = mat.name;
+            if (name.Contains("matAH64Dark"))
+            {
+                //HGStandard does not reliably inherit Standard's tint through the bundle conversion.
+                Color tint = new Color(0.25f, 0.29f, 0.20f);
+                if (name.Contains("Rotor")) tint = new Color(0.18f, 0.21f, 0.16f);
+                else if (name.Contains("Gun")) tint = new Color(0.30f, 0.33f, 0.25f);
+                else if (name.Contains("RocketPod")) tint = new Color(0.32f, 0.38f, 0.18f);
+                else if (name.Contains("Hellfire")) tint = new Color(0.25f, 0.28f, 0.20f);
+                if (lobbyReadability)
+                    tint = LiftLobbyColor(tint, 2.35f, 0.32f);
+                if (mat.HasProperty("_Color")) mat.SetColor("_Color", tint);
+                mat.SetFloat("_Smoothness", lobbyReadability ? 0.38f : 0.25f);
+                mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.30f : 0.12f);
+                mat.SetFloat("_SpecularExponent", 3f);
+                if (lobbyReadability)
+                    SetLobbyFillEmission(mat, tint, 0.70f);
+            }
+            else if (name.Contains("matAH64Markings"))
+            {
+                Color tint = new Color(0.52f, 0.31f, 0.065f);
+                if (lobbyReadability)
+                    tint = LiftLobbyColor(tint, 2.0f, 0.28f);
+                if (mat.HasProperty("_Color"))
+                    mat.SetColor("_Color", tint);
+                mat.SetFloat("_Smoothness", 0.34f);
+                mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.32f : 0.16f);
+                mat.SetFloat("_SpecularExponent", 4f);
+            }
+            else if (name.Contains("matAH64Radar"))
+            {
+                Color tint = lobbyReadability
+                    ? LiftLobbyColor(new Color(0.18f, 0.24f, 0.28f), 1.9f, 0.24f)
+                    : new Color(0.07f, 0.09f, 0.10f);
+                mat.SetFloat("_Smoothness", 0.55f);
+                mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.55f : 0.35f);
+                mat.SetFloat("_SpecularExponent", 6f);
+                if (mat.HasProperty("_Color"))
+                    mat.SetColor("_Color", tint);
+                if (mat.HasProperty("_EmColor"))
+                    mat.SetColor("_EmColor", lobbyReadability
+                        ? new Color(0.10f, 0.16f, 0.18f)
+                        : new Color(0.02f, 0.05f, 0.06f));
+                if (mat.HasProperty("_EmPower"))
+                    mat.SetFloat("_EmPower", lobbyReadability ? 0.85f : 0.25f);
+            }
+            else if (name.Contains("matAH64Glass"))
+            {
+                mat.SetFloat("_Smoothness", 0.85f);
+                mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.70f : 0.55f);
+                mat.SetFloat("_SpecularExponent", 8f);
+                if (lobbyReadability && mat.HasProperty("_Color"))
+                {
+                    Color glass = mat.GetColor("_Color");
+                    mat.SetColor("_Color", LiftLobbyColor(glass, 1.7f, 0.16f));
+                }
+            }
+            else if (name.Contains("matAH64Body") || name.Contains("matAH64Optics"))
+            {
+                Color tint = name.Contains("Optics")
+                    ? new Color(0.05f, 0.16f, 0.24f)
+                    : new Color(0.48f, 0.56f, 0.32f);
+                if (lobbyReadability)
+                    tint = LiftLobbyColor(tint, 2.25f, 0.38f);
+                if (mat.HasProperty("_Color"))
+                    mat.SetColor("_Color", tint);
+                mat.SetFloat("_Smoothness", lobbyReadability ? 0.52f : 0.40f);
+                mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.50f : 0.28f);
+                mat.SetFloat("_SpecularExponent", 5f);
+                if (lobbyReadability)
+                    SetLobbyFillEmission(mat, tint, 0.95f);
+            }
+        }
+
+        //Character-select lighting is weak; raise albedo floors and add a soft fill so olive paint
+        //does not silhouette. Clamped so we stay readable without turning neon.
+        private static Color LiftLobbyColor(Color color, float multiply, float floor)
+        {
+            return new Color(
+                Mathf.Clamp01(Mathf.Max(color.r * multiply, floor)),
+                Mathf.Clamp01(Mathf.Max(color.g * multiply, floor)),
+                Mathf.Clamp01(Mathf.Max(color.b * multiply, floor)),
+                color.a);
+        }
+
+        private static void SetLobbyFillEmission(Material mat, Color tint, float power)
+        {
+            if (mat.HasProperty("_EmColor"))
+                mat.SetColor("_EmColor", tint * 0.45f);
+            if (mat.HasProperty("_EmPower"))
+                mat.SetFloat("_EmPower", power);
+        }
+
+        public override void InitializeEntityStateMachines() 
+        {
+            //clear existing state machines from your cloned body (probably commando)
+            //omit all this if you want to just keep theirs
+            Prefabs.ClearEntityStateMachines(bodyPrefab);
+
+            //the main "Body" state machine has some special properties.
+            //AH64Main is GenericCharacterMain plus the hover: it hands the vertical axis to
+            //AH64HoverController after the base state has written the horizontal input into moveDirection.
+            Prefabs.AddMainEntityStateMachine(bodyPrefab, "Body", typeof(SkillStates.AH64Main), typeof(EntityStates.SpawnTeleporterState));
+
+            //Three weapon machines so primary / secondary / special never interrupt each other —
+            //a gunship fires the chin gun and the pylons at the same time.
+            Prefabs.AddEntityStateMachine(bodyPrefab, "Weapon");
+            Prefabs.AddEntityStateMachine(bodyPrefab, "Weapon2");
+            Prefabs.AddEntityStateMachine(bodyPrefab, "Weapon3");
+        }
+
+        #region skills
+        public override void InitializeSkills()
+        {
+            //remove the genericskills from the commando body we cloned
+            Skills.ClearGenericSkills(bodyPrefab);
+            //add our own
+            AddPassiveSkill();
+            AddPrimarySkills();
+            AddSecondarySkills();
+            AddUtilitySkills();
+            AddSpecialSkills();
+        }
+
+        /// <summary>
+        /// Durasteel Plating. There is no skill to activate here â€” this is the icon and tooltip only.
+        /// The armor itself is applied in RecalculateStatsAPI_GetStatCoefficients below.
+        /// </summary>
+        private void AddPassiveSkill()
+        {
+            bodyPrefab.GetComponent<SkillLocator>().passiveSkill = new SkillLocator.PassiveSkill
+            {
+                enabled = true,
+                skillNameToken = AH64_PREFIX + "PASSIVE_NAME",
+                skillDescriptionToken = AH64_PREFIX + "PASSIVE_DESCRIPTION",
+                keywordToken = "",
+                icon = assetBundle.LoadAsset<Sprite>("texAH64PassiveIcon"),
+            };
+        }
+
+        /// <summary>
+        /// M230 chain gun. Held-fire hitscan on "Weapon"; pods are "Weapon3" and special is "Weapon2",
+        /// so none of the three hardpoints steal each other's fire.
+        /// <para>Each round costs a stock, and the drum comes back all at once — that's the reload.
+        /// Deliberately NOT built with the "typical primary" SkillDefInfo constructor, which hardcodes
+        /// requiredStock/stockToConsume to 0 and would let you fire on an empty drum.</para>
+        /// </summary>
+        private void AddPrimarySkills()
+        {
+            Skills.CreateGenericSkillWithSkillFamily(bodyPrefab, SkillSlot.Primary);
+
+            SkillDef chaingunSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64Chaingun",
+                skillNameToken = AH64_PREFIX + "PRIMARY_CHAINGUN_NAME",
+                skillDescriptionToken = AH64_PREFIX + "PRIMARY_CHAINGUN_DESCRIPTION",
+                keywordTokens = new string[] { "KEYWORD_AGILE" },
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64PrimaryIcon"),
+
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.FireChaingun)),
+                activationStateMachineName = "Weapon",
+                interruptPriority = EntityStates.InterruptPriority.Any,
+
+                //the ammo drum. rechargeStock == baseMaxStock means a recharge tick hands back the WHOLE
+                //drum rather than a trickle, and resetCooldownTimerOnUse restarts that timer on every
+                //shot — so the reload only ever completes once you stop firing (or run dry), and always
+                //fills you back to full. That is what makes this read as a reload instead of a cooldown.
+                baseMaxStock = AH64StaticValues.chaingunMagazineSize,
+                rechargeStock = AH64StaticValues.chaingunMagazineSize,
+                baseRechargeInterval = AH64PlaytestConfig.ChaingunReload,
+
+                requiredStock = 1,
+                stockToConsume = 1,
+
+                resetCooldownTimerOnUse = true,
+                fullRestockOnAssign = true,
+                dontAllowPastMaxStocks = false,
+                //hold to fire
+                mustKeyPress = false,
+                beginSkillCooldownOnSkillEnd = false,
+
+                isCombatSkill = true,
+                canceledFromSprinting = false,
+                //agile: keep firing through a sprint
+                cancelSprintingOnActivation = false,
+                forceSprintDuringState = false,
+            });
+            chaingunSkillDef.attackSpeedBuffsRestockSpeed = true;
+            chaingunSkillDef.attackSpeedBuffsRestockSpeed_Multiplier = AH64StaticValues.primaryReloadAttackSpeedMultiplier;
+
+            SkillDef gatlingSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64Gatling",
+                skillNameToken = AH64_PREFIX + "PRIMARY_GATLING_NAME",
+                skillDescriptionToken = AH64_PREFIX + "PRIMARY_GATLING_DESCRIPTION",
+                keywordTokens = new string[] { "KEYWORD_AGILE" },
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64GatlingIcon"),
+
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.FireGatling)),
+                activationStateMachineName = "Weapon",
+                interruptPriority = EntityStates.InterruptPriority.Any,
+
+                //Twice the drum of the M230 and a slower refill — same "whole drum at once"
+                //reload shape, because a trickle would fight the spool ramp.
+                baseMaxStock = AH64StaticValues.gatlingMagazineSize,
+                rechargeStock = AH64StaticValues.gatlingMagazineSize,
+                baseRechargeInterval = AH64PlaytestConfig.GatlingReload,
+
+                requiredStock = 1,
+                stockToConsume = 1,
+
+                resetCooldownTimerOnUse = true,
+                fullRestockOnAssign = true,
+                dontAllowPastMaxStocks = false,
+                mustKeyPress = false,
+                beginSkillCooldownOnSkillEnd = false,
+
+                isCombatSkill = true,
+                canceledFromSprinting = false,
+                cancelSprintingOnActivation = false,
+                forceSprintDuringState = false,
+            });
+            gatlingSkillDef.attackSpeedBuffsRestockSpeed = true;
+            gatlingSkillDef.attackSpeedBuffsRestockSpeed_Multiplier = AH64StaticValues.primaryReloadAttackSpeedMultiplier;
+
+            //Published before the variant is added so AH64GatlingSpin can identify the
+            //equipped primary without holding a reference to this class.
+            AH64Assets.gatlingSkillDef = gatlingSkillDef;
+
+            SkillDef cannonSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64Cannon",
+                skillNameToken = AH64_PREFIX + "PRIMARY_CANNON_NAME",
+                skillDescriptionToken = AH64_PREFIX + "PRIMARY_CANNON_DESCRIPTION",
+                keywordTokens = new string[] { "KEYWORD_AGILE" },
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64CannonIcon"),
+
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.FireCannon)),
+                activationStateMachineName = "Weapon",
+                interruptPriority = EntityStates.InterruptPriority.Any,
+
+                //Only 8 shells, and the same whole-drum reload shape as the other two.
+                baseMaxStock = AH64StaticValues.cannonMagazineSize,
+                rechargeStock = AH64StaticValues.cannonMagazineSize,
+                baseRechargeInterval = AH64PlaytestConfig.CannonReload,
+
+                requiredStock = 1,
+                stockToConsume = 1,
+
+                resetCooldownTimerOnUse = true,
+                fullRestockOnAssign = true,
+                dontAllowPastMaxStocks = false,
+                mustKeyPress = false,
+                beginSkillCooldownOnSkillEnd = false,
+
+                isCombatSkill = true,
+                canceledFromSprinting = false,
+                cancelSprintingOnActivation = false,
+                forceSprintDuringState = false,
+            });
+            cannonSkillDef.attackSpeedBuffsRestockSpeed = true;
+            cannonSkillDef.attackSpeedBuffsRestockSpeed_Multiplier = AH64StaticValues.primaryReloadAttackSpeedMultiplier;
+
+            Skills.AddPrimarySkills(bodyPrefab, chaingunSkillDef, gatlingSkillDef, cannonSkillDef);
+        }
+
+        /// <summary>
+        /// One variant for now: the wing-pylon rocket pods. Piston Punch — a melee punch, on a
+        /// helicopter — was removed from this slot, and Tri-Blast held it as a placeholder until the
+        /// airframe's pylon hardpoints existed.
+        /// </summary>
+        private void AddSecondarySkills()
+        {
+            Skills.CreateGenericSkillWithSkillFamily(bodyPrefab, SkillSlot.Secondary);
+
+            Skills.AddSecondarySkills(bodyPrefab, BuildRocketPodsSkillDef());
+        }
+
+        /// <summary>
+        /// Hydra-70 pods. Hold-to-ripple unguided rockets off alternating wing pylons. Own machine
+        /// ("Weapon3") so the chin gun and the pods can fire together. Stock is the pod magazine —
+        /// the number above the skill icon — and Backup Magazine adds rockets to that drum.
+        /// </summary>
+        private SkillDef BuildRocketPodsSkillDef()
+        {
+            return Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64RocketPods",
+                skillNameToken = AH64_PREFIX + "SECONDARY_ROCKETPODS_NAME",
+                skillDescriptionToken = AH64_PREFIX + "SECONDARY_ROCKETPODS_DESCRIPTION",
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64SecondaryIcon"),
+
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.FireRocketPods)),
+                activationStateMachineName = "Weapon3",
+                interruptPriority = EntityStates.InterruptPriority.Any,
+
+                //pod magazine. Same reload shape as the M230: full restock on a single recharge tick,
+                //timer restarting on every rocket so the reload only finishes once you stop firing or run dry.
+                baseMaxStock = AH64StaticValues.hydraRocketCount,
+                rechargeStock = AH64StaticValues.hydraRocketCount,
+                baseRechargeInterval = AH64StaticValues.hydraReloadDuration,
+
+                requiredStock = 1,
+                stockToConsume = 1,
+
+                resetCooldownTimerOnUse = true,
+                fullRestockOnAssign = true,
+                //false so Backup Magazine adds rockets to the magazine (GenericSkill.RecalculateMaxStock)
+                dontAllowPastMaxStocks = false,
+                //hold to ripple, same as the chain gun
+                mustKeyPress = false,
+                beginSkillCooldownOnSkillEnd = false,
+
+                isCombatSkill = true,
+                canceledFromSprinting = false,
+                cancelSprintingOnActivation = false,
+                forceSprintDuringState = false,
+            });
+        }
+
+        /// <summary>
+        /// Default: Evasive Roll (barrel roll + toned flares). Loadout variant: Smoke Backflip
+        /// (rearward aerobatic flip + smoke + cloak). Both run on the Body machine.
+        /// </summary>
+        private void AddUtilitySkills()
+        {
+            Skills.CreateGenericSkillWithSkillFamily(bodyPrefab, SkillSlot.Utility);
+
+            SkillDef dashSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64EvasiveJink",
+                skillNameToken = AH64_PREFIX + "UTILITY_DASH_NAME",
+                skillDescriptionToken = AH64_PREFIX + "UTILITY_DASH_DESCRIPTION",
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64UtilityIcon"),
+
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.ServoDash)),
+                activationStateMachineName = "Body",
+                interruptPriority = EntityStates.InterruptPriority.PrioritySkill,
+
+                baseRechargeInterval = AH64PlaytestConfig.DashCooldown,
+                baseMaxStock = 1,
+
+                rechargeStock = 1,
+                requiredStock = 1,
+                stockToConsume = 1,
+
+                resetCooldownTimerOnUse = false,
+                fullRestockOnAssign = true,
+                dontAllowPastMaxStocks = false,
+                mustKeyPress = false,
+                beginSkillCooldownOnSkillEnd = false,
+
+                isCombatSkill = false,
+                canceledFromSprinting = false,
+                cancelSprintingOnActivation = false,
+                forceSprintDuringState = true,
+            });
+
+            SkillDef backflipSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64SmokeBackflip",
+                skillNameToken = AH64_PREFIX + "UTILITY_BACKFLIP_NAME",
+                skillDescriptionToken = AH64_PREFIX + "UTILITY_BACKFLIP_DESCRIPTION",
+                //Placeholder until a dedicated icon ships — keeps the loadout picker readable.
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64UtilityIcon"),
+
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.SmokeBackflip)),
+                activationStateMachineName = "Body",
+                interruptPriority = EntityStates.InterruptPriority.PrioritySkill,
+
+                baseRechargeInterval = AH64StaticValues.backflipCooldown,
+                baseMaxStock = 1,
+
+                rechargeStock = 1,
+                requiredStock = 1,
+                stockToConsume = 1,
+
+                resetCooldownTimerOnUse = false,
+                fullRestockOnAssign = true,
+                dontAllowPastMaxStocks = false,
+                mustKeyPress = true,
+                beginSkillCooldownOnSkillEnd = false,
+
+                isCombatSkill = false,
+                canceledFromSprinting = false,
+                cancelSprintingOnActivation = false,
+                forceSprintDuringState = false,
+            });
+
+            Skills.AddUtilitySkills(bodyPrefab, dashSkillDef, backflipSkillDef);
+        }
+
+        /// <summary>
+        /// Default special is custom Longbow (hold to paint, release to fire; primary/secondary stay
+        /// free). Hellfire stays as a loadout variant. Both sit on "Weapon2" so they never drop the
+        /// chain gun or Hydra pods.
+        /// </summary>
+        private void AddSpecialSkills()
+        {
+            Skills.CreateGenericSkillWithSkillFamily(bodyPrefab, SkillSlot.Special);
+
+            SkillDef longbowSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64Longbow",
+                skillNameToken = AH64_PREFIX + "SPECIAL_LONGBOW_NAME",
+                skillDescriptionToken = AH64_PREFIX + "SPECIAL_LONGBOW_DESCRIPTION",
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64SpecialIcon"),
+
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.PaintLongbow)),
+                activationStateMachineName = "Weapon2",
+                interruptPriority = EntityStates.InterruptPriority.Skill,
+
+                baseMaxStock = AH64StaticValues.longbowMaxLocks,
+                rechargeStock = 1,
+                baseRechargeInterval = AH64StaticValues.longbowRechargeInterval,
+
+                requiredStock = 1,
+                //PaintLongbow deducts per lock. Consuming here would burn a stock just to open targeting.
+                stockToConsume = 0,
+
+                resetCooldownTimerOnUse = false,
+                fullRestockOnAssign = true,
+                //refunds dead locks via AddOneStock; clamp so a recharge tick + refund can't overflow.
+                dontAllowPastMaxStocks = true,
+
+                isCombatSkill = true,
+                //false so holding special keeps PaintLongbow alive for continuous locking
+                mustKeyPress = false,
+                canceledFromSprinting = false,
+                cancelSprintingOnActivation = false,
+            });
+
+            SkillDef hellfireSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64Hellfire",
+                skillNameToken = AH64_PREFIX + "SPECIAL_HELLFIRE_NAME",
+                skillDescriptionToken = AH64_PREFIX + "SPECIAL_HELLFIRE_DESCRIPTION",
+                // TODO(Unity): Bake texAH64HellfireIcon into ah64 bundle (single AGM on inboard rail, olive/orange).
+                // Interim: Hydra secondary art — keeps Hellfire distinct from Longbow (texAH64SpecialIcon) in the
+                // special loadout; texBazookaFireIcon is not shipped in this bundle.
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64SecondaryIcon"),
+
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.FireHellfire)),
+                activationStateMachineName = "Weapon2",
+                interruptPriority = EntityStates.InterruptPriority.Skill,
+
+                baseMaxStock = 1,
+                baseRechargeInterval = AH64StaticValues.hellfireCooldown,
+
+                isCombatSkill = true,
+                mustKeyPress = true,
+            });
+
+            //Longbow first: it's the working special. AI still can't drive paint well — see AH64AI.
+            Skills.AddSpecialSkills(bodyPrefab, longbowSkillDef, hellfireSkillDef);
+        }
+        #endregion skills
+        
+        #region skins
+        public override void InitializeSkins()
+        {
+            ModelSkinController skinController = prefabCharacterModel.gameObject.AddComponent<ModelSkinController>();
+            ChildLocator childLocator = prefabCharacterModel.GetComponent<ChildLocator>();
+
+            CharacterModel.RendererInfo[] defaultRendererinfos = prefabCharacterModel.baseRendererInfos;
+
+            List<SkinDef> skins = new List<SkinDef>();
+
+            #region DefaultSkin
+            //this creates a SkinDef with all default fields
+            SkinDef defaultSkin = Skins.CreateSkinDef("DEFAULT_SKIN",
+                assetBundle.LoadAsset<Sprite>("texMainSkin"),
+                defaultRendererinfos,
+                prefabCharacterModel.gameObject);
+
+            //Single skin: default meshes from customRendererInfos. Add meshReplacements when a
+            //second skin needs alternate airframe meshes.
+            skins.Add(defaultSkin);
+            #endregion
+
+            //Mastery / alt skins: add another SkinDef here when art exists.
+            #region MasterySkin
+            #endregion
+
+            skinController.skins = skins.ToArray();
+
+            //the lobby preview is a separate prefab and needs its own controller, rooted at itself.
+            //displayPrefab is already built by this point - base.InitializeCharacter() runs
+            //InitializeDisplayPrefab() before this method is called.
+            //Clone + boost lobby mats before CreateDisplaySkinController snapshots renderer infos.
+            if (displayPrefab)
+            {
+                PolishAirframeMaterials(displayPrefab.GetComponent<CharacterModel>(), lobbyReadability: true);
+                if (!displayPrefab.GetComponent<AH64LobbyDisplayBoost>())
+                    displayPrefab.AddComponent<AH64LobbyDisplayBoost>();
+            }
+            Skins.CreateDisplaySkinController(displayPrefab, skinController.skins);
+        }
+        #endregion skins
+
+        //Character Master is what governs the AI of your character when it is not controlled by a player (artifact of vengeance, goobo)
+        public override void InitializeCharacterMaster()
+        {
+            //you must only do one of these. adding duplicate masters breaks the game.
+
+            //if you're lazy or prototyping you can simply copy the AI of a different character to be used
+            //Modules.Prefabs.CloneDopplegangerMaster(bodyPrefab, masterName, "Merc");
+
+            //how to set up AI in code
+            AH64AI.Init(bodyPrefab, masterName);
+
+            //how to load a master set up in unity, can be an empty gameobject with just AISkillDriver components
+            //assetBundle.LoadMaster(bodyPrefab, masterName);
+        }
+
+        private void AddHooks()
+        {
+            R2API.RecalculateStatsAPI.GetStatCoefficients += RecalculateStatsAPI_GetStatCoefficients;
+        }
+
+        private void RecalculateStatsAPI_GetStatCoefficients(CharacterBody sender, R2API.RecalculateStatsAPI.StatHookEventArgs args)
+        {
+            //this hook fires for every body in the run, so bail out on anything that isn't ours
+            AH64PassiveComponent passive = sender ? sender.GetComponent<AH64PassiveComponent>() : null;
+            if (!passive)
+                return;
+
+            if (passive.FacingPainted)
+                args.moveSpeedMultAdd += AH64PlaytestConfig.RadarFacingSpeedBonus;
+
+            if (passive.CloseToPainted)
+                args.armorAdd += AH64StaticValues.radarCloseArmor;
+
+            //Evasive Roll braces the plating for a moment after the move ends
+            if (sender.HasBuff(AH64Buffs.platingBuff))
+            {
+                args.armorAdd += AH64StaticValues.dashArmorBonus;
+            }
+        }
+    }
+}

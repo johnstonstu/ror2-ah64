@@ -1,0 +1,90 @@
+# ---------------------------------------------------------------------------
+# Build output. All of it is regenerable: the DLL from dotnet, the assetbundle
+# from Unity, the zip from tools/pack.ps1. Releases are published as GitHub
+# release assets, not committed.
+# ---------------------------------------------------------------------------
+Build/plugins/
+dist/
+
+# ---------------------------------------------------------------------------
+# .NET
+# ---------------------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userprefs
+.vs/
+
+# ---------------------------------------------------------------------------
+# Unity. Library/ alone is >130 MB and is a pure cache.
+# NOTE: .meta files are deliberately NOT ignored - they carry the GUIDs that
+# every prefab and material reference resolves through. Ignoring them breaks
+# the project for anyone who clones it.
+# ---------------------------------------------------------------------------
+AH64UnityProject/[Ll]ibrary/
+AH64UnityProject/[Tt]emp/
+AH64UnityProject/[Oo]bj/
+AH64UnityProject/[Bb]uild/
+AH64UnityProject/[Bb]uilds/
+AH64UnityProject/[Ll]ogs/
+AH64UnityProject/[Uu]ser[Ss]ettings/
+AH64UnityProject/[Mm]emoryCaptures/
+AH64UnityProject/[Rr]ecordings/
+AH64UnityProject/AssetBundles/
+AH64UnityProject/.vs/
+*.csproj
+*.unityproj
+*.sln.docstates
+sysinfo.txt
+*.pidb
+*.booproj
+*.svd
+*.opendb
+*.VC.db
+*.pdb.meta
+*.mdb.meta
+crashlytics-build.properties
+
+# The C# project files ARE tracked - re-include them after the *.csproj rule.
+!AH64Mod/AH64.csproj
+!AH64Mod/AH64.sln
+
+# ---------------------------------------------------------------------------
+# Editor batch-run logs and MCP scratch files written to the project root
+# ---------------------------------------------------------------------------
+*.log
+AH64UnityProject/mcp_*
+AH64UnityProject/*.hdr
+
+# ---------------------------------------------------------------------------
+# Art working files. The authored .blend is tracked; autosaves and backups
+# are not, and neither are exported FBX copies outside the Unity project.
+# ---------------------------------------------------------------------------
+*.blend[0-9]
+*.blend[0-9][0-9]
+Art/**/*backup*.blend
+Art/**/*.fbx
+
+# ---------------------------------------------------------------------------
+# Agent / tooling state
+# ---------------------------------------------------------------------------
+.claude/
+.codex/
+.aider*
+CLAUDE.local.md
+
+# ---------------------------------------------------------------------------
+# Secrets - never commit
+# ---------------------------------------------------------------------------
+.env
+.env.*
+*.pfx
+*.snk
+
+# ---------------------------------------------------------------------------
+# OS junk
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
