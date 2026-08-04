@@ -41,6 +41,21 @@ First public release.
 - Dropped dead template guard code and a legacy bundle-cleanup path.
 
 ### Fixed
+- **The gatling and cannon primary variants were never registered as entity
+  states.** They ran locally but had no state index, so they did not replicate —
+  in multiplayer other players would not have seen them fire correctly. The log
+  showed this as "Sending state that resolves to invalid".
+- **Rotor wash and dash dust never rendered.** Both were passing the vanilla
+  `GenericFootstepDust` prefab to `EffectManager.SpawnEffect`, which resolves
+  through `EffectCatalog`; that prefab is not registered there, so every spawn
+  failed silently — 532 error lines in a single run. Now cloned into a
+  registered AH-64 effect.
+- The dash thruster and Hydra muzzle flash pointed at a legacy resource path
+  that no longer exists, so neither ever loaded.
+- Skins never baked — `SkinDef.Bake()` requires `skinDefParams`, and only the
+  obsolete top-level fields were being set.
+- An item display rule referenced a non-existent equipment (`GainAmmo` rather
+  than `Recycle`), leaving an invalid key asset in the display rule set.
 - Cleared a redundant per-file assetbundle tag on the rotor hover audio that
   duplicated the folder-level tag.
 

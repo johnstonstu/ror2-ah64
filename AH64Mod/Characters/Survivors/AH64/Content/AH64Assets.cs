@@ -75,18 +75,24 @@ namespace AH64.Survivors
             }
         }
 
-        /// <summary>Dust kicked under the rotor disc when hugging the ground.</summary>
-        public static GameObject RotorWashEffect
+        /// <summary>
+        /// MuzzleflashSmokeRing moved out of the legacy Resources tree. The legacy path is kept first
+        /// so this still resolves if it ever comes back; the addressable is what actually hits today.
+        /// LoadVanilla only logs when every path misses, so the dead entry costs nothing.
+        /// </summary>
+        private static readonly string[] SmokeRingPaths =
         {
-            get
-            {
-                if (!_rotorWashEffect)
-                    _rotorWashEffect = LoadLegacy("Prefabs/GenericFootstepDust")
-                        ?? LoadLegacy("Prefabs/GenericLargeFootstepDust");
+            "Prefabs/Effects/MuzzleFlashes/MuzzleflashSmokeRing",
+            "Assets/RoR2/Base/Common/VFX/MuzzleFlashes/MuzzleflashSmokeRing.prefab"
+        };
 
-                return _rotorWashEffect;
-            }
-        }
+        /// <summary>
+        /// Ground dust, shared by the rotor wash and the dash. Built once in <see cref="Init"/>.
+        /// </summary>
+        public static GameObject DustEffect => _rotorWashEffect;
+
+        /// <summary>Dust kicked under the rotor disc when hugging the ground.</summary>
+        public static GameObject RotorWashEffect => _rotorWashEffect;
 
         /// <summary>
         /// AH-64 visual clone of Engineer's guided harpoon. Guidance and hit behavior stay vanilla;
@@ -261,6 +267,54 @@ namespace AH64.Survivors
             return tracer;
         }
 
+        /// <summary>
+        /// Clone the vanilla footstep dust into an AH-64-owned, catalog-registered effect.
+        ///
+        /// <para><c>EffectManager.SpawnEffect</c> resolves its prefab through
+        /// <c>EffectCatalog.FindEffectIndexFromPrefab</c> and, on a miss, logs
+        /// "Unable to SpawnEffect from prefab named X" and spawns <em>nothing</em>. Verified in
+        /// RoR2.dll. <c>GenericFootstepDust</c> is only ever instantiated directly by
+        /// <c>FootstepHandler</c>, so it is not in the catalog — handing it to SpawnEffect was
+        /// silently doing nothing while logging once per rotor-wash tick (532 lines in one run).</para>
+        ///
+        /// <para>Cloning also keeps us off the shared vanilla instance, the same hazard already
+        /// documented on the tracer path: mutating it would change the effect for every character
+        /// in the run.</para>
+        /// </summary>
+        private static GameObject CreateRegisteredDustEffect()
+        {
+            GameObject source = LoadVanilla(
+                "Prefabs/GenericFootstepDust",
+                "Assets/RoR2/Base/Common/VFX/Footstep/GenericFootstepDust.prefab",
+                "Prefabs/GenericLargeFootstepDust");
+
+            if (!source)
+                return null;
+
+            GameObject clone = PrefabAPI.InstantiateClone(source, "AH64RotorWash", false);
+
+            if (!clone.GetComponent<UnityEngine.Networking.NetworkIdentity>())
+                clone.AddComponent<UnityEngine.Networking.NetworkIdentity>();
+
+            VFXAttributes vfx = clone.GetComponent<VFXAttributes>();
+            if (!vfx)
+                vfx = clone.AddComponent<VFXAttributes>();
+            vfx.vfxPriority = VFXAttributes.VFXPriority.Medium;
+
+            EffectComponent effect = clone.GetComponent<EffectComponent>();
+            if (!effect)
+                effect = clone.AddComponent<EffectComponent>();
+            //the callers pass a scale to size the wash by ground proximity, so this must be on
+            effect.applyScale = true;
+            effect.effectIndex = EffectIndex.Invalid;
+            effect.parentToReferencedTransform = false;
+            effect.positionAtReferencedTransform = false;
+
+            Content.CreateAndAddEffectDef(clone);
+
+            return clone;
+        }
+
         private static GameObject LoadVanilla(params string[] paths)
         {
             for (int i = 0; i < paths.Length; i++)
@@ -363,15 +417,19 @@ namespace AH64.Survivors
                 "Prefabs/Effects/MuzzleFlashes/MuzzleflashBandit2",
                 "Assets/RoR2/Base/Characters/Bandit2/VFX/MuzzleflashBandit2.prefab");
 
-            hydraMuzzleFlashEffect = LoadVanilla("Prefabs/Effects/MuzzleFlashes/MuzzleflashSmokeRing");
+            hydraMuzzleFlashEffect = LoadVanilla(SmokeRingPaths);
             //hydraExplosionEffect + chaingunSplashEffect: custom AH64*Explosion prefabs, after Hellfire loads.
 
             hellfireMuzzleFlashEffect = LoadWarmMuzzleFlash();
             if (!hellfireMuzzleFlashEffect)
                 hellfireMuzzleFlashEffect = _assetBundle.LoadEffect("AH64HellfireMuzzleFlash", true);
 
-            dashThrusterEffect = LoadVanilla("Prefabs/Effects/MuzzleFlashes/MuzzleflashSmokeRing");
-            dashDustEffect = LoadVanilla("Prefabs/GenericFootstepDust");
+            dashThrusterEffect = LoadVanilla(SmokeRingPaths);
+
+            //Must be built here, not lazily on first hover: an EffectDef is only picked up while the
+            //ContentPack is still being assembled.
+            _rotorWashEffect = CreateRegisteredDustEffect();
+            dashDustEffect = _rotorWashEffect;
 
             dashFlareEffect = LoadVanilla(
                 "Prefabs/Effects/ImpactEffects/ExplosionFirework",

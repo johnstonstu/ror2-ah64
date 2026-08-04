@@ -9,7 +9,14 @@ namespace AH64.Survivors
             //the custom main "Body" state - it owns the hover. Registered like any other EntityState.
             Modules.Content.AddEntityState(typeof(AH64Main));
 
+            //All three primary variants must be registered, not just the default. An unregistered
+            //state still runs locally but has no EntityStateIndex, so the network serializer logs
+            //"Sending state that resolves to invalid ..." and it never replicates to other clients.
             Modules.Content.AddEntityState(typeof(FireChaingun));
+
+            Modules.Content.AddEntityState(typeof(FireGatling));
+
+            Modules.Content.AddEntityState(typeof(FireCannon));
 
             Modules.Content.AddEntityState(typeof(FireRocketPods));
 

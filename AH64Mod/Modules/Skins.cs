@@ -41,6 +41,12 @@ namespace AH64.Modules
             skinDef.nameToken = skinDefInfo.NameToken;
             skinDef.name = skinDefInfo.Name;
 
+            //SkinDef.Bake() reads skinDefParams and ignores the legacy top-level fields above (which
+            //is what every "obsolete: use skinDefParams instead" build warning is about). Without it
+            //Bake bails with "SkinDef X has no SkinDefParams! Cannot bake." and the skin never applies.
+            //FromSkinDef converts the fields we just set, so this must stay after them.
+            skinDef.skinDefParams = SkinDefParams.FromSkinDef(skinDef);
+
             On.RoR2.SkinDef.Awake -= DoNothing;
 
             return skinDef;

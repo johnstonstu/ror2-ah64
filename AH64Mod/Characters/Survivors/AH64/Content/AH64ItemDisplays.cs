@@ -121,7 +121,9 @@ namespace AH64.Survivors
                 "WingR", new Vector3(0.1f, -0.25f, 0f), new Vector3(0f, 0f, 0f), S(0.3f));
             Add(itemDisplayRules, "QuestVolatileBattery", "DisplayBatteryArray",
                 "Chest", new Vector3(0f, 0.05f, -0.55f), new Vector3(0f, 0f, 0f), S(0.25f));
-            Add(itemDisplayRules, "GainAmmo", "DisplayRecycler",
+            //The equipment is "Recycle". "GainAmmo" matches nothing in EquipmentCatalog and left an
+            //invalid KeyAssetRuleGroup sitting in idrsAH64Body.
+            Add(itemDisplayRules, "Recycle", "DisplayRecycler",
                 "Chest", new Vector3(-0.5f, -0.1f, -0.2f), new Vector3(0f, 90f, 0f), S(0.12f));
             Add(itemDisplayRules, "Cleanse", "DisplayWaterPack",
                 "Chest", new Vector3(0.45f, -0.05f, -0.35f), new Vector3(0f, 0f, 0f), S(0.2f));
