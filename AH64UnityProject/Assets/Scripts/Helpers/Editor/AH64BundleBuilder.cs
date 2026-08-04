@@ -21,8 +21,9 @@ public static class AH64BundleBuilder
 
     // Where the game actually loads from. If this path doesn't exist (different machine, renamed
     // profile) the build still succeeds and just skips the copy with a warning.
+    // The folder name is <manifest author>-<manifest name>, so it changes whenever either does.
     private const string ProfilePluginFolder =
-        @"%APPDATA%\r2modmanPlus-local\RiskOfRain2\profiles\demo time\BepInEx\plugins\Stu-AH64";
+        @"%APPDATA%\r2modmanPlus-local\RiskOfRain2\profiles\demo time new\BepInEx\plugins\JohnstonStu-AH64";
 
     [MenuItem("AH64/Build AssetBundle %&b")]
     public static void BuildBundles()

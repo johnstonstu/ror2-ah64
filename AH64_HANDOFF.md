@@ -61,8 +61,8 @@ What remains is judgement, not plumbing:
   `meshReplacements` when a second skin is wanted.
 - `AH64ItemDisplays.cs` positions were tuned against the current airframe. Any
   significant model change needs a display pass.
-- The build stamp (`AH64BuildStampController`) still renders in-game. Decide
-  whether a public release should show it.
+- The in-game build stamp was removed for the production build. If a dev overlay
+  is wanted again, `AH64BuildStampController` is recoverable from git history.
 
 ---
 

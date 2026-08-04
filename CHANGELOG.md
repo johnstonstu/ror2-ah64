@@ -20,6 +20,12 @@ First public release.
   validates the icon, and produces the release zip.
 
 ### Changed
+- Removed the in-game build stamp overlay. It was a playtest aid and has no
+  place in a production build.
+- Package author is now `JohnstonStu`, so the Thunderstore package and its
+  install folder are `JohnstonStu-AH64`. The post-build deploy now globs every
+  r2modman profile rather than hardcoding one, so a new profile no longer needs
+  a code edit.
 - **The shipped assetbundle is 71% smaller — 5.62 MB down to 1.63 MB.** 141
   unused HenryTutorial template assets were removed: the full humanoid animation
   set, character meshes and textures, sword and fist VFX, and the legacy icon

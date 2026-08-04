@@ -1209,7 +1209,7 @@ public static class AH64HeExplosionBuilder
         string built = Path.Combine(projectRoot, "AssetBundles", "ah64");
         string profile = Path.Combine(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
-            @"r2modmanPlus-local\RiskOfRain2\profiles\demo time\BepInEx\plugins\Stu-AH64\AssetBundles");
+            @"r2modmanPlus-local\RiskOfRain2\profiles\demo time new\BepInEx\plugins\JohnstonStu-AH64\AssetBundles");
 
         if (!File.Exists(built) || !Directory.Exists(Path.GetDirectoryName(profile)))
             return;

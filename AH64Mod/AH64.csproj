@@ -43,14 +43,26 @@
     (AH64BundleBuilder / AH64Phase4Builder) and must not be overwritten here.
   -->
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <PropertyGroup>
-      <R2ProfilePluginDir>$(AppData)\r2modmanPlus-local\RiskOfRain2\profiles\demo time\BepInEx\plugins\Stu-AH64</R2ProfilePluginDir>
-    </PropertyGroup>
+    <ItemGroup>
+      <!--
+        Every r2modman install of this mod, across all profiles. The install folder is named
+        <manifest author>-<manifest name>, so it moved from Stu-AH64 to JohnstonStu-AH64 when the
+        author changed. Globbing means a new profile needs no edit here - but a future author or
+        name change still does.
+
+        The glob targets the manifest.json r2modman writes inside each installed mod folder,
+        because MSBuild wildcards match files, not directories. Nothing is ever created: only
+        folders the manager already made get written to.
+      -->
+      <R2Install Include="$(AppData)\r2modmanPlus-local\RiskOfRain2\profiles\*\BepInEx\plugins\JohnstonStu-AH64\manifest.json" />
+    </ItemGroup>
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ProjectDir)..\Build\plugins" />
-    <!-- guarded so a renamed/missing profile is a no-op rather than a build failure -->
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(R2ProfilePluginDir)" Condition="Exists('$(R2ProfilePluginDir)')" />
-    <Message Importance="high" Text="AH64: installed $(TargetFileName) to the 'demo time' profile." Condition="Exists('$(R2ProfilePluginDir)')" />
-    <Message Importance="high" Text="AH64: profile not found at $(R2ProfilePluginDir) - DLL copied to Build/plugins only." Condition="!Exists('$(R2ProfilePluginDir)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="%(R2Install.RootDir)%(R2Install.Directory)"
+          Condition="'@(R2Install)' != ''" />
+    <Message Importance="high" Text="AH64: installed $(TargetFileName) to %(R2Install.RootDir)%(R2Install.Directory)"
+             Condition="'@(R2Install)' != ''" />
+    <Message Importance="high" Text="AH64: no r2modman install of JohnstonStu-AH64 found - DLL copied to Build/plugins only. Install the package once via the manager to enable auto-deploy."
+             Condition="'@(R2Install)' == ''" />
   </Target>
 
 </Project>

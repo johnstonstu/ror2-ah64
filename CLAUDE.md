@@ -6,12 +6,19 @@ and never lands.
 The display name `AH-64` and the code identifier `AH64` are intentionally
 different — see the name mapping below.
 
-> **This repo is the 1.0.0 clean-room continuation.** The survivor was originally
-> developed in `ror2-chopper`, itself forked from a finished `ror2-droid`
-> survivor built on the HenryTutorial template. That history — and all of the
-> template's leftover assets — was left behind at the `pre-1.0-cleanup` tag in
-> the old repo. **Nothing in this tree should reference Henry, the droid, or the
-> tutorial template.** If you find such a reference, it is a bug, not history.
+> **This repo is production.** `ror2-ah64` is the live tree — all real work,
+> releases and Thunderstore packages come from here.
+>
+> `ror2-chopper` is the retired predecessor, kept as a scratch/test sandbox and
+> as the historical record at tag `pre-1.0-cleanup`. **Never package or release
+> from it**, and never copy code forward from it without checking against this
+> tree first — it still contains the whole HenryTutorial template inheritance.
+>
+> The survivor was originally developed there, forked from a finished
+> `ror2-droid` survivor built on the HenryTutorial template. That history and
+> all of the template's leftover assets were left behind in the 1.0.0 cleanup.
+> **Nothing in this tree should reference Henry, the droid, or the tutorial
+> template.** If you find such a reference, it is a bug, not history.
 
 Global rules in `~/.claude/CLAUDE.md` apply. The TypeScript/Node standards do
 **not** — this is a C# BepInEx mod. Ignore any instruction to add `tsconfig.json`,
@@ -29,7 +36,10 @@ Re-deriving these wastes a session each time.
 | Game install | `C:\Program Files (x86)\Steam\steamapps\common\Risk of Rain 2` |
 | Deploy target | r2modman profile **`demo time`** (`%AppData%\r2modmanPlus-local\RiskOfRain2\profiles\demo time`) |
 | Target framework | `netstandard2.1`, `LangVersion 7.3` |
-| Pre-1.0 archive | `C:\Users\stuwj\Documents\Coding\ror2-chopper` (tag `pre-1.0-cleanup`) — read-only history, do not develop there |
+| Test / scratch sandbox | `C:\Users\stuwj\Documents\Coding\ror2-chopper` (tag `pre-1.0-cleanup`) — retired predecessor. Never release from it |
+| Test profile | r2modman **`demo time new`** — clean, only this mod's declared dependencies |
+| Legacy profile | r2modman **`demo time`** — 30+ unrelated mods incl. the old droid. Not a valid release test |
+| Thunderstore package | **`JohnstonStu-AH64`** — install folder name is `<author>-<name>` |
 | Blender | **5.2.0 LTS**, standard blender.org installer at `C:\Program Files\Blender Foundation\Blender 5.2` (not on PATH). Config at `%AppData%\Blender Foundation\Blender\5.2` |
 
 > **Unity lives outside Unity Hub.** Hub's editor list shows only `6000.5.4f1`;

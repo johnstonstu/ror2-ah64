@@ -169,7 +169,7 @@ public static class AH64Phase4Builder
             return "Build succeeded but '" + BundleName + "' was not produced at " + builtFile;
 
         string pluginFolder = Environment.ExpandEnvironmentVariables(
-            @"%APPDATA%\r2modmanPlus-local\RiskOfRain2\profiles\demo time\BepInEx\plugins\Stu-AH64");
+            @"%APPDATA%\r2modmanPlus-local\RiskOfRain2\profiles\demo time new\BepInEx\plugins\JohnstonStu-AH64");
         if (Directory.Exists(pluginFolder))
         {
             string destFolder = Path.Combine(pluginFolder, "AssetBundles");

@@ -100,8 +100,16 @@ if (-not (Test-Path $UnityBundle)) {
     Fail "Unity assetbundle not found at $UnityBundle.`n      Open the Unity project and run AH64/Build AssetBundle (Ctrl+Alt+B) first."
 }
 
-$newestAsset = Get-ChildItem (Join-Path $RepoRoot 'AH64UnityProject\Assets') -Recurse -File |
-               Where-Object { $_.Extension -ne '.meta' } |
+# Only actual bundle inputs count: the tagged bundle folder, and the FBX source whose meshes
+# ship as a dependency of the model prefabs. Editor tooling under Assets/Scripts is NOT an input -
+# including it made every tweak to a builder script look like a stale bundle.
+$bundleInputs = @(
+    (Join-Path $RepoRoot 'AH64UnityProject\Assets\AH64\Bundle'),
+    (Join-Path $RepoRoot 'AH64UnityProject\Assets\AH64\Source')
+) | Where-Object { Test-Path $_ }
+
+$newestAsset = Get-ChildItem $bundleInputs -Recurse -File |
+               Where-Object { $_.Extension -ne '.meta' -and $_.FullName -notmatch '~\\' } |
                Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $bundleTime = (Get-Item $UnityBundle).LastWriteTime
 if ($newestAsset -and $newestAsset.LastWriteTime -gt $bundleTime) {
