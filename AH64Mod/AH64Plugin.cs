@@ -16,7 +16,10 @@ namespace AH64
     [BepInPlugin(MODUID, MODNAME, MODVERSION)]
     public class AH64Plugin : BaseUnityPlugin
     {
-        public const string MODUID = "com.stu.AH64";
+        //BepInEx plugin GUID. Also the ContentPack identifier and the Risk of Options mod key, and
+        //it names the config file (BepInEx/config/com.JohnstonStu.AH64.cfg). Changing it after
+        //publication would orphan every user's settings, so it is fixed from 1.0.0 onward.
+        public const string MODUID = "com.JohnstonStu.AH64";
         public const string MODNAME = "AH64";
         //Must stay in step with Build/manifest.json — NetworkCompatibility is
         //EveryoneNeedSameModVersion, so a mismatch is a lobby rejection. tools/pack.ps1 enforces it.
