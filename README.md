@@ -68,6 +68,13 @@ Use plain `major.minor.patch`. A pre-release suffix like `1.0.0-rc1` is not
 parseable as a `System.Version`, and BepInEx skips the plugin silently — which
 presents as the game hanging at 99% load.
 
+## Bugs & feedback
+
+Report bugs on the [issue tracker](https://github.com/johnstonstu/ror2-ah64/issues/new/choose)
+— the form asks for the BepInEx log and mod list, which is what makes a report
+actionable. Quick comments can also go on the
+[Thunderstore page](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/AH64/).
+
 ## Notes for contributors
 
 `CLAUDE.md` records the hard-won engine constraints — one renderer/one material,

@@ -64,6 +64,13 @@ than a desync.
 - All in-game sound effects other than the rotor beds are vanilla Risk of Rain 2
   Wwise events.
 
-## Issues
+## Bugs & feedback
 
-Bug reports and feedback: see the repository linked on this page.
+- **Found a bug?** File it on the [issue tracker](https://github.com/johnstonstu/ror2-ah64/issues/new/choose).
+  Please include your **BepInEx log** (`BepInEx/LogOutput.log`) and your mod list —
+  it turns "it's broken" into something fixable.
+- **Balance thoughts, ideas, or a quick question?** Drop a comment right here on
+  this Thunderstore page.
+
+All players in a lobby need the **same version** of the mod, or the game will
+refuse to let you join together.

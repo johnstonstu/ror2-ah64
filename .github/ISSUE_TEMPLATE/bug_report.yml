@@ -1,0 +1,74 @@
+name: Bug report
+description: Something in AH-64 is broken, missing, or behaving wrong.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The single most useful thing you can attach is the
+        **BepInEx log** — most crashes and "it didn't spawn / didn't load" bugs
+        are unreadable without it. Where to find it:
+
+        - **r2modman / Thunderstore Mod Manager:** Settings → *Browse profile folder* → `BepInEx/LogOutput.log`
+        - **Manual install:** `<game>/BepInEx/LogOutput.log`
+
+  - type: input
+    id: version
+    attributes:
+      label: AH-64 version
+      description: Shown on the Thunderstore page and in the mod manager.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: How can someone else make this happen? Which skill, which loadout, what were you doing?
+      placeholder: |
+        1. Pick AH-64 with the Longbow special
+        2. Hold special to paint, release
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: context
+    attributes:
+      label: Singleplayer or multiplayer
+      description: Networking bugs often only show up as a client. If multiplayer, note whether you were host or client in "What happened".
+      options:
+        - Singleplayer
+        - Multiplayer - I was host
+        - Multiplayer - I was a client
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-mods
+    attributes:
+      label: Other mods installed
+      description: Paste your mod list, or say "AH-64 and its dependencies only". Conflicts with other mods are a common cause.
+      placeholder: "AH-64 only (plus required dependencies)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: BepInEx log
+      description: Drag `LogOutput.log` into this box to attach it, or paste the relevant lines. Look for lines tagged `AH64` or `Error`.
+      render: text
+    validations:
+      required: false
