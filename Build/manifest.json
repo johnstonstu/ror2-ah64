@@ -1,7 +1,7 @@
 {
     "name": "AH64",
     "author": "JohnstonStu",
-    "version_number": "1.0.0",
+    "version_number": "1.0.1",
     "website_url": "https://github.com/johnstonstu/ror2-ah64",
     "description": "AH-64, an attack helicopter survivor. Hovers, never lands, and brings the whole weapons load.",
     "dependencies": [

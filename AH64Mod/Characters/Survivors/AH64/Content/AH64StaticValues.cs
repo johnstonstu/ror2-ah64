@@ -35,18 +35,53 @@ namespace AH64.Survivors
         //the probe starts this far above the feet, so sitting on a lip doesn't start the ray inside geometry
         public const float hoverProbeOriginLift = 0.5f;
 
-        //Off the edge of the map. The chopper DESCENDS rather than holding altitude, which is what makes
-        //RoR2's own out-of-bounds handling work: MapZone fires on OnTriggerExit, so something has to
-        //physically leave the bounds volume for the game to react. Holding altitude meant the chopper
-        //never exited, never got recovered, and could sink into a chasm too deep for the collective to
-        //climb back out of - with no way to recover. (Playtested; this replaces the earlier hold.)
-        public const float voidDescendSpeed = 12f;
+        //Off the edge of the map, or over any drop deeper than the probe. The chopper hands the motor
+        //back to vanilla gravity and falls like any other survivor. Holding altitude meant it never left
+        //the MapZone bounds volume (OnTriggerExit), so it was never recovered. The earlier fixed 12 u/s
+        //descent broke stages whose intended route is a long drop: Solutional Haunt opens with a shaft
+        //far deeper than the probe, slowed only near the bottom, and the old 3 s failsafe below teleported
+        //the chopper back to the start every time (Solutional Haunt report, issue 3).
+        //
+        //Failsafe, so the chopper can never be permanently lost on a stage whose bounds volume doesn't
+        //catch it. Only fires after this long with no terrain beneath us - over a thousand units at
+        //vanilla gravity, far past any real stage drop, so MapZone always gets first crack.
+        public const float voidRecoveryDelay = 12f;
+        //...and only while falling faster than this. SlowFallZone (the Solutional Haunt shaft) holds a
+        //falling body at its speedLimit of -25, so a guided descent can never trip the failsafe; a real
+        //void fall passes 40 u/s about 1.3 s after leaving the ground.
+        public const float voidRecoveryMinFallSpeed = 40f;
 
-        //Failsafe, so the chopper can never be permanently lost even on a stage whose bounds volume
-        //doesn't catch it. After this long with no terrain at all beneath us we run the same recovery
-        //MapZone runs on a player: find a safe position and teleport there. Long enough that the stage's
-        //own MapZone gets first crack, and that skimming a genuinely deep gorge isn't punished instantly.
-        public const float voidRecoveryDelay = 3f;
+        //External launches: jump pads (JumpVolume, including the moon pillar pads to Mithrix), False
+        //Son's pads, and big knock-ups. JumpVolume.OnTriggerStay sets velocity to a jumpVelocity tuned as
+        //a gravity arc and raises disableAirControlUntilCollision, but CharacterMotor.PreMove only honours
+        //that flag while gravity is on. With the hover's anti-gravity the PD hold braked the launch at full
+        //acceleration and floated the chopper back down (the jump-pad reports, issues 1, 2, 4 and 5).
+        //While launched, the motor runs as a plain vanilla character, so the pad's no-air-control arc
+        //applies exactly as for any survivor; the hover takes over again on landing or near the ground.
+        //
+        //Upward speed beyond hoverMaxClimbSpeed that counts as a launch when the pad does not also set
+        //disableAirControlUntilCollision. Our own utilities peak around 13-17 u/s, so they never trip it.
+        public const float externalLaunchMinExcessSpeed = 6f;
+        //Ignore the landing check this long after launch, so the frame we leave the pad doesn't end it.
+        public const float externalLaunchMinDuration = 0.3f;
+        //Past apex, the hover takes back over once the ground is within the distance it needs to brake
+        //the fall at full acceleration, and never later than this. Handing back at the apex instead
+        //would bleed off the pad's horizontal velocity and drop the chopper short of the target.
+        public const float externalLaunchHandbackHeight = 8f;
+        //Safety cap, in case a launch never lands. The moon pillar pads' own flight time is 10 s.
+        public const float externalLaunchMaxDuration = 15f;
+        //Moon pillar pads are 4.34 u tall boxes centred on their transform, and the hover holds the
+        //capsule's bottom hoverHeight above the floor, so depending on where the box sits the chopper can
+        //float over the trigger without touching it. JumpVolumes and BounceVolumes this far below the
+        //capsule are triggered as if touched.
+        public const float launchVolumeReach = hoverHeight + 1f;
+        //VerticalLift (Solutional Haunt boss room) works through CustomGravity, which only applies while
+        //gravity is on, so the chopper rides lifts under vanilla physics. Capped so an unknown source of
+        //useCustomGravity can't strand the chopper out of hover mode.
+        public const float verticalLiftMaxDuration = 10f;
+        //Vanilla CharacterMotor default. hoverAirControl (1.0) would let neutral stick brake the pad's
+        //horizontal velocity at full acceleration and drop the chopper short of the target.
+        public const float externalLaunchAirControl = 0.25f;
 
         //Collective: hold jump to climb toward a jump-count-scaled ceiling; release to settle back to
         //hoverHeight. Hold rawMoveDown to dump altitude faster. Vanilla jump is suppressed —

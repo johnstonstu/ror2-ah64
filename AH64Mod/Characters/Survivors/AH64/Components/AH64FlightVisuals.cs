@@ -224,10 +224,12 @@ namespace AH64.Survivors.Components
             float inputBlend = AH64StaticValues.leanInputBlend;
             float velBlend = 1f - inputBlend;
 
+            //Positive Euler X is nose down (see collectiveAscentNosePitch), so forward speed and
+            //forward stick add positive pitch: the airframe noses into the direction of travel.
             float pitch = Mathf.Clamp(
-                velBlend * (-forwardSpeed * AH64StaticValues.leanPitchPerSpeed
+                velBlend * (forwardSpeed * AH64StaticValues.leanPitchPerSpeed
                     + climbSpeed * AH64StaticValues.leanClimbPitchPerSpeed)
-                + inputBlend * (-inputForward * AH64StaticValues.leanPitchPerInput),
+                + inputBlend * (inputForward * AH64StaticValues.leanPitchPerInput),
                 -AH64StaticValues.leanMaxPitch,
                 AH64StaticValues.leanMaxPitch);
 

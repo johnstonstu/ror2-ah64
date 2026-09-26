@@ -63,11 +63,53 @@ namespace AH64.Survivors.Components
         private float lastValidGroundDistance;
         private float probeMissTimer;
         private float pitchWeightVelocity;
+        private bool externalLaunchActive;
+        private float externalLaunchAge;
+        private bool lastDisableAirControl;
+        private float liftAge;
+        private bool liftIgnored;
+        private CapsuleCollider capsule;
+        private Collider proxiedLaunchVolume;
+        private readonly Collider[] launchVolumeHits = new Collider[16];
 
         private void Awake()
         {
             motor = GetComponent<CharacterMotor>();
             body = GetComponent<CharacterBody>();
+            capsule = GetComponent<CapsuleCollider>();
+        }
+
+        private void OnEnable()
+        {
+            MapZone.onBodyTeleportGlobal += OnMapZoneTeleport;
+        }
+
+        private void OnDisable()
+        {
+            MapZone.onBodyTeleportGlobal -= OnMapZoneTeleport;
+        }
+
+        //TeleportHelper keeps the downward part of the velocity, so a body teleported mid free fall
+        //lands on the destination node at full speed and takes fall damage.
+        private void OnMapZoneTeleport(CharacterBody teleported)
+        {
+            if (teleported != body || !motor || !motor.hasEffectiveAuthority)
+                return;
+
+            ResetAfterTeleport();
+        }
+
+        private void ResetAfterTeleport()
+        {
+            timeWithoutGround = 0f;
+            probeMissTimer = 0f;
+            externalLaunchActive = false;
+            lastValidGroundDistance = AH64StaticValues.hoverHeight;
+            spawnGrace = AH64StaticValues.hoverSpawnGrace;
+            TargetHeight = AH64StaticValues.hoverHeight;
+            IsAscending = false;
+            motor.velocity = Vector3.zero;
+            ConfigureMotor();
         }
 
         private void Start()
@@ -91,6 +133,30 @@ namespace AH64.Survivors.Components
             motor.airControl = AH64StaticValues.hoverAirControl;
         }
 
+        /// <summary>
+        /// Drops our flight and anti-gravity granters so the motor behaves like any vanilla survivor.
+        /// Read-modify-write, so environmental anti-gravity a stage grants while we're in this mode
+        /// (e.g. a slow-fall volume) is respected.
+        /// </summary>
+        private void UseVanillaPhysics(float airControl)
+        {
+            CharacterFlightParameters flight = motor.flightParameters;
+            if (flight.channeledFlightGranterCount != 0)
+            {
+                flight.channeledFlightGranterCount = 0;
+                motor.flightParameters = flight;
+            }
+
+            CharacterGravityParameters gravity = motor.gravityParameters;
+            if (gravity.channeledAntiGravityGranterCount != 0)
+            {
+                gravity.channeledAntiGravityGranterCount = 0;
+                motor.gravityParameters = gravity;
+            }
+
+            motor.airControl = airControl;
+        }
+
         public float GetCeiling()
         {
             return AH64StaticValues.hoverHeight + GetMaxRise();
@@ -112,15 +178,40 @@ namespace AH64.Survivors.Components
             if (!motor || !body)
                 return;
 
-            if (!motor.isFlying || motor.useGravity)
-                ConfigureMotor();
-
             ResolveGroundDistance(deltaTime);
-            UpdateTargetHeight(jumpHeld, descendHeld, deltaTime);
-            UpdateAscentPitch(deltaTime);
 
             if (spawnGrace > 0f)
                 spawnGrace -= deltaTime;
+
+            if (!externalLaunchActive)
+                TriggerLaunchVolumesBelow();
+
+            if (UpdateExternalLaunch(deltaTime))
+            {
+                UpdateAscentPitch(deltaTime);
+                return;
+            }
+
+            if (GroundDistance < 0f && spawnGrace <= 0f)
+            {
+                //Nothing within probe range: fall under vanilla gravity. See voidRecoveryDelay.
+                UseVanillaPhysics(AH64StaticValues.hoverAirControl);
+                TargetHeight = AH64StaticValues.hoverHeight;
+                IsAscending = false;
+                UpdateAscentPitch(deltaTime);
+
+                timeWithoutGround += deltaTime;
+                if (timeWithoutGround >= AH64StaticValues.voidRecoveryDelay
+                    && motor.velocity.y < -AH64StaticValues.voidRecoveryMinFallSpeed)
+                    RecoverFromVoid();
+                return;
+            }
+
+            if (!motor.isFlying || motor.useGravity)
+                ConfigureMotor();
+
+            UpdateTargetHeight(jumpHeld, descendHeld, deltaTime);
+            UpdateAscentPitch(deltaTime);
 
             float maxClimb = AH64StaticValues.hoverMaxClimbSpeed;
             float maxDescend = AH64StaticValues.hoverMaxDescendSpeed;
@@ -128,15 +219,7 @@ namespace AH64.Survivors.Components
                 maxDescend *= AH64StaticValues.collectiveCrouchSettleMult;
 
             float desiredVerticalSpeed;
-            if (GroundDistance < 0f && spawnGrace <= 0f)
-            {
-                desiredVerticalSpeed = -AH64StaticValues.voidDescendSpeed;
-                timeWithoutGround += deltaTime;
-
-                if (timeWithoutGround >= AH64StaticValues.voidRecoveryDelay)
-                    RecoverFromVoid();
-            }
-            else if (GroundDistance < 0f)
+            if (GroundDistance < 0f)
             {
                 desiredVerticalSpeed = 0f;
                 timeWithoutGround = 0f;
@@ -164,6 +247,137 @@ namespace AH64.Survivors.Components
             Vector3 moveDirection = motor.moveDirection;
             moveDirection.y = desiredVerticalSpeed / walkSpeed;
             motor.moveDirection = moveDirection;
+        }
+
+        /// <summary>
+        /// Detects and rides out an external launch (jump pad, knock-up). Returns true while the hover
+        /// must keep its hands off the vertical axis. See <c>AH64StaticValues.externalLaunchMinExcessSpeed</c>.
+        /// </summary>
+        private bool UpdateExternalLaunch(float deltaTime)
+        {
+            //Edge-triggered: the flag stays set until the next collision, so a level check would
+            //re-enter the launch the tick after we hand back.
+            bool airControlFlag = motor.disableAirControlUntilCollision;
+            bool flagRaised = airControlFlag && !lastDisableAirControl;
+            lastDisableAirControl = airControlFlag;
+
+            bool lifted = UpdateVerticalLift(deltaTime);
+
+            if (!externalLaunchActive)
+            {
+                bool launchedFast = motor.velocity.y
+                    > AH64StaticValues.hoverMaxClimbSpeed + AH64StaticValues.externalLaunchMinExcessSpeed;
+                if (!flagRaised && !launchedFast && !lifted)
+                    return false;
+
+                externalLaunchActive = true;
+                externalLaunchAge = 0f;
+                timeWithoutGround = 0f;
+                IsAscending = false;
+            }
+
+            externalLaunchAge = lifted ? 0f : externalLaunchAge + deltaTime;
+
+            bool pastMinimum = externalLaunchAge >= AH64StaticValues.externalLaunchMinDuration;
+            bool landed = motor.isGrounded;
+            float fallSpeed = Mathf.Max(-motor.velocity.y, 0f);
+            float brakeDistance = fallSpeed * fallSpeed
+                / (2f * Mathf.Max(motor.acceleration * AH64StaticValues.hoverAirControl, 1f));
+            bool fallingNearGround = motor.velocity.y <= 0f && GroundDistance >= 0f
+                && GroundDistance <= Mathf.Max(brakeDistance, AH64StaticValues.externalLaunchHandbackHeight);
+
+            if (!lifted && ((pastMinimum && (landed || fallingNearGround))
+                || externalLaunchAge >= AH64StaticValues.externalLaunchMaxDuration))
+            {
+                externalLaunchActive = false;
+                TargetHeight = AH64StaticValues.hoverHeight;
+                //Otherwise CharacterMotor keeps zero air acceleration until we touch something and the
+                //hover can't brake the fall. ServoDash and SmokeBackflip clear it on exit for the same reason.
+                motor.disableAirControlUntilCollision = false;
+                lastDisableAirControl = false;
+                return false;
+            }
+
+            UseVanillaPhysics(AH64StaticValues.externalLaunchAirControl);
+            return true;
+        }
+
+        /// <summary>
+        /// True while a VerticalLift has switched on upward custom gravity. See
+        /// <c>AH64StaticValues.verticalLiftMaxDuration</c>.
+        /// </summary>
+        private bool UpdateVerticalLift(float deltaTime)
+        {
+            if (!motor.useCustomGravity || motor.CustomGravity <= 0f)
+            {
+                liftAge = 0f;
+                liftIgnored = false;
+                return false;
+            }
+
+            if (liftIgnored)
+                return false;
+
+            liftAge += deltaTime;
+            if (liftAge >= AH64StaticValues.verticalLiftMaxDuration)
+            {
+                liftIgnored = true;
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Runs the pad's own trigger callbacks for a JumpVolume or BounceVolume just below the capsule,
+        /// so the pad applies its launch exactly as it would to a survivor standing in it. See
+        /// <c>AH64StaticValues.launchVolumeReach</c>.
+        /// </summary>
+        private void TriggerLaunchVolumesBelow()
+        {
+            if (!capsule)
+                return;
+
+            float radius = motor.capsuleRadius;
+            Vector3 feet = transform.position
+                + Vector3.up * (motor.capsuleYOffset - motor.capsuleHeight * 0.5f);
+            Vector3 top = feet + Vector3.up * radius;
+            Vector3 bottom = feet + Vector3.up * (radius - AH64StaticValues.launchVolumeReach);
+
+            int count = Physics.OverlapCapsuleNonAlloc(bottom, top, radius, launchVolumeHits,
+                Physics.AllLayers, QueryTriggerInteraction.Collide);
+
+            Collider found = null;
+            for (int i = 0; i < count; i++)
+            {
+                Collider hit = launchVolumeHits[i];
+                if (!hit || !hit.isTrigger)
+                    continue;
+
+                JumpVolume jumpVolume = hit.GetComponent<JumpVolume>();
+                BounceVolume bounceVolume = jumpVolume ? null : hit.GetComponent<BounceVolume>();
+                if (!jumpVolume && !bounceVolume)
+                    continue;
+
+                //Already touching it for real: Unity is calling the trigger callbacks itself.
+                if (Physics.ComputePenetration(capsule, capsule.transform.position, capsule.transform.rotation,
+                        hit, hit.transform.position, hit.transform.rotation, out _, out _))
+                    continue;
+
+                found = hit;
+                if (jumpVolume)
+                {
+                    if (proxiedLaunchVolume != hit)
+                        jumpVolume.OnTriggerEnter(capsule);
+                    jumpVolume.OnTriggerStay(capsule);
+                }
+                else
+                {
+                    bounceVolume.OnTriggerStay(capsule);
+                }
+                break;
+            }
+
+            proxiedLaunchVolume = found;
         }
 
         private void ResolveGroundDistance(float deltaTime)
@@ -239,19 +453,17 @@ namespace AH64.Survivors.Components
         private void RecoverFromVoid()
         {
             timeWithoutGround = 0f;
-            probeMissTimer = 0f;
-            lastValidGroundDistance = AH64StaticValues.hoverHeight;
-            spawnGrace = AH64StaticValues.hoverSpawnGrace;
-            TargetHeight = AH64StaticValues.hoverHeight;
-            IsAscending = false;
             AscentPitchWeight = 0f;
             pitchWeightVelocity = 0f;
 
             if (!Run.instance || !body)
                 return;
 
+            //idealMaxDistance 0 skips Approximate placement: this is the Ground-graph node nearest to
+            //where the chopper is right now, or the current position if no node could be placed.
             Vector3 destination = Run.instance.FindSafeTeleportPosition(body, null, 0f, 0f);
             TeleportHelper.TeleportBody(body, destination, false);
+            ResetAfterTeleport();
 
             GameObject teleportEffect = Run.instance.GetTeleportEffectPrefab(gameObject);
             if (teleportEffect)

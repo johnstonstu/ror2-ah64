@@ -6,7 +6,7 @@
     Assembles dist/AH64-<version>.zip from three sources:
       - AH64.dll                 built here by dotnet
       - AssetBundles/ah64        built by Unity, mirrored in by this script
-      - Build/                   manifest.json, README.md, icon.png (in git)
+      - Build/                   manifest.json, README.md, icon.png (in git), plus the root CHANGELOG.md
 
     The assetbundle is NOT built by this script. Unity owns it. Build it first
     with AH64/Build AssetBundle (Ctrl+Alt+B) in the editor, or this script will
@@ -40,6 +40,8 @@ $BuildDir    = Join-Path $RepoRoot 'Build'
 $Manifest    = Join-Path $BuildDir 'manifest.json'
 $Icon        = Join-Path $BuildDir 'icon.png'
 $Readme      = Join-Path $BuildDir 'README.md'
+# Repo-root changelog, shipped at the zip root so Thunderstore's Changelog tab is populated.
+$Changelog   = Join-Path $RepoRoot 'CHANGELOG.md'
 $UnityBundle = Join-Path $RepoRoot 'AH64UnityProject\AssetBundles\ah64'
 $StageDir    = Join-Path $RepoRoot 'dist\_stage'
 $DistDir     = Join-Path $RepoRoot 'dist'
@@ -75,13 +77,14 @@ Ok "version $modVersion (plugin and manifest agree)"
 # --- 2. store assets ---------------------------------------------------------
 if (-not (Test-Path $Readme)) { Fail "Build/README.md missing - Thunderstore requires it at the zip root" }
 if (-not (Test-Path $Icon))   { Fail "Build/icon.png missing - Thunderstore requires it at the zip root" }
+if (-not (Test-Path $Changelog)) { Fail "CHANGELOG.md missing at the repo root" }
 
 Add-Type -AssemblyName System.Drawing
 $img = [System.Drawing.Image]::FromFile($Icon)
 $iconW = $img.Width; $iconH = $img.Height
 $img.Dispose()
 if ($iconW -ne 256 -or $iconH -ne 256) { Fail "icon.png is ${iconW}x${iconH}; Thunderstore requires exactly 256x256" }
-Ok "manifest.json, README.md, icon.png (256x256)"
+Ok "manifest.json, README.md, icon.png (256x256), CHANGELOG.md"
 
 # --- 3. compile --------------------------------------------------------------
 if (-not $SkipBuild) {
@@ -133,6 +136,7 @@ New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
 Copy-Item $Manifest $StageDir
 Copy-Item $Readme   $StageDir
 Copy-Item $Icon     $StageDir
+Copy-Item $Changelog $StageDir
 Copy-Item (Join-Path $BuildDir 'plugins') $StageDir -Recurse
 
 New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
@@ -165,7 +169,7 @@ try {
     $entries = $archive.Entries | ForEach-Object { $_.FullName }
 } finally { $archive.Dispose() }
 
-foreach ($required in @('manifest.json', 'README.md', 'icon.png',
+foreach ($required in @('manifest.json', 'README.md', 'icon.png', 'CHANGELOG.md',
                         'plugins/AH64.dll', 'plugins/AssetBundles/ah64')) {
     if ($entries -notcontains $required) {
         Fail "zip is missing '$required'.`n      Entries found: $($entries -join ', ')"
