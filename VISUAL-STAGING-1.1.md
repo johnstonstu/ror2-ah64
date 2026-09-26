@@ -75,4 +75,16 @@ and builder changes while preserving no-deploy defaults, then build one combined
 1.1 candidate for Stuart's fresh-profile playtest. The visual-only ZIP can be used
 for isolated art checks, but must not replace the audio agent's active test profile.
 
-Visual-only ZIP SHA-256: 898C9A52010C5B55EA204E0C4C8F739BF69A84248B5A3CFE0827C85DC503ED4D
+Visual-only ZIP SHA-256: D38E0D987AF35CEB6799A80F8ED23D89B881D7B68C68DDE89B144E17AD183CCC
+
+## Visual review follow-up
+
+Stuart approved the overall art direction and requested two small corrections:
+engine/intake overlap with the rear canopy and misaligned landing-gear braces.
+Both engine assemblies moved outward by 0.09 authoring units; the intake rims now
+clear the glass without changing the canopy or any runtime attachment transforms.
+Main shock struts and diagonal braces now terminate at the wheel axle centres;
+wheel positions and overall bounds are unchanged. The two braces previously ended
+0.34 units ahead of the wheels. All 39 FBX transforms and the 25-mesh contract still
+pass the round-trip checks. Updated multi-angle Arctic previews are named
+`dist/visual-review/inspect-arctic-*.png`; junction-before/after show the canopy fix.

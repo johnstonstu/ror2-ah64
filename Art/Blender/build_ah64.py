@@ -237,7 +237,9 @@ ROTOR_BLUR_MAIN_Z = 2.16   # a hair above the blade mid-plane (blades are z 2.15
 ROTOR_BLUR_TAIL_R = 0.58   # TAIL_BLADE tip span
 ROTOR_BLUR_TAIL_X = 0.17   # match hub face just outboard of the fin
 
-ENGINE_X = 0.58
+# Keep the intake inner rim clear of the rear canopy shoulder (2026-09-26).
+# At the widest 0.246-radius rim this leaves a small gap outside the glass.
+ENGINE_X = 0.67
 ENGINE_Y = -0.60
 ENGINE_Z = 1.45
 
@@ -266,9 +268,10 @@ GATLING_ROOT_Y = PITCH_Y + 0.20   # where the cluster starts, clear of the breec
 GEAR_WHEEL_X = 0.50
 GEAR_Y = -0.30
 GEAR_HEAD = (0.26, 0.72)   # (x, z) inboard/high - must land inside the hull
-GEAR_FOOT = (0.50, 0.10)   # (x, z) outboard/low  - inside the wheel
 GEAR_WHEEL_R = 0.19
 GEAR_WHEEL_W = 0.20
+# Both support members terminate at the axle centre, not below/ahead of it.
+GEAR_FOOT = (GEAR_WHEEL_X, GEAR_WHEEL_R)
 GEAR_STRUT_W = 0.09        # narrower than the wheel, so head-on the tyre reads
 
 TAILGEAR_Y = -2.42
@@ -1016,11 +1019,11 @@ def build_gear(col, M):
                                GEAR_STRUT_W * 1.35, m=dark))
         g.append(strut_between(col, "GearOleo" + s, foot, mid,
                                GEAR_STRUT_W * 0.78, m=dark))
-        # Drag brace back to the hull — cheap, and it stops the leg looking like it
-        # is floating unattached under a smooth belly.
+        # Both support members meet the axle. The old brace ended ahead of the
+        # wheel, leaving a visibly dangling strip under the fuselage.
         g.append(strut_between(col, "GearBrace" + s,
-                               (sx * (GEAR_FOOT[0] - 0.04), GEAR_Y + 0.34, GEAR_FOOT[1] + 0.10),
-                               (sx * GEAR_HEAD[0] * 0.7, GEAR_Y + 0.02, GEAR_HEAD[1] - 0.02),
+                               foot,
+                               (sx * GEAR_HEAD[0], GEAR_Y + 0.22, GEAR_HEAD[1]),
                                0.038, m=dark))
         g.append(add_cyl(col, "GearWheel" + s, GEAR_WHEEL_R, GEAR_WHEEL_W,
                          (sx * GEAR_WHEEL_X, GEAR_Y, GEAR_WHEEL_R), RY90, 12, dark))

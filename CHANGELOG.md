@@ -15,6 +15,7 @@ hover changes still need integration; this is not the final release candidate.
 
 - Added permanent two-level inboard missile racks, recessed engine openings,
   tapered cowls/wing roots, and rotor hub detail while preserving attachment points.
+- Tidied canopy/intake clearance and aligned both main landing-gear supports to their wheel hubs.
 - Added selectable Desert and Arctic paint schemes with matching lobby previews.
 - Weapon heat follows the selected skin after asynchronous skin application.
 - Rotor wash now follows terrain on each client; blur/new wash respect cloak,
