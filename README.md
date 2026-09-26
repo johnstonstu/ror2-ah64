@@ -75,13 +75,13 @@ I want AH-64 to feel right, and the quickest way there is seeing what you actual
 The tuning menu needs [Risk of Options](https://thunderstore.io/c/riskofrain2/p/Rune580/Risk_Of_Options/). It's optional: AH-64 runs on its defaults without it.
 
 <p align="center">
-  <img src="docs/images/feedback/balance-flow.jpg" alt="How to share AH-64 settings: tune the sliders, press Copy &amp; open GitHub, paste and add notes, submit" width="100%">
+  <img src="docs/images/feedback/balance-flow.jpg" alt="How to share AH-64 settings: tune the sliders, press Copy &amp; open GitHub to copy them to your clipboard, paste into the GitHub form if it's empty and add notes, submit" width="100%">
 </p>
 
 1. Open **Settings → Mod Options → AH-64** and tune the sliders. The tabs are Movement, M230, XM301 Gatling, M789 Cannon, Utility, Presentation, Audio and Feedback. Base speed, acceleration, primary reload times and Evasive Roll cooldown apply after a restart.
 2. Optional: add notes in **Feedback → Comments**.
-3. At the end of any tab, press **Share settings → Copy & open GitHub**. It copies a report of every AH-64 setting plus your comments, then opens the feedback form.
-4. The **AH-64 settings and comments** field is usually prefilled. If it's blank (long reports don't fit in the link), paste the copied report. Fill in **What kind of feedback** and **Your idea**, including what felt too strong or too weak.
+3. At the end of any tab, press **Share settings → Copy & open GitHub**. Your settings report (every AH-64 setting plus your comments) is now on your clipboard, and the feedback form opens on GitHub.
+4. The **AH-64 settings and comments** field is usually prefilled. If it's empty, just paste (**Ctrl+V**) into it. The report is already on your clipboard. Then fill in **What kind of feedback** and **Your idea**, including what felt too strong or too weak.
 5. Click **Create**.
 
 **Feedback → Copy all settings** copies the same report without opening a browser.
