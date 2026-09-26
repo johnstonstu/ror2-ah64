@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "blender": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", "C:/path/to/blender_mcp/mcp", "run", "blender-mcp"],
+      "env": { "BLENDER_MCP_PORT": "9877" }
+    },
+    "UnityMCP": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "mcpforunityserver==10.1.0", "mcp-for-unity"],
+      "env": {}
+    }
+  }
+}

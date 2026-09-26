@@ -33,7 +33,7 @@ namespace AH64.Survivors.Components
                 try { result = AkSoundEngine.LoadBankMemoryCopy(pinned.AddrOfPinnedObject(), (uint)bytes.Length, out bankId); }
                 finally { pinned.Free(); }
                 loaded = result == AKRESULT.AK_Success || result == AKRESULT.AK_BankAlreadyLoaded;
-                Log.Info($"AH-64 rotor bank: result={result}, id={bankId}, bytes={bytes.Length}, path={path}.");
+                if (!loaded) Log.Error($"AH-64 rotor bank failed: result={result}, attempt={attempts}/3, path={path}.");
                 return loaded;
             }
             catch (Exception exception)

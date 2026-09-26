@@ -97,7 +97,7 @@ namespace AH64.Modules
                     source.icon, displayInfos, displayPrefab, source.unlockableDef);
                 displaySkin.nameToken = source.nameToken;
                 displaySkins[i] = displaySkin;
-                Log.Info($"AH64 lobby skin {source.name}: verified {displayInfos.Length} display-owned renderers.");
+                Log.Debug($"AH64 lobby skin {source.name}: verified {displayInfos.Length} display-owned renderers.");
             }
 
             controller.skins = displaySkins;

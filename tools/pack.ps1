@@ -42,6 +42,8 @@ $Icon        = Join-Path $BuildDir 'icon.png'
 $Readme      = Join-Path $BuildDir 'README.md'
 # Repo-root changelog, shipped at the zip root so Thunderstore's Changelog tab is populated.
 $Changelog   = Join-Path $RepoRoot 'CHANGELOG.md'
+$License     = Join-Path $RepoRoot 'LICENSE'
+$AudioLicense = Join-Path $RepoRoot 'AH64UnityProject/Assets/AH64/Bundle/AH64Audio/LICENSE_SOURCE.txt'
 $UnityBundle = Join-Path $RepoRoot 'AH64UnityProject\AssetBundles\ah64'
 $StageDir    = Join-Path $RepoRoot 'dist\_stage'
 $DistDir     = Join-Path $RepoRoot 'dist'
@@ -147,11 +149,24 @@ if (Test-Path $StageDir) {
 }
 New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
 
-Copy-Item $Manifest $StageDir
-Copy-Item $Readme   $StageDir
-Copy-Item $Icon     $StageDir
-Copy-Item $Changelog $StageDir
-Copy-Item (Join-Path $BuildDir 'plugins') $StageDir -Recurse
+# Deliberate allowlist: never sweep debug files, configs or unrelated mods into a release.
+$packageFiles = [ordered]@{
+    'manifest.json' = $Manifest
+    'README.md' = $Readme
+    'icon.png' = $Icon
+    'CHANGELOG.md' = $Changelog
+    'LICENSE' = $License
+    'plugins/AH64.dll' = $dll
+    'plugins/AssetBundles/ah64' = (Join-Path $bundleDest 'ah64')
+    'plugins/SoundBanks/AH64Rotor.bnk' = (Join-Path $bankDest 'AH64Rotor.bnk')
+    'plugins/SoundBanks/LICENSE_SOURCE.txt' = $AudioLicense
+}
+foreach ($entry in $packageFiles.GetEnumerator()) {
+    if (-not (Test-Path -LiteralPath $entry.Value -PathType Leaf)) { Fail "Missing package input: $($entry.Key)" }
+    $target = Join-Path $StageDir $entry.Key
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
+    Copy-Item -LiteralPath $entry.Value -Destination $target
+}
 
 New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
 $zip = Join-Path $DistDir "AH64-$modVersion.zip"
@@ -183,11 +198,14 @@ try {
     $entries = $archive.Entries | ForEach-Object { $_.FullName }
 } finally { $archive.Dispose() }
 
-foreach ($required in @('manifest.json', 'README.md', 'icon.png', 'CHANGELOG.md',
-                        'plugins/AH64.dll', 'plugins/AssetBundles/ah64', 'plugins/SoundBanks/AH64Rotor.bnk')) {
+foreach ($required in $packageFiles.Keys) {
     if ($entries -notcontains $required) {
         Fail "zip is missing '$required'.`n      Entries found: $($entries -join ', ')"
     }
+}
+if ($entries.Count -ne $packageFiles.Count -or
+    @($entries | Where-Object { -not $packageFiles.Contains($_) }).Count -gt 0) {
+    Fail 'ZIP contains duplicate or unexpected files outside the package allowlist.'
 }
 # A backslash here means the archiver wrote non-conformant separators.
 if ($entries | Where-Object { $_ -like '*\*' }) { Fail "zip contains backslash path separators" }

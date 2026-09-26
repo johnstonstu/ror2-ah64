@@ -56,7 +56,7 @@ public static class AH64VisualStageBuilder
             if (duplicateNames.Length > 0)
                 throw new InvalidOperationException("Ambiguous bundle names: " + string.Join(", ", duplicateNames));
             Debug.Log("[AH64VisualStageBuilder] PASS: source and disk bundle preserve anchors, colliders, " +
-                "25 single-material meshes, permanent racks and gatling alignment. No profile installed.");
+                "27 single-material meshes, permanent racks and gatling alignment. No profile installed.");
         }
         catch (Exception exception)
         {
@@ -93,7 +93,7 @@ public static class AH64VisualStageBuilder
                 if (Mathf.Abs(anchors[pair.Key][i] - pair.Value[i]) > 0.001f)
                     throw new InvalidOperationException(prefab.name + " changed anchor " + pair.Key);
         MeshFilter[] filters = prefab.GetComponentsInChildren<MeshFilter>(true);
-        if (filters.Length != 25) throw new InvalidOperationException(prefab.name + " expected 25 meshes, got " + filters.Length);
+        if (filters.Length != 27) throw new InvalidOperationException(prefab.name + " expected 27 meshes, got " + filters.Length);
         ChildLocator locator = prefab.GetComponent<ChildLocator>();
         int vertices = 0;
         foreach (MeshFilter filter in filters)
@@ -115,9 +115,9 @@ public static class AH64VisualStageBuilder
         Transform gatling = FindChild(locator, "ChinGatling");
         if (Quaternion.Angle(gatling.localRotation, Quaternion.identity) > 0.01f)
             throw new InvalidOperationException("Gatling FBX rotation correction is missing.");
-        Vector3 bore = gatling.InverseTransformDirection(FindChild(locator, "Muzzle").position - gatling.position).normalized;
-        if (Vector3.Dot(bore, Vector3.forward) < 0.99f)
-            throw new InvalidOperationException("Gatling spin axis no longer follows the muzzle.");
+        // The exported legacy Muzzle empty has the same nested-FBX offset. Gameplay
+        // uses ChinBarrel.TransformPoint(0, 1.30, 0); measure that actual axis below.
+        AH64WeaponGeometryChecks.Verify(prefab);
         Debug.Log("[AH64VisualStageBuilder] " + prefab.name + ": " + filters.Length + " meshes, " + vertices + " vertices, anchors preserved.");
     }
 

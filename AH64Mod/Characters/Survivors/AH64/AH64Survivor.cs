@@ -90,6 +90,8 @@ namespace AH64.Survivors
             //Alternate primary's barrel cluster. Ships with its renderer disabled; it still
             //needs an entry here so elite/on-fire overlays reach it once the loadout enables it.
             new CustomRendererInfo { childName = "ChinGatling" },
+            new CustomRendererInfo { childName = "ChinGatlingHousing" },
+            new CustomRendererInfo { childName = "ChinCannon" },
             new CustomRendererInfo { childName = "PodRocketL" },
             new CustomRendererInfo { childName = "PodRocketR" },
             new CustomRendererInfo { childName = "PodMissileL" },
@@ -140,12 +142,17 @@ namespace AH64.Survivors
             AH64Tokens.Init();
 
             AH64Assets.Init(assetBundle);
+            AH64RiskOfOptions.SetModIcon(assetBundle.LoadAsset<Texture2D>("texAH64Icon"));
             AH64Buffs.Init(assetBundle);
 
             InitializeEntityStateMachines();
             InitializeSkills();
             InitializeSkins();
             InitializeCharacterMaster();
+
+            prefabCharacterModel.gameObject.AddComponent<AH64PrimaryWeaponVisuals>();
+            displayPrefab.AddComponent<AH64PrimaryWeaponVisuals>();
+            displayPrefab.AddComponent<AH64LobbyWeaponPreview>();
 
             AdditionalBodySetup();
 
@@ -184,10 +191,8 @@ namespace AH64.Survivors
 
         //Smoothness/specular don't survive the Standard->HGStandard swap (nothing maps them), so the
         //airframe would render dead flat without this. Values are per-material by name.
+        //Preserve authored albedo and emission in-game; only cloned lobby materials get readability tints.
         //Order matters: "matAH64Body" must not be matched by a bare "matAH64" Contains check elsewhere.
-        //
-        //Character select is lit much darker than stages. Lobby mats are cloned + boosted so we do not
-        //wash out the in-game airframe (hopoo conversion can share material instances across prefabs).
         private static void PolishAirframeMaterials(CharacterModel characterModel, bool lobbyReadability)
         {
             if (!characterModel || characterModel.baseRendererInfos == null) return;
@@ -221,48 +226,46 @@ namespace AH64.Survivors
             string name = mat.name;
             if (name.Contains("matAH64Dark"))
             {
-                //HGStandard does not reliably inherit Standard's tint through the bundle conversion.
-                Color tint = new Color(0.25f, 0.29f, 0.20f);
-                if (name.Contains("Rotor")) tint = new Color(0.18f, 0.21f, 0.16f);
-                else if (name.Contains("Gun")) tint = new Color(0.30f, 0.33f, 0.25f);
-                else if (name.Contains("RocketPod")) tint = new Color(0.32f, 0.38f, 0.18f);
-                else if (name.Contains("Hellfire")) tint = new Color(0.25f, 0.28f, 0.20f);
                 if (lobbyReadability)
+                {
+                    // Lobby lighting is weak. Tint only the display clone, leaving each in-game skin's
+                    // authored material color intact.
+                    Color tint = new Color(0.25f, 0.29f, 0.20f);
+                    if (name.Contains("Rotor")) tint = new Color(0.18f, 0.21f, 0.16f);
+                    else if (name.Contains("Gun")) tint = new Color(0.30f, 0.33f, 0.25f);
+                    else if (name.Contains("RocketPod")) tint = new Color(0.32f, 0.38f, 0.18f);
+                    else if (name.Contains("Hellfire")) tint = new Color(0.25f, 0.28f, 0.20f);
                     tint = LiftLobbyColor(tint, 2.35f, 0.32f);
-                if (mat.HasProperty("_Color")) mat.SetColor("_Color", tint);
+                    if (mat.HasProperty("_Color")) mat.SetColor("_Color", tint);
+                    SetLobbyFillEmission(mat, tint, 0.70f);
+                }
                 mat.SetFloat("_Smoothness", lobbyReadability ? 0.38f : 0.25f);
                 mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.30f : 0.12f);
                 mat.SetFloat("_SpecularExponent", 3f);
-                if (lobbyReadability)
-                    SetLobbyFillEmission(mat, tint, 0.70f);
             }
             else if (name.Contains("matAH64Markings"))
             {
-                Color tint = new Color(0.52f, 0.31f, 0.065f);
                 if (lobbyReadability)
-                    tint = LiftLobbyColor(tint, 2.0f, 0.28f);
-                if (mat.HasProperty("_Color"))
-                    mat.SetColor("_Color", tint);
+                {
+                    Color tint = LiftLobbyColor(new Color(0.52f, 0.31f, 0.065f), 2.0f, 0.28f);
+                    if (mat.HasProperty("_Color")) mat.SetColor("_Color", tint);
+                }
                 mat.SetFloat("_Smoothness", 0.34f);
                 mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.32f : 0.16f);
                 mat.SetFloat("_SpecularExponent", 4f);
             }
             else if (name.Contains("matAH64Radar"))
             {
-                Color tint = lobbyReadability
-                    ? LiftLobbyColor(new Color(0.18f, 0.24f, 0.28f), 1.9f, 0.24f)
-                    : new Color(0.07f, 0.09f, 0.10f);
                 mat.SetFloat("_Smoothness", 0.55f);
                 mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.55f : 0.35f);
                 mat.SetFloat("_SpecularExponent", 6f);
-                if (mat.HasProperty("_Color"))
-                    mat.SetColor("_Color", tint);
-                if (mat.HasProperty("_EmColor"))
-                    mat.SetColor("_EmColor", lobbyReadability
-                        ? new Color(0.10f, 0.16f, 0.18f)
-                        : new Color(0.02f, 0.05f, 0.06f));
-                if (mat.HasProperty("_EmPower"))
-                    mat.SetFloat("_EmPower", lobbyReadability ? 0.85f : 0.25f);
+                if (lobbyReadability)
+                {
+                    Color tint = LiftLobbyColor(new Color(0.18f, 0.24f, 0.28f), 1.9f, 0.24f);
+                    if (mat.HasProperty("_Color")) mat.SetColor("_Color", tint);
+                    if (mat.HasProperty("_EmColor")) mat.SetColor("_EmColor", new Color(0.10f, 0.16f, 0.18f));
+                    if (mat.HasProperty("_EmPower")) mat.SetFloat("_EmPower", 0.85f);
+                }
             }
             else if (name.Contains("matAH64Glass"))
             {
@@ -277,18 +280,18 @@ namespace AH64.Survivors
             }
             else if (name.Contains("matAH64Body") || name.Contains("matAH64Optics"))
             {
-                Color tint = name.Contains("Optics")
-                    ? new Color(0.05f, 0.16f, 0.24f)
-                    : new Color(0.48f, 0.56f, 0.32f);
-                if (lobbyReadability)
-                    tint = LiftLobbyColor(tint, 2.25f, 0.38f);
-                if (mat.HasProperty("_Color"))
-                    mat.SetColor("_Color", tint);
                 mat.SetFloat("_Smoothness", lobbyReadability ? 0.52f : 0.40f);
                 mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.50f : 0.28f);
                 mat.SetFloat("_SpecularExponent", 5f);
                 if (lobbyReadability)
+                {
+                    Color tint = name.Contains("Optics")
+                        ? new Color(0.05f, 0.16f, 0.24f)
+                        : new Color(0.48f, 0.56f, 0.32f);
+                    tint = LiftLobbyColor(tint, 2.25f, 0.38f);
+                    if (mat.HasProperty("_Color")) mat.SetColor("_Color", tint);
                     SetLobbyFillEmission(mat, tint, 0.95f);
+                }
             }
         }
 
@@ -481,6 +484,7 @@ namespace AH64.Survivors
             cannonSkillDef.attackSpeedBuffsRestockSpeed = true;
             cannonSkillDef.attackSpeedBuffsRestockSpeed_Multiplier = AH64StaticValues.primaryReloadAttackSpeedMultiplier;
 
+            AH64Assets.cannonSkillDef = cannonSkillDef;
             Skills.AddPrimarySkills(bodyPrefab, chaingunSkillDef, gatlingSkillDef, cannonSkillDef);
         }
 
@@ -687,7 +691,7 @@ namespace AH64.Survivors
             // Bake complete display-rooted overrides for each palette. Runtime lobby boosting used
             // to overwrite every skin with olive and could lose its edits when CharacterModel updated.
             Skins.CreateDisplaySkinController(displayPrefab, skinController.skins, AH64Skins.CreateLobbyMaterial);
-            Log.Info("AH64 visual staging: registered Default, Desert and Arctic body/display skins.");
+            Log.Debug("AH64 visual staging: registered Default, Desert and Arctic body/display skins.");
         }
         #endregion skins
 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using BepInEx.Bootstrap;
 using BepInEx.Configuration;
+using UnityEngine;
 using UnityEngine.Events;
 
 namespace AH64.Survivors
@@ -12,6 +13,36 @@ namespace AH64.Survivors
     internal static class AH64RiskOfOptions
     {
         private const string PluginGuid = "com.rune580.riskofoptions";
+        private static Sprite modIcon;
+
+        internal static void SetModIcon(Texture2D texture)
+        {
+            if (!Chainloader.PluginInfos.ContainsKey(PluginGuid)) return;
+            if (texture == null)
+            {
+                Log.Error("AH-64 could not set the Risk of Options icon: texAH64Icon was missing from the assetbundle.");
+                return;
+            }
+
+            try
+            {
+                MethodInfo setModIcon = TypeOf("ModSettingsManager").GetMethod("SetModIcon", new[] { typeof(Sprite), typeof(string), typeof(string) });
+                if (setModIcon == null)
+                {
+                    Log.Debug("Installed Risk of Options version does not expose SetModIcon; keeping the default menu icon.");
+                    return;
+                }
+
+                modIcon = Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height),
+                    new Vector2(0.5f, 0.5f), 100f);
+                setModIcon.Invoke(null, new object[] { modIcon, AH64Plugin.MODUID, "AH-64" });
+            }
+            catch (Exception error)
+            {
+                Log.Error("AH-64 could not set its Risk of Options icon: " + error);
+                throw;
+            }
+        }
 
         internal static void Register(IEnumerable<ConfigEntryBase> entries)
         {
@@ -63,9 +94,9 @@ namespace AH64.Survivors
         private static void RegisterShare(string category)
         {
             AddOption(Create("Options.GenericButtonOption", "Share settings", category,
-                "Copies ALL AH-64 settings and Feedback comments, then opens GitHub. "
-                + "Paste into the settings field, review, and submit there. Requires a GitHub account. "
-                + "No report is sent automatically. Use the Feedback category for copy-only.",
+                "Copies ALL AH-64 settings and Feedback comments, then opens GitHub with the settings field prefilled when the report fits the URL. "
+                + "If it is too long, paste the clipboard contents into that field. Review and submit there. Requires a GitHub account; nothing is sent automatically. "
+                + "Use the Feedback category for copy-only.",
                 "Copy & open GitHub", new UnityAction(AH64BalanceFeedback.CopyAndOpen)));
         }
 

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace AH64.Survivors.Components
 {
     // RoR2 disables Unity audio. Use the game's Wwise SFX bus for volume and pause.
-    public class AH64FlightAudio : MonoBehaviour
+    public partial class AH64FlightAudio : MonoBehaviour
     {
         private InputBankTest inputBank;
         private CharacterMotor motor;
@@ -21,9 +21,6 @@ namespace AH64.Survivors.Components
         private float directionalLoad;
         private float directionalVelocity;
         private bool mixErrorLogged;
-        private float diagnosticAt;
-        private int diagnosticCount;
-        private int previousPosition = -1;
 
         private void Start()
         {
@@ -31,6 +28,7 @@ namespace AH64.Survivors.Components
             motor = GetComponent<CharacterMotor>();
             body = GetComponent<CharacterBody>();
             hoverController = GetComponent<AH64HoverController>();
+            audioStateMachines = GetComponents<EntityStateMachine>();
         }
 
         private void OnEnable()
@@ -39,6 +37,7 @@ namespace AH64.Survivors.Components
             startAttempts = 0;
             retryAt = 0f;
             directionalLoad = directionalVelocity = 0f;
+            ResetResponse();
         }
 
         private void Update()
@@ -58,26 +57,28 @@ namespace AH64.Survivors.Components
             }
             UpdateMix();
             EnsurePlaying();
-            CheckPlayback();
             //Collective feedback now comes from this rotor's pitch response. The previous
             //Captain drone quick-move one-shot layered another engine sound over every press.
         }
 
         private void UpdateMix()
         {
-            float speed = 0f;
-            if (motor && body && body.moveSpeed > 0.01f)
-            {
-                Vector3 velocity = motor.velocity;
-                velocity.y = 0f;
-                speed = Mathf.Clamp01(velocity.magnitude / body.moveSpeed);
-            }
-            float climb = hoverController ? Mathf.Clamp01(hoverController.AscentPitchWeight) : 0f;
-            load = Mathf.SmoothDamp(load, Mathf.Max(speed, climb), ref loadVelocity,
-                AH64PlaytestConfig.RotorResponse, Mathf.Infinity, Time.deltaTime);
-            directionalLoad = Mathf.SmoothDamp(directionalLoad, GetDirectionalLoad(),
-                ref directionalVelocity, AH64PlaytestConfig.RotorResponse,
+            float maneuverTarget = GetManeuverTarget();
+            //The gain slider is 0..6 dB. Blend extra effort before smoothing too,
+            //rather than summing separately decaying loudness envelopes.
+            float loadTarget = Mathf.Max(sampledSpeed, sampledClimb)
+                + maneuverTarget * AH64StaticValues.rotorManeuverGainDb / 6f;
+            //One pitch envelope blends direction and maneuver BEFORE smoothing, so their
+            //independent tails cannot cross and sound like competing rotor layers.
+            float directionTarget = sampledDirection + maneuverTarget
+                * (1f - 0.35f * Mathf.Clamp01(Mathf.Abs(sampledDirection)));
+            directionalLoad = Mathf.SmoothDamp(directionalLoad, directionTarget,
+                ref directionalVelocity, ResponseTime(directionalLoad, directionTarget),
                 Mathf.Infinity, Time.deltaTime);
+            maneuverResponse = Mathf.SmoothDamp(maneuverResponse, maneuverTarget, ref maneuverVelocity,
+                ResponseTime(maneuverResponse, maneuverTarget), Mathf.Infinity, Time.deltaTime);
+            load = Mathf.SmoothDamp(load, loadTarget, ref loadVelocity,
+                ResponseTime(load, loadTarget), Mathf.Infinity, Time.deltaTime);
             float pitchDepth = Mathf.Min(AH64PlaytestConfig.RotorLoadPitch
                 * AH64StaticValues.rotorDirectionalPitchScale, 0.12f);
             //Stay within the authored Wwise pitch RTPC range (-700..600 cents).
@@ -96,6 +97,7 @@ namespace AH64.Survivors.Components
             // slider as an approximate tonal target; 20 kHz means no extra filtering.
             float lowpass = Mathf.Clamp(Mathf.Log(20000f / AH64PlaytestConfig.RotorToneCutoff)
                 / Mathf.Log(20000f / 600f) * 60f, 0f, 60f);
+            lowpass = Mathf.Max(0f, lowpass - AH64StaticValues.rotorManeuverToneOpening * maneuverResponse);
             CheckResult(AkSoundEngine.SetRTPCValue("AH64_RotorLowpass", lowpass, emitter), "tone");
         }
 
@@ -120,8 +122,12 @@ namespace AH64.Survivors.Components
             float collective = inputBank && inputBank.jump.down ? 1f
                 : inputBank && inputBank.rawMoveDown.down ? -1f : 0f;
             float climb = Mathf.Clamp(verticalSpeed * 0.65f + collective * 0.35f, -1f, 1f);
-            return Mathf.Clamp(forwardSpeed * (forwardSpeed >= 0f ? 1f : 0.65f)
-                + Mathf.Abs(strafeSpeed) * 0.45f + climb * 0.8f, -1f, 1f);
+            //Soft saturation retains a difference between forward and forward+strafe.
+            //Smooth the absolute strafe term around zero to avoid an edge during circles.
+            float strafe = Mathf.Sqrt(strafeSpeed * strafeSpeed + 0.01f) - 0.1f;
+            float effort = forwardSpeed * (forwardSpeed >= 0f ? 1f : 0.65f)
+                + strafe * 0.65f + climb * 0.8f;
+            return Mathf.Sqrt(1.25f) * effort / Mathf.Sqrt(1f + 0.25f * effort * effort);
         }
 
         private float DistanceGain()
@@ -159,11 +165,7 @@ namespace AH64.Survivors.Components
             playingId = AkSoundEngine.PostEvent("Play_AH64_Rotor", emitter,
                 (uint)(AkCallbackType.AK_EndOfEvent | AkCallbackType.AK_EnableGetSourcePlayPosition),
                 OnAudioEvent, null);
-            diagnosticCount = 0;
-            previousPosition = -1;
-            diagnosticAt = Time.unscaledTime + 0.75f;
             if (playingId == 0) Log.Error($"AH-64 rotor event failed to start (attempt {startAttempts}).");
-            else Log.Info($"AH-64 rotor Wwise candidate C started: id={playingId}, local={IsLocalPilot()}, gain={gain:F3}.");
         }
 
         private void OnAudioEvent(object cookie, AkCallbackType type, AkCallbackInfo info)
@@ -172,20 +174,6 @@ namespace AH64.Survivors.Components
             if (type != AkCallbackType.AK_EndOfEvent || ended == null || ended.playingID != playingId) return;
             Log.Warning($"AH-64 rotor loop ended unexpectedly: id={playingId}.");
             playingId = 0;
-        }
-
-        private void CheckPlayback()
-        {
-            if (playingId == 0 || diagnosticCount >= 3 || Time.unscaledTime < diagnosticAt
-                || !Application.isFocused || gain <= 0f) return;
-            diagnosticAt = Time.unscaledTime + 0.75f;
-            diagnosticCount++;
-            AKRESULT result = AkSoundEngine.GetSourcePlayPosition(playingId, out int position);
-            Log.Info($"AH-64 rotor playback: id={playingId}, query={result}, positionMs={position}, "
-                + $"previousMs={previousPosition}, gain={gain:F3}, pitch={pitch:F3}.");
-            if (result != AKRESULT.AK_Success || position == previousPosition)
-                Log.Warning("AH-64 rotor playback time is unavailable or stationary; capture ah64_audio_status while playing.");
-            previousPosition = position;
         }
 
         [ConCommand(commandName = "ah64_audio_status", flags = ConVarFlags.None,
@@ -198,7 +186,7 @@ namespace AH64.Survivors.Components
             {
                 AKRESULT result = AkSoundEngine.GetSourcePlayPosition(rotor.playingId, out int position);
                 Debug.Log($"AH-64 rotor: id={rotor.playingId}, query={result}, positionMs={position}, "
-                    + $"gain={rotor.gain:F3}, pitch={rotor.pitch:F3}, direction={rotor.directionalLoad:F3}, "
+                    + $"gain={rotor.gain:F3}, pitch={rotor.pitch:F3}, direction={rotor.directionalLoad:F3}, surge={rotor.maneuverResponse:F3}, "
                     + $"local={rotor.IsLocalPilot()}.");
                 rotor.PrintEmitterStatus();
             }

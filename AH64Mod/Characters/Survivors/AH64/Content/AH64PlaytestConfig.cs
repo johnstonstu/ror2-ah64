@@ -180,7 +180,9 @@ namespace AH64.Survivors
                 "Enable restrained rotor wash while near the ground, including stationary hover.");
             //A new key avoids inheriting the much louder gain used with the old quiet recording.
             rotorHoverVolume = Bind(config, Presentation, "Rotor volume", AH64StaticValues.rotorHoverVolume, 0f, 1f,
-                "Rotor bed volume before master/SFX and a fixed -1.94 dB mix trim. The local pilot hears it without distance fade. Movement boost uses the separate dB slider.");
+                "Rotor bed volume before master/SFX and a fixed -1.94 dB mix trim. The local pilot hears it without distance fade. Movement and ability response use the approved mix.");
+            // Keep development audio keys bound so existing profiles retain their accepted mix.
+            // Only rotor volume is exposed in the release UI and balance report.
             gatlingSpoolVolume = Bind(config, Presentation, "Gatling spool volume", AH64StaticValues.gatlingSpoolVolume, 0f, 1f,
                 "XM301 wind-up/down volume only. 0.6 is about 4.4 dB quieter; gunfire volume is unchanged.");
             rotorPitch = Bind(config, Presentation, "Rotor pitch", AH64StaticValues.rotorHoverPitch, 0.7f, 1.2f,
@@ -202,8 +204,7 @@ namespace AH64.Survivors
                 gatlingSplashDamage, gatlingSplashRadius, gatlingSplashVfxScale,
                 cannonDamage, cannonDuration, cannonReload, cannonSplashDamage, cannonSplashRadius, cannonSplashVfxScale,
                 dashCooldown, dashPeakSpeed, dashClimbHeight, dashRampFraction,
-                rotorWashEnabled, rotorHoverVolume, gatlingSpoolVolume,
-                rotorPitch, rotorLoadPitch, rotorLoadGain, rotorResponse, rotorToneCutoff };
+                rotorWashEnabled, rotorHoverVolume };
             AH64BalanceFeedback.Init(config, entries);
             AH64RiskOfOptions.Register(entries);
         }

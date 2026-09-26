@@ -13,7 +13,7 @@ the next run of this script discards everything in the AH64 collection.
         "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe" ^
             --background --python Art\\Blender\\build_ah64.py
 
-Conventions, fixed - see AH64_HANDOFF.md before changing any of them:
+Fixed coordinate conventions (see AGENTS.md before changing these):
   * Authoring is nose +Y, up +Z. Every CONFIG table, comment and validate()
     check reads that way, so keep authoring in it.
   * BUT Blender's FBX export maps Blender (x,y,z) onto Unity (-x, z, -y) - a
@@ -54,12 +54,13 @@ version you intended.
 
 Object count is also renderer count, and every renderer needs a matching
 ChildLocator entry plus a customRendererInfos entry on the Unity side, so these
-names are expensive to change once the assetbundle exists. Current set, 25:
+names are expensive to change once the assetbundle exists. Current set, 27:
 
     Airframe  AirframeDark  Canopy
     AirframeMarkings
     NoseOptics
     MainRotor  TailRotor  ChinTurret  ChinBarrel  ChinGatling
+    ChinGatlingHousing  ChinCannon
     PodRocketL  PodRocketR  PodMissileL  PodMissileR
     MissileL0  MissileL1  MissileL2  MissileL3
     MissileR0  MissileR1  MissileR2  MissileR3
@@ -72,7 +73,8 @@ independently. It is parented under ChinTurret *after* bake_unity_orientation
 
 ChinGatling is the alternate primary's spinning barrel cluster, parented one level
 deeper under ChinBarrel so it inherits pitch. It ships hidden; the loadout turns
-the ChinBarrel *renderer* off and the ChinGatling renderer on. Toggle renderers,
+the ChinBarrel *renderer* off and the ChinGatling/Housing renderers on. ChinCannon
+is the third assembly; AH64PrimaryWeaponVisuals owns selection. Toggle renderers,
 never SetActive on ChinBarrel - that would hide the gatling with it, and take the
 Muzzle anchor down too.
 
@@ -262,15 +264,8 @@ PITCH_Y = TURRET_Y + 0.20
 PITCH_Z = HOUSING_Z
 BARREL_LEN = 1.30          # long enough to read at third-person camera distance
 
-# Gatling primary variant (0.2.0). A separate barrel assembly, NOT a reskin of the
-# M230 - the whole point is that it visibly spins, so it needs its own renderer with
-# an origin sitting on the bore axis. Deliberately shorter and fatter than the M230
-# tube so the two read as different weapons in the loadout preview.
-GATLING_BARRELS = 6
-GATLING_RING_R = 0.058     # bore-axis offset of each tube; sets the visible spin radius
-GATLING_TUBE_R = 0.021
-GATLING_LEN = 1.00
-GATLING_ROOT_Y = PITCH_Y + 0.20   # where the cluster starts, clear of the breech
+# Primary weapon dimensions and distinct silhouettes live in build_primary_weapons.py.
+# That helper preserves the barrel's RX90 local frame and all shared aiming pivots.
 
 # Gear. The strut is ANGLED: its foot is outboard at the wheel and its head is
 # inboard and buried in the hull. A vertical strut at the wheel's track sits
@@ -362,6 +357,8 @@ EXPECTED_RENDERER_MATERIALS = {
     #Own material, not matAH64DarkGun: the cluster is a much larger unbroken metal mass
     #than the M230's thin tube, so the same albedo reads noticeably lighter on it.
     "ChinGatling": "matAH64DarkGatling",
+    "ChinGatlingHousing": "matAH64DarkGatling",
+    "ChinCannon": "matAH64DarkGun",
     "PodRocketL": "matAH64DarkRocketPod",
     "PodRocketR": "matAH64DarkRocketPod",
     "PodMissileL": "matAH64DarkHellfire",
@@ -697,36 +694,9 @@ def build_airframe(col, M):
                 RX90, 10, m=gun),
     ], origin=(0.0, TURRET_Y, TURRET_PIVOT_Z))
 
-    join_as("ChinBarrel", [
-        add_cyl(col, "BarrelBreech", 0.085, 0.22,
-                (0.0, PITCH_Y + 0.11, PITCH_Z), RX90, 10, m=gun),
-        add_cyl(col, "BarrelTube", 0.05, BARREL_LEN,
-                (0.0, PITCH_Y + BARREL_LEN * 0.5, PITCH_Z), RX90, 10, m=gun),
-        add_cyl(col, "BarrelMuzzle", 0.065, 0.08,
-                (0.0, PITCH_Y + BARREL_LEN - 0.04, PITCH_Z), RX90, 8, m=gun),
-    ], origin=(0.0, PITCH_Y, PITCH_Z))
-
-    # Gatling barrel cluster — alternate primary, hidden by default in the prefab.
-    # Origin is put on the bore axis at the pitch pivot, the SAME origin ChinBarrel
-    # uses, so AH64GatlingSpin can rotate this transform about the bore without the
-    # cluster wobbling off-centre. Do not let join_as pick the origin here.
-    gatling = [
-        add_cyl(col, "GatlingRotorHousing", 0.105, 0.28,
-                (0.0, PITCH_Y + 0.12, PITCH_Z), RX90, 12, m=gatling_mat),
-    ]
-    for i in range(GATLING_BARRELS):
-        a = math.radians(i * (360.0 / GATLING_BARRELS))
-        ox = GATLING_RING_R * math.cos(a)
-        oz = GATLING_RING_R * math.sin(a)
-        gatling.append(add_cyl(col, "GatlingTube%d" % i, GATLING_TUBE_R, GATLING_LEN,
-                               (ox, GATLING_ROOT_Y + GATLING_LEN * 0.5, PITCH_Z + oz),
-                               RX90, 6, m=gatling_mat))
-    # Front clamp ring ties the tubes together — without it the cluster reads as
-    # loose sticks once it is spinning.
-    gatling.append(add_cyl(col, "GatlingClamp", 0.082, 0.055,
-                           (0.0, GATLING_ROOT_Y + GATLING_LEN - 0.10, PITCH_Z),
-                           RX90, 12, m=gatling_mat))
-    join_as("ChinGatling", gatling, origin=(0.0, PITCH_Y, PITCH_Z))
+    # Keep weapon authoring isolated; this generator remains the source of truth.
+    import runpy
+    runpy.run_path(str(PROJECT_ROOT / "Art/Blender/build_primary_weapons.py"))["build"](globals(), col, M)
 
     for sx in (-1, 1):
         s = "L" if sx < 0 else "R"
@@ -1072,6 +1042,8 @@ def parent_chin_barrel():
 
     reparent_keep_world(barrel, turret)
     reparent_keep_world(gatling, barrel)
+    for name in ("ChinGatlingHousing", "ChinCannon"):
+        reparent_keep_world(bpy.data.objects[name], barrel)
 
 
 def reparent_keep_world(child, parent):
@@ -1432,7 +1404,7 @@ def build():
 
 
 def export_fbx():
-    """Export the AH64 collection with the settings recorded in AH64_HANDOFF.md.
+    """Export the AH64 collection with the fixed coordinate settings documented below.
 
     Do not re-derive these; they were found by measurement against a live Unity
     import. The two non-defaults each fix a real defect: FBX_SCALE_ALL stops

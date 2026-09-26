@@ -36,7 +36,7 @@ body:
     id: settings
     attributes:
       label: AH-64 settings and comments
-      description: In Risk of Options, use Share settings in any AH-64 category, then paste the complete clipboard report here. It includes every exposed slider and toggle, defaults for changed values, restart status, and your comments.
+      description: Share settings in Risk of Options prefills this field when the report fits the link. If it is blank, paste the copied report here. It includes every exposed slider and toggle, defaults for changed values, restart status, and your comments.
       render: text
     validations:
       required: false
@@ -62,6 +62,6 @@ body:
     attributes:
       label: AH-64 version
       description: Exact version from your mod manager, if relevant.
-      placeholder: "1.0.0"
+      placeholder: "1.1.0"
     validations:
       required: false

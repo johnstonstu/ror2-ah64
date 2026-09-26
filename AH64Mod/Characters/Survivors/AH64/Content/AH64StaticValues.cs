@@ -154,11 +154,21 @@ namespace AH64.Survivors
 
         //Pilot bed is 2D; remote aircraft retain distance attenuation. Retune by listening
         //at this baseline after fixing spatial attenuation, not by amplifying to clipping.
-        public const float rotorHoverVolume = 0.45f;
+        public const float rotorHoverVolume = 0.3825f;
         //About -1.94 dB on the dedicated rotor emitter; saved user volume/boost stay intact.
         public const float rotorMixTrim = 0.8f;
         //Make the former subtle movement slider audible with signed directional response.
-        public const float rotorDirectionalPitchScale = 3f;
+        public const float rotorDirectionalPitchScale = 4f;
+        //Transient response has its own headroom after normal travel reaches full load.
+        public const float rotorManeuverGainDb = 1.5f;
+        public const float rotorManeuverToneOpening = 6f;
+        public const float rotorResponseAttackScale = 0.65f;
+        public const float rotorResponseReleaseScale = 1.6f;
+        public const float rotorSpecialResponse = 0.3f;
+        public const float rotorAccelerationResponse = 0.2f;
+        public const float rotorTurnResponse = 0.25f;
+        public const float rotorFullTurnRate = 120f; //degrees/sec, gated by actual travel
+        public const float rotorMotionSampleSmoothing = 0.12f;
         //Only the dedicated wind-up/down emitter is reduced (~4.4 dB); shots stay unchanged.
         public const float gatlingSpoolVolume = 0.6f;
         public const float rotorToneCutoff = 5000f;

@@ -97,3 +97,6 @@ Art/Wwise/**/*.wsettings
 Art/Wwise/**/*.akd
 Art/Wwise/**/IncrementalSoundBankData.xml
 Art/Wwise/**/Wwise_IDs.h
+
+# Machine-specific MCP configuration; use .mcp.example.json as the starting point.
+/.mcp.json

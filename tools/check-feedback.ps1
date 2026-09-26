@@ -9,7 +9,8 @@ $bepinex = Join-Path $packages ($baseLib.Value.path + '/lib/netstandard2.0/BepIn
 $sources = @('tools/FeedbackChecks.cs',
     'AH64Mod/Characters/Survivors/AH64/Content/AH64PlaytestConfig.cs',
     'AH64Mod/Characters/Survivors/AH64/Content/AH64StaticValues.cs',
-    'AH64Mod/Characters/Survivors/AH64/Content/AH64BalanceReport.cs')
+    'AH64Mod/Characters/Survivors/AH64/Content/AH64BalanceReport.cs',
+    'AH64Mod/Characters/Survivors/AH64/Content/AH64BalanceFeedback.cs')
 $includes = ($sources | ForEach-Object { '<Compile Include="' + [System.Security.SecurityElement]::Escape((Join-Path $repo $_)) + '" />' }) -join "`n"
 $project = @"
 <Project Sdk="Microsoft.NET.Sdk">

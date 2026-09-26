@@ -177,12 +177,11 @@ standalone bundle entry. Do not "fix" this by re-tagging the Source folder.
 
 ### MCP servers
 
-- **UnityMCP is in `.mcp.json` at project scope**, alongside Blender. Registering
+- **UnityMCP is in the local, ignored `.mcp.json` at project scope**, alongside Blender. Contributors start from `.mcp.example.json`; see `docs/development/TOOLING.md`. Registering
   an MCP server against a single absolute path has bitten before: servers load
   only for the exact path they're registered under, so a session started in a
   differently-named directory comes up with **no Unity tools at all, silently and
-  with no error**. Project scope fixes that permanently — the registration
-  travels with the directory, including across this repo's rename.
+  with no error**. Project scope keeps the local registration with the checkout. Machine-specific paths stay in the ignored config.
 - **UnityMCP runs `uvx --offline`, which makes it hostage to the shared uv
   cache.** `--offline` can only resolve from cached packages, so unrelated `uv`
   or `uvx` work elsewhere on the machine can evict or shift versions and leave
@@ -296,7 +295,7 @@ in this file.
   mod's Unity project audio settings do not override the host game. Use Wwise for
   custom rotor playback; do not keep tuning silent Unity AudioSources or patch
   the game's settings file. Installed Wwise runtime is 2023.1.4.8496, bank format
-  150. See `AUDIO-RESEARCH.md` for evidence and the pending migration plan.
+  150. See `docs/development/AUDIO.md` for the verified backend constraints and current Wwise implementation.
 
 - **Hold-to-fire states must override `GetMinimumInterruptPriority()`.** Without
   it, the skill re-enters itself every physics tick — the predecessor project's

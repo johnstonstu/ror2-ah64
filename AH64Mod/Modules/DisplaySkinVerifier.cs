@@ -8,6 +8,7 @@ namespace AH64.Modules
     {
         private ModelSkinController controller;
         private CharacterModel characterModel;
+        private bool failureReported;
 
         private void OnEnable()
         {
@@ -23,12 +24,13 @@ namespace AH64.Modules
 
         private void VerifyAppliedSkin(int index)
         {
-            if (!controller || !characterModel || index < 0 || index >= controller.skins.Length) return;
+            if (failureReported || !controller || !characterModel || index < 0 || index >= controller.skins.Length) return;
             SkinDef skin = controller.skins[index];
             CharacterModel.RendererInfo[] actual = characterModel.baseRendererInfos;
             CharacterModel.RendererInfo[] expected = skin.skinDefParams.rendererInfos;
             if (actual.Length != expected.Length)
             {
+                failureReported = true;
                 Log.Error($"AH64 lobby skin {skin.name}: renderer count {actual.Length}, expected {expected.Length}.");
                 return;
             }
@@ -39,11 +41,11 @@ namespace AH64.Modules
                     || renderer.name != expected[i].renderer.name
                     || actual[i].defaultMaterial != expected[i].defaultMaterial)
                 {
+                    failureReported = true;
                     Log.Error($"AH64 lobby skin {skin.name}: renderer/material mismatch at slot {i}.");
                     return;
                 }
             }
-            Log.Info($"AH64 lobby skin applied: index={index}, skin={skin.name}, verified={actual.Length} renderers.");
         }
     }
 }
