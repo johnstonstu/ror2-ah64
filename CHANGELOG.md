@@ -23,7 +23,9 @@ Combined visual, Wwise audio and hover candidate. In-game playtesting is pending
 - Smoke Backflip rotates nose-up first; fall-damage immunity and external vertical
   motion are preserved. Equipment flight and lift volumes remain effective.
 - Added all 35 tuning sliders, feedback comments, and copy/share settings actions.
-- Corrected the M230 primary icon to a single bore; all three primary sprites are bundle-validated.
+- Restored illustrated helicopter-style primary icons with distinct chain gun, rotary gun and heavy cannon art.
+- Fixed lobby skins referencing gameplay renderers, which blocked palette changes and preview brightness.
+- Removed the extra collective drone cue; reduced rotor mix slightly and added signed directional pitch.
 - Added selectable Desert and Arctic paint schemes with matching lobby previews.
 - Weapon heat follows the selected skin after asynchronous skin application.
 - Rotor wash now follows terrain on each client; blur/new wash respect cloak,

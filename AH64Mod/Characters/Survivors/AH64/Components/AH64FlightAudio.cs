@@ -18,7 +18,8 @@ namespace AH64.Survivors.Components
         private float loadVelocity;
         private float gain;
         private float pitch;
-        private bool collectiveWasHeld;
+        private float directionalLoad;
+        private float directionalVelocity;
         private bool mixErrorLogged;
         private float diagnosticAt;
         private int diagnosticCount;
@@ -37,7 +38,7 @@ namespace AH64.Survivors.Components
             load = loadVelocity = 0f;
             startAttempts = 0;
             retryAt = 0f;
-            collectiveWasHeld = false;
+            directionalLoad = directionalVelocity = 0f;
         }
 
         private void Update()
@@ -58,10 +59,8 @@ namespace AH64.Survivors.Components
             UpdateMix();
             EnsurePlaying();
             CheckPlayback();
-            bool jumpHeld = inputBank && inputBank.jump.down;
-            if (jumpHeld && !collectiveWasHeld)
-                Util.PlaySound("Play_captain_drone_quick_move", gameObject);
-            collectiveWasHeld = jumpHeld;
+            //Collective feedback now comes from this rotor's pitch response. The previous
+            //Captain drone quick-move one-shot layered another engine sound over every press.
         }
 
         private void UpdateMix()
@@ -76,9 +75,17 @@ namespace AH64.Survivors.Components
             float climb = hoverController ? Mathf.Clamp01(hoverController.AscentPitchWeight) : 0f;
             load = Mathf.SmoothDamp(load, Mathf.Max(speed, climb), ref loadVelocity,
                 AH64PlaytestConfig.RotorResponse, Mathf.Infinity, Time.deltaTime);
-            pitch = AH64PlaytestConfig.RotorPitch + AH64PlaytestConfig.RotorLoadPitch * load;
+            directionalLoad = Mathf.SmoothDamp(directionalLoad, GetDirectionalLoad(),
+                ref directionalVelocity, AH64PlaytestConfig.RotorResponse,
+                Mathf.Infinity, Time.deltaTime);
+            float pitchDepth = Mathf.Min(AH64PlaytestConfig.RotorLoadPitch
+                * AH64StaticValues.rotorDirectionalPitchScale, 0.12f);
+            //Stay within the authored Wwise pitch RTPC range (-700..600 cents).
+            pitch = Mathf.Clamp(AH64PlaytestConfig.RotorPitch + pitchDepth * directionalLoad,
+                Mathf.Pow(2f, -700f / 1200f), Mathf.Pow(2f, 600f / 1200f));
             bool local = IsLocalPilot();
             gain = Mathf.Clamp01(AH64PlaytestConfig.RotorHoverVolume
+                * AH64StaticValues.rotorMixTrim
                 * Mathf.Pow(10f, AH64PlaytestConfig.RotorLoadGain * load / 20f));
             if (!local) gain *= DistanceGain();
             CheckResult(AkSoundEngine.SetGameObjectOutputBusVolume(
@@ -90,6 +97,31 @@ namespace AH64.Survivors.Components
             float lowpass = Mathf.Clamp(Mathf.Log(20000f / AH64PlaytestConfig.RotorToneCutoff)
                 / Mathf.Log(20000f / 600f) * 60f, 0f, 60f);
             CheckResult(AkSoundEngine.SetRTPCValue("AH64_RotorLowpass", lowpass, emitter), "tone");
+        }
+
+        private float GetDirectionalLoad()
+        {
+            if (!motor || !body || body.moveSpeed <= 0.01f) return 0f;
+            Vector3 forward = inputBank ? inputBank.aimDirection : transform.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.001f)
+            {
+                CharacterDirection direction = GetComponent<CharacterDirection>();
+                forward = direction ? direction.forward : transform.forward;
+                forward.y = 0f;
+            }
+            forward.Normalize();
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            float forwardSpeed = Mathf.Clamp(Vector3.Dot(motor.velocity, forward) / body.moveSpeed, -1f, 1f);
+            float strafeSpeed = Mathf.Clamp(Vector3.Dot(motor.velocity, right) / body.moveSpeed, -1f, 1f);
+            float verticalSpeed = Mathf.Clamp(motor.velocity.y / AH64StaticValues.collectiveClimbRate, -1f, 1f);
+            //Anticipate collective input before velocity builds. Descent remains a lower pitch,
+            //not another positive speed boost; opposite strafe directions carry equal rotor load.
+            float collective = inputBank && inputBank.jump.down ? 1f
+                : inputBank && inputBank.rawMoveDown.down ? -1f : 0f;
+            float climb = Mathf.Clamp(verticalSpeed * 0.65f + collective * 0.35f, -1f, 1f);
+            return Mathf.Clamp(forwardSpeed * (forwardSpeed >= 0f ? 1f : 0.65f)
+                + Mathf.Abs(strafeSpeed) * 0.45f + climb * 0.8f, -1f, 1f);
         }
 
         private float DistanceGain()
@@ -166,8 +198,31 @@ namespace AH64.Survivors.Components
             {
                 AKRESULT result = AkSoundEngine.GetSourcePlayPosition(rotor.playingId, out int position);
                 Debug.Log($"AH-64 rotor: id={rotor.playingId}, query={result}, positionMs={position}, "
-                    + $"gain={rotor.gain:F3}, pitch={rotor.pitch:F3}, local={rotor.IsLocalPilot()}.");
+                    + $"gain={rotor.gain:F3}, pitch={rotor.pitch:F3}, direction={rotor.directionalLoad:F3}, "
+                    + $"local={rotor.IsLocalPilot()}.");
+                rotor.PrintEmitterStatus();
             }
+        }
+
+        private void PrintEmitterStatus()
+        {
+            //Inspect only this aircraft. Do not stop unknown body/weapon/utility events merely
+            //because a listener reports overlapping audio; event IDs identify the real source.
+            foreach (AkGameObj source in GetComponentsInChildren<AkGameObj>(true))
+            {
+                uint count = 32;
+                uint[] ids = new uint[count];
+                AKRESULT result = AkSoundEngine.GetPlayingIDsFromGameObject(
+                    AkSoundEngine.GetAkGameObjectID(source.gameObject), ref count, ids);
+                Debug.Log($"AH-64 emitter: {source.name}, query={result}, playing={count}.");
+                if (result != AKRESULT.AK_Success) continue;
+                for (int i = 0; i < ids.Length && i < count; i++)
+                    Debug.Log($"AH-64 event: emitter={source.name}, playingId={ids[i]}, "
+                        + $"eventId={AkSoundEngine.GetEventIDFromPlayingID(ids[i])}.");
+            }
+            foreach (AudioSource source in GetComponentsInChildren<AudioSource>(true))
+                Debug.Log($"AH-64 Unity audio: emitter={source.name}, playing={source.isPlaying}, "
+                    + $"loop={source.loop}, clip={(source.clip ? source.clip.name : "none")}.");
         }
 
         private void OnDisable() { StopRotor(); }

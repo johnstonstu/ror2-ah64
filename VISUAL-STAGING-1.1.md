@@ -131,3 +131,30 @@ DLL SHA256: 44C4FAAE28AE1B6492FF28B290A38C1155285A934575B50F4FA59EB6EA9726B0
 ZIP SHA256: FB885D961BAD6148C3C54440D12042453D20533E6D0D24F481C9F668901EE102
 Only install from this combined staging branch during this playtest; the primary
 checkout's normal post-build profile copy can overwrite the candidate again.
+
+## Retest: illustrated icons, lobby binding and directional rotor
+
+Latest test feedback addressed: display RendererInfo arrays borrowed body renderers,
+causing SkinDef.BakeAsync ancestry errors. Rebuilt arrays from display descendants,
+checked exact names/ancestry, set boosted default display materials immediately,
+and added per-selection instance/material validation logs. Palette/light appearance
+still needs user verification in the live game's scene.
+
+Removed the confirmed Play_captain_drone_quick_move collective one-shot. Logs showed
+one custom rotor per body, not duplicate AH64 plugins. Applied a0.8 rotor-only mix
+trim (~1.94dB), preserving saved sliders. Added smooth forward/reverse/strafe/climb/
+descent pitch, retaining zero-depth and response controls. If an overlap persists,
+ah64_audio_status now reports active Wwise event IDs and Unity source states.
+
+Restored original illustrated rotary-gun art and generated matching M230/HE cannon
+edits with built-in image_gen. Art/Icons/README.md records prompts and outputs.
+Icon importer now validates approved PNGs without regenerating rejected diagrams.
+
+C# compile PASS (22 existing warnings,0errors); feedback checks PASS (36 controls,
+7categories, restart state, comments, export isolation); Unity model and primary
+Sprite bundle audit PASS; packaging PASS. Installed exact ZIP payload with hashes
+verified, config unchanged; backup and current hashes in dist/retest-install.json.
+ZIP SHA256: B993A78CA9A7A2CCF49356934ECB37B93150DD40C97E398BE7FE7B1F4A053E04.
+All prior visual, audio, hover and balance-feedback work remains included.
+No push or public release. Test all three lobby skins, idle/movement rotor and primary
+icon selection; gameplay lighting/audio remain perceptual acceptance for Stuart.

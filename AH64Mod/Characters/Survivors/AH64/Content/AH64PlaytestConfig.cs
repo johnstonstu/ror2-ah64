@@ -180,16 +180,16 @@ namespace AH64.Survivors
                 "Enable restrained rotor wash while near the ground, including stationary hover.");
             //A new key avoids inheriting the much louder gain used with the old quiet recording.
             rotorHoverVolume = Bind(config, Presentation, "Rotor volume", AH64StaticValues.rotorHoverVolume, 0f, 1f,
-                "Rotor bed volume before master/SFX. The local pilot hears it without distance fade. Movement adds up to 2 dB; start at 0.45.");
+                "Rotor bed volume before master/SFX and a fixed -1.94 dB mix trim. The local pilot hears it without distance fade. Movement boost uses the separate dB slider.");
             gatlingSpoolVolume = Bind(config, Presentation, "Gatling spool volume", AH64StaticValues.gatlingSpoolVolume, 0f, 1f,
                 "XM301 wind-up/down volume only. 0.6 is about 4.4 dB quieter; gunfire volume is unchanged.");
             rotorPitch = Bind(config, Presentation, "Rotor pitch", AH64StaticValues.rotorHoverPitch, 0.7f, 1.2f,
                 "Base playback speed/pitch. Lower is a slower, heavier chop. 1 is the recorded speed.");
             rotorLoadPitch = Bind(config, Presentation, "Rotor movement pitch change",
                 AH64StaticValues.rotorFullLoadPitch - AH64StaticValues.rotorHoverPitch, 0f, 0.12f,
-                "Pitch added at full movement or climb. Zero keeps rotor speed constant.");
+                "Directional pitch depth (three times this value, capped at 0.12). Forward/climb raise pitch; reverse/descent lower it; strafe adds a smaller lift. Zero keeps pitch constant.");
             rotorLoadGain = Bind(config, Presentation, "Rotor movement boost dB", AH64StaticValues.rotorFullLoadGainDb, 0f, 6f,
-                "Extra rotor loudness at full movement or climb. Unity caps final source gain at 1.");
+                "Extra rotor loudness at full movement or climb. The final Wwise emitter gain is capped at 1.");
             rotorResponse = Bind(config, Presentation, "Rotor response seconds", AH64StaticValues.rotorLayerFadeTime, 0.1f, 2f,
                 "How gradually rotor pitch and volume respond to movement. Higher is smoother.");
             rotorToneCutoff = Bind(config, Presentation, "Rotor high-frequency cutoff Hz", AH64StaticValues.rotorToneCutoff, 600f, 20000f,
