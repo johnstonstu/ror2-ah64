@@ -17,12 +17,19 @@ Hotfix for two run-blocking bugs.
   Mithrix and False Son's pads. The hover's altitude hold was cancelling the pad's
   launch within a few ticks and floating the chopper back down. The hover now
   hands over to normal character physics for the whole launch and takes over
-  again on landing, or when falling back close to the ground.
+  again on landing, or when falling back close to the ground. Pads just below the
+  hovering chopper now trigger too, since the moon pillar pad's trigger is only
+  about 4 m tall.
+- **Solutional Haunt's boss-room lifts carry the chopper.** Lifts work through
+  gravity, which the hover switches off, so they had no effect.
+- **Out-of-bounds recovery after a long fall lands the chopper at rest.** The
+  game's teleport keeps the downward speed, which could slam it into the ground.
 - **Solutional Haunt no longer sends you back to the start.** The stage opens with
   a shaft deeper than the hover's ground sensor. After 3 seconds with no ground
   below, the hover's failsafe teleported the chopper back to a "safe" spot at the
   top. The chopper now falls through drops like any other survivor, and the
-  failsafe waits 12 seconds of free fall before stepping in.
+  failsafe only steps in after 12 seconds of fast free fall, which the shaft's
+  slow-fall zone never allows.
 - **The airframe noses down when flying forward.** It used to tilt backwards.
 
 ### Changed
