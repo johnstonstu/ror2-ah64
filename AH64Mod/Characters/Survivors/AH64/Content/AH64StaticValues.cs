@@ -75,10 +75,6 @@ namespace AH64.Survivors
         //float over the trigger without touching it. JumpVolumes and BounceVolumes this far below the
         //capsule are triggered as if touched.
         public const float launchVolumeReach = hoverHeight + 1f;
-        //VerticalLift (Solutional Haunt boss room) works through CustomGravity, which only applies while
-        //gravity is on, so the chopper rides lifts under vanilla physics. Capped so an unknown source of
-        //useCustomGravity can't strand the chopper out of hover mode.
-        public const float verticalLiftMaxDuration = 10f;
         //Vanilla CharacterMotor default. hoverAirControl (1.0) would let neutral stick brake the pad's
         //horizontal velocity at full acceleration and drop the chopper short of the target.
         public const float externalLaunchAirControl = 0.25f;
@@ -156,55 +152,21 @@ namespace AH64.Survivors
         public const float rotorWashFullSpeed = 10f;
         public const float rotorWashScale = 1.35f;
 
-        //Approved CC0 grounded rotor hover bed. Gain-matched per the 2026-08-03 audio investigation
-        //(AUDIO_INVESTIGATION.md): the bed already contains a textbook 17.86 Hz / 37% depth blade
-        //chop, but was mixed 13.1 dB quieter than the movement layers and faded on top of that, so
-        //the only layer with real rotor periodicity was the quietest thing present. Raised from 0.13
-        //to 0.75 (clip peak is 0.894, so this still leaves headroom) and the bed no longer fades —
-        //see AH64FlightAudio, movement layers add on top of a constant bed, they do not replace it.
-        public const float rotorHoverVolume = 0.75f;
-        //P1: listener sits ~14.1u from the emitter at the AH64Survivor camera depth (-14f), so a
-        //minDistance of 8 permanently attenuated the player's own aircraft by ~4.9 dB. Raised past
-        //that camera distance so the player always hears the bed at full level.
+        //Pilot bed is 2D; remote aircraft retain distance attenuation. Retune by listening
+        //at this baseline after fixing spatial attenuation, not by amplifying to clipping.
+        public const float rotorHoverVolume = 0.45f;
+        //Only the dedicated wind-up/down emitter is reduced (~4.4 dB); shots stay unchanged.
+        public const float gatlingSpoolVolume = 0.6f;
+        public const float rotorToneCutoff = 5000f;
+        //Keep the player's camera (~14 units behind) inside the full-volume radius.
         public const float rotorHoverMinDistance = 20f;
         public const float rotorHoverMaxDistance = 70f;
-        //Doppler was stacking wobble on top of the deliberate pitch behaviour because the camera
-        //boom lags the airframe. Zeroed per investigation P1.
+        //Camera lag must not add Doppler wobble to the deliberately restrained pitch change.
         public const float rotorHoverDoppler = 0f;
-
-        //Movement layers on top of the grounded bed above, both CC0/qubodup (see AH64Audio/LICENSE_SOURCE.txt).
-        //rotorInFlight fades in with horizontal speed (moveDirection over body.moveSpeed); rotorClimb fades
-        //in with collective/ascent intent (AH64HoverController.AscentPitchWeight). Both share the grounded
-        //bed's distance/doppler falloff so the mix doesn't separate at range.
-        //The investigation's 0.17 (gain-matched to the CLIP's own pre-fix source level) made forward
-        //flight inaudible once the bed itself was raised 0.13 -> 0.75 for P0 — a layer needs volume
-        //comparable to what it is layering ON TOP OF, not comparable to its own un-mixed source level.
-        //Raised so full-speed flight is clearly audible as an addition to the bed, not a rounding error.
-        public const float rotorInFlightMaxVolume = 0.42f;
-        //Investigation found this clip has NO rotor periodicity (5.5% depth at an incoherent 26.5 Hz)
-        //and puts 68.5% of its energy in 150-400 Hz, right on top of the bed and in-flight layers —
-        //it masks the one layer with real blade chop exactly when the player is doing the most
-        //helicopter-like thing (climbing). Per the investigation's P2, cut hard rather than gain-matched
-        //up alongside in-flight: kept only as a faint "collective bites" texture, not a competing bed.
-        public const float rotorClimbMaxVolume = 0.07f;
         public const float rotorLayerFadeTime = 0.6f;
-
-        //Rotor pitch. Volume alone was never going to fix "doesn't feel like a helicopter
-        //enough" - a real rotor LOADS UP under effort, and a loop played at a fixed pitch
-        //reads as an engine drone rather than as blades.
-        //P1: the recorded intent below ("bed sits slightly flat so it reads as a heavy disc")
-        //was measured to backfire — lower pitch lowers the chop RATE, and a slow chop reads as a
-        //Huey, not an Apache. The bed's chop (16.79 Hz) and the in-flight sweep (15.7-18.1 Hz) also
-        //sat close enough together to beat against each other, and both sat below the visual disc's
-        //18.67 Hz. rotorHoverPitch now locks the bed's chop rate above the visual rate; the in-flight
-        //sweep is replaced with a fixed pitch in AH64FlightAudio for the same reason. rotorClimbPitch
-        //is left as-is — that layer has no periodicity to lock (see rotorClimbMaxVolume above).
-        public const float rotorHoverPitch = 1.045f;
-        //Fixed, not swept — the old 0.93->1.07 sweep produced a chop rate that wandered relative
-        //to the bed and the visual disc across the whole speed range. Locked at a rate above the
-        //visual 18.67 Hz, matching rotorHoverPitch's reasoning above.
-        public const float rotorInFlightPitch = 1.106f;
-        public const float rotorClimbPitch = 1.02f;
+        public const float rotorHoverPitch = 1f;
+        public const float rotorFullLoadPitch = 1.015f;
+        public const float rotorFullLoadGainDb = 2f;
 
         //rotor blur discs (RotorBlurMain/RotorBlurTail on mdlAH64). Effort is horizontal speed over
         //rotorBlurFullSpeed, plus a flat boost while the collective is held; the discs activate above
@@ -523,7 +485,8 @@ namespace AH64.Survivors
         public const float backflipExitCarry = 0.28f;
         public const float backflipMinEntrySpeedFraction = 0.75f;
         public const float backflipClimbHeight = 14f;
-        public const float backflipPitchDegrees = 360f;
+        //Negative local X lifts the +Z nose first; positive X produces a front flip.
+        public const float backflipPitchDegrees = -360f;
         //cloak linger past the flip so the fade-in reads after the smoke clears
         public const float backflipCloakDuration = 2.0f;
         public const float backflipInvincibilityDurationCoefficient = 0.50f;

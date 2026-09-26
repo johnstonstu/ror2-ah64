@@ -137,12 +137,21 @@ MAST_HOUSING = [
 # the root falling only to 0.20 at the tail - which read as a fat tube rather than
 # the hard taper an Apache boom has. Depth now falls 0.50 -> 0.16 and the section
 # narrows with it, so the tail rotor sits on something that looks like it tapered
-# to get there. Kept the same station positions so nothing hung off the boom moves.
+# to get there. The extension below moves all tail-mounted parts together.
+# Keep the full tail assembly beyond the main rotor's sweep, including blur discs.
+# The boom root stays embedded in the hull; only its length changes.
+TAIL_EXTENSION = 0.80
+
+
+def tail_y(station):
+    return station - TAIL_EXTENSION
+
+
 TAIL_BOOM = [
     (-1.10, 0.260, 0.860, 1.360),
-    (-1.70, 0.193, 0.995, 1.315),
-    (-2.35, 0.148, 1.045, 1.265),
-    (-2.95, 0.120, 1.080, 1.240),
+    (-1.70 - TAIL_EXTENSION * (0.60 / 1.85), 0.193, 0.995, 1.315),
+    (-2.35 - TAIL_EXTENSION * (1.25 / 1.85), 0.148, 1.045, 1.265),
+    (tail_y(-2.95), 0.120, 1.080, 1.240),
 ]
 
 # Vertical fin: (z, half_width, y_leading, y_trailing). Leading edge sweeps aft
@@ -152,19 +161,19 @@ TAIL_BOOM = [
 # planted on the boom; a real fin is a wing section, fat where it carries load and
 # thin at the tip. The taper is what stops it looking like a cutout.
 TAIL_FIN = [
-    (1.05, 0.115, -2.30, -3.10),
-    (1.60, 0.092, -2.50, -3.14),
-    (2.10, 0.062, -2.72, -3.16),
-    (2.35, 0.034, -2.86, -3.14),
+    (1.05, 0.115, tail_y(-2.30), tail_y(-3.10)),
+    (1.60, 0.092, tail_y(-2.50), tail_y(-3.14)),
+    (2.10, 0.062, tail_y(-2.72), tail_y(-3.16)),
+    (2.35, 0.034, tail_y(-2.86), tail_y(-3.14)),
 ]
 
 # Spanwise surfaces: (x, y_leading, y_trailing, z_centre, half_thickness)
 STABILATOR = [
-    (-0.88, -2.56, -2.88, 1.15, 0.035),
-    (-0.55, -2.49, -2.92, 1.15, 0.050),
-    (0.00, -2.45, -2.95, 1.15, 0.055),
-    (0.55, -2.49, -2.92, 1.15, 0.050),
-    (0.88, -2.56, -2.88, 1.15, 0.035),
+    (-0.88, tail_y(-2.56), tail_y(-2.88), 1.15, 0.035),
+    (-0.55, tail_y(-2.49), tail_y(-2.92), 1.15, 0.050),
+    (0.00, tail_y(-2.45), tail_y(-2.95), 1.15, 0.055),
+    (0.55, tail_y(-2.49), tail_y(-2.92), 1.15, 0.050),
+    (0.88, tail_y(-2.56), tail_y(-2.88), 1.15, 0.035),
 ]
 # Stub wings. Anhedral (droop) is the single strongest Apache silhouette cue and
 # the wing read as a flat plank without it - every section used to sit at z=1.00.
@@ -228,7 +237,8 @@ RADAR_COLLAR_DEPTH = 0.12
 RADAR_COLLAR_CENTRE = (0.0, 0.0, 2.18)
 # Hub sits just outside the fin face (fin half-width ~0.07 + hub radius 0.09).
 # 0.28 left a visible air gap that read as "floating off the tail".
-TAIL_ROTOR_CENTRE = (0.16, -2.88, 1.75)
+# Lift the entire hub assembly so the blade and blur sweeps clear the stabilator.
+TAIL_ROTOR_CENTRE = (0.16, tail_y(-2.88), 1.85)
 
 # Rotor blur discs - thin cylinders the runtime fades in with rotor effort.
 # Radii match the blade tip spans so the blur reads as the blades' own disc.
@@ -274,7 +284,7 @@ GEAR_WHEEL_W = 0.20
 GEAR_FOOT = (GEAR_WHEEL_X, GEAR_WHEEL_R)
 GEAR_STRUT_W = 0.09        # narrower than the wheel, so head-on the tyre reads
 
-TAILGEAR_Y = -2.42
+TAILGEAR_Y = tail_y(-2.42)
 TAILGEAR_TOP = 1.10        # boom underside here is ~1.02
 TAILGEAR_BOTTOM = 0.72
 TAILGEAR_WHEEL_R = 0.12
@@ -294,7 +304,7 @@ ANCHORS = {
     # the old flat heights fires rockets and missiles out of empty air above the pods.
     "WingL":         ((-1.45, -0.10, wing_z(1.45, 1.00)), None),
     "WingR":         ((1.45, -0.10, wing_z(1.45, 1.00)), None),
-    "TailTip":       ((0.00, -2.95, 1.16), None),
+    "TailTip":       ((0.00, tail_y(-2.95), 1.16), None),
     "MainHurtbox":   ((0.00, 0.00, 1.05), None),
     "HeadHurtbox":   ((0.00, 1.10, 1.40), None),
     "AimOrigin":     ((0.00, 0.80, 1.45), None),
@@ -790,7 +800,7 @@ def build_airframe(col, M):
     # which is the single thing that made the tail read as an assembly of flat
     # plates. A tapered wedge blends the leading edge into the spine.
     trim.append(add_cube(col, "FinRootFairing", (0.115, 0.62, 0.20),
-                         (0.0, -2.44, 1.09), m=dark))
+                         (0.0, tail_y(-2.44), 1.09), m=dark))
     return trim
 
 
@@ -1375,6 +1385,10 @@ def build():
     bpy.context.view_layer.update()
     check_single_material(col)
     check_unity_orientation(col)
+    import runpy
+    import json
+    clearance = runpy.run_path(str(PROJECT_ROOT / "Art/Blender/validate_rotor_clearance.py"))["validate_rotor_clearance"]()
+    print("ROTOR_CLEARANCE_REPORT=" + json.dumps(clearance, sort_keys=True))
 
     meshes = [o for o in col.objects if o.type == "MESH"]
     for o in meshes:

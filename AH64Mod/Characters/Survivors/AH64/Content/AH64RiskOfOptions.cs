@@ -20,7 +20,9 @@ namespace AH64.Survivors
             ConfigEntry<float> chaingunSplashVfxScale,
             ConfigEntry<float> dashCooldown, ConfigEntry<float> dashPeakSpeed, ConfigEntry<float> dashClimbHeight,
             ConfigEntry<float> dashRampFraction, ConfigEntry<bool> rotorWashEnabled, ConfigEntry<float> rotorHoverVolume,
-            ConfigEntry<float> rotorInFlightVolume, ConfigEntry<float> rotorClimbVolume)
+            ConfigEntry<float> gatlingSpoolVolume, ConfigEntry<float> rotorPitch,
+            ConfigEntry<float> rotorLoadPitch, ConfigEntry<float> rotorLoadGain,
+            ConfigEntry<float> rotorResponse, ConfigEntry<float> rotorToneCutoff)
         {
             if (!Chainloader.PluginInfos.ContainsKey(PluginGuid))
             {
@@ -47,9 +49,13 @@ namespace AH64.Survivors
                 RegisterSlider(dashRampFraction, 0.10f, 0.60f);
 
                 RegisterToggle(rotorWashEnabled);
-                RegisterSlider(rotorHoverVolume, 0f, 0.15f);
-                RegisterSlider(rotorInFlightVolume, 0f, 0.15f);
-                RegisterSlider(rotorClimbVolume, 0f, 0.15f);
+                RegisterSlider(rotorHoverVolume, 0f, 1f);
+                RegisterSlider(gatlingSpoolVolume, 0f, 1f);
+                RegisterSlider(rotorPitch, 0.7f, 1.2f);
+                RegisterSlider(rotorLoadPitch, 0f, 0.12f, "{0:0.000}");
+                RegisterSlider(rotorLoadGain, 0f, 6f, "{0:0.0} dB");
+                RegisterSlider(rotorResponse, 0.1f, 2f, "{0:0.00} s");
+                RegisterSlider(rotorToneCutoff, 600f, 20000f, "{0:0} Hz");
             }
             catch (Exception error)
             {

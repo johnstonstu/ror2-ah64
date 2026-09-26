@@ -3,31 +3,26 @@ using UnityEngine;
 
 namespace AH64.Survivors.Components
 {
-    /// <summary>
-    /// Presence and movement SFX for the airframe.
-    ///
-    /// <para>The continuous bed is the approved CC0 grounded rotor clip from the ah64 asset bundle,
-    /// played quietly through a 3D AudioSource. Two more CC0 clips (same qubodup pack, see
-    /// <c>AH64Audio/LICENSE_SOURCE.txt</c>) layer on top and fade with movement: a fuller engine+rotor
-    /// loop that rises with horizontal speed, and a lighter loop that rises with collective/climb intent.
-    /// Collective retains a short vanilla lift cue.</para>
-    /// </summary>
+    // RoR2 disables Unity audio. Use the game's Wwise SFX bus for volume and pause.
     public class AH64FlightAudio : MonoBehaviour
     {
-        // Captain's drone reposition chirp: short lift cue when collective bites. Base game.
-        private const string collectiveChirp = "Play_captain_drone_quick_move";
-
         private InputBankTest inputBank;
         private CharacterMotor motor;
         private CharacterBody body;
         private AH64HoverController hoverController;
-
-        private AudioSource rotorSource;
-        private AudioSource inFlightSource;
-        private AudioSource climbSource;
-        private float inFlightVolumeVelocity;
-        private float climbVolumeVelocity;
+        private GameObject emitter;
+        private uint playingId;
+        private int startAttempts;
+        private float retryAt;
+        private float load;
+        private float loadVelocity;
+        private float gain;
+        private float pitch;
         private bool collectiveWasHeld;
+        private bool mixErrorLogged;
+        private float diagnosticAt;
+        private int diagnosticCount;
+        private int previousPosition = -1;
 
         private void Start()
         {
@@ -35,126 +30,158 @@ namespace AH64.Survivors.Components
             motor = GetComponent<CharacterMotor>();
             body = GetComponent<CharacterBody>();
             hoverController = GetComponent<AH64HoverController>();
-
-            rotorSource = CreateLoopSource(AH64Assets.rotorHoverLoop, "Approved grounded rotor hover clip");
-            inFlightSource = CreateLoopSource(AH64Assets.rotorInFlightLoop, "Rotor in-flight layer clip");
-            climbSource = CreateLoopSource(AH64Assets.rotorClimbLoop, "Rotor climb layer clip");
-
-            if (rotorSource)
-                rotorSource.volume = AH64PlaytestConfig.RotorHoverVolume;
         }
 
-        private AudioSource CreateLoopSource(AudioClip clip, string missingClipLabel)
+        private void OnEnable()
         {
-            if (!clip)
-            {
-                Log.Warning($"{missingClipLabel} was not found in the ah64 bundle; that layer will stay silent.");
-                return null;
-            }
-
-            AudioSource source = gameObject.AddComponent<AudioSource>();
-            source.clip = clip;
-            source.loop = true;
-            source.playOnAwake = false;
-            source.spatialBlend = 1f;
-            source.rolloffMode = AudioRolloffMode.Logarithmic;
-            source.minDistance = AH64StaticValues.rotorHoverMinDistance;
-            source.maxDistance = AH64StaticValues.rotorHoverMaxDistance;
-            source.dopplerLevel = AH64StaticValues.rotorHoverDoppler;
-            source.volume = 0f;
-            source.time = Random.Range(0f, clip.length);
-            source.Play();
-            return source;
-        }
-
-        /// <summary>
-        /// Base pitch per layer. The grounded bed sits slightly flat so it reads as a heavy
-        /// disc rather than a fan; the climb layer sits slightly sharp because a helicopter
-        /// pulling collective audibly bites. The in-flight layer is driven per-frame in
-        /// <see cref="UpdateMovementLayers"/> instead, since its whole job is to change.
-        /// </summary>
-        private void ApplyBasePitches()
-        {
-            if (rotorSource)
-                rotorSource.pitch = AH64StaticValues.rotorHoverPitch;
-            if (climbSource)
-                climbSource.pitch = AH64StaticValues.rotorClimbPitch;
+            load = loadVelocity = 0f;
+            startAttempts = 0;
+            retryAt = 0f;
+            collectiveWasHeld = false;
         }
 
         private void Update()
         {
-            if (rotorSource)
-                rotorSource.volume = AH64PlaytestConfig.RotorHoverVolume;
-
-            ApplyBasePitches();
-            UpdateMovementLayers();
-
+            if (Application.isBatchMode) return;
+            if (body && body.healthComponent && !body.healthComponent.alive)
+            {
+                StopRotor();
+                return;
+            }
+            if (PauseManager.isPaused || !AH64RotorBank.EnsureLoaded()) return;
+            if (!emitter)
+            {
+                emitter = new GameObject("AH64RotorWwise");
+                emitter.transform.SetParent(transform, false);
+                emitter.AddComponent<AkGameObj>();
+            }
+            UpdateMix();
+            EnsurePlaying();
+            CheckPlayback();
             bool jumpHeld = inputBank && inputBank.jump.down;
             if (jumpHeld && !collectiveWasHeld)
-                Util.PlaySound(collectiveChirp, gameObject);
+                Util.PlaySound("Play_captain_drone_quick_move", gameObject);
             collectiveWasHeld = jumpHeld;
         }
 
-        /// <summary>
-        /// Forward-speed layer targets horizontal velocity over the current move speed; climb layer
-        /// targets <see cref="AH64HoverController.AscentPitchWeight"/> (already 0…1-ish while climbing,
-        /// negative while settling — clamped here since settle shouldn't fade the layer back up).
-        /// Both ease with SmoothDamp so the mix doesn't snap on every input change.
-        /// </summary>
-        private void UpdateMovementLayers()
+        private void UpdateMix()
         {
-            float deltaTime = Time.deltaTime;
-
-            if (inFlightSource)
+            float speed = 0f;
+            if (motor && body && body.moveSpeed > 0.01f)
             {
-                float speedFactor = 0f;
-                if (motor && body && body.moveSpeed > 0.01f)
-                {
-                    Vector3 horizontalVelocity = motor.velocity;
-                    horizontalVelocity.y = 0f;
-                    speedFactor = Mathf.Clamp01(horizontalVelocity.magnitude / body.moveSpeed);
-                }
-
-                float targetVolume = speedFactor * AH64PlaytestConfig.RotorInFlightVolume;
-                inFlightSource.volume = Mathf.SmoothDamp(
-                    inFlightSource.volume, targetVolume, ref inFlightVolumeVelocity,
-                    AH64StaticValues.rotorLayerFadeTime, Mathf.Infinity, deltaTime);
-
-                //P1 fix (AUDIO_INVESTIGATION.md): this used to sweep 0.93->1.07 with speed, which
-                //let the chop rate wander independently of the bed and the visual rotor disc — two
-                //near-identical chops a fraction of a Hz apart beat against each other. Fixed pitch
-                //locks the chop rate instead of tying it to effort.
-                inFlightSource.pitch = AH64StaticValues.rotorInFlightPitch;
+                Vector3 velocity = motor.velocity;
+                velocity.y = 0f;
+                speed = Mathf.Clamp01(velocity.magnitude / body.moveSpeed);
             }
+            float climb = hoverController ? Mathf.Clamp01(hoverController.AscentPitchWeight) : 0f;
+            load = Mathf.SmoothDamp(load, Mathf.Max(speed, climb), ref loadVelocity,
+                AH64PlaytestConfig.RotorResponse, Mathf.Infinity, Time.deltaTime);
+            pitch = AH64PlaytestConfig.RotorPitch + AH64PlaytestConfig.RotorLoadPitch * load;
+            bool local = IsLocalPilot();
+            gain = Mathf.Clamp01(AH64PlaytestConfig.RotorHoverVolume
+                * Mathf.Pow(10f, AH64PlaytestConfig.RotorLoadGain * load / 20f));
+            if (!local) gain *= DistanceGain();
+            CheckResult(AkSoundEngine.SetGameObjectOutputBusVolume(
+                AkSoundEngine.GetAkGameObjectID(emitter), ulong.MaxValue, gain), "gain");
+            CheckResult(AkSoundEngine.SetRTPCValue("AH64_RotorPitch", 1200f * Mathf.Log(pitch, 2f), emitter), "pitch");
+            CheckResult(AkSoundEngine.SetRTPCValue("AH64_RotorSpatial", local ? 0f : 100f, emitter), "spatial mix");
+            // Wwise's lowpass scale is perceptual, not a frequency in Hz. Preserve the saved
+            // slider as an approximate tonal target; 20 kHz means no extra filtering.
+            float lowpass = Mathf.Clamp(Mathf.Log(20000f / AH64PlaytestConfig.RotorToneCutoff)
+                / Mathf.Log(20000f / 600f) * 60f, 0f, 60f);
+            CheckResult(AkSoundEngine.SetRTPCValue("AH64_RotorLowpass", lowpass, emitter), "tone");
+        }
 
-            if (climbSource)
+        private float DistanceGain()
+        {
+            float nearest = float.PositiveInfinity;
+            foreach (AkAudioListener listener in AkAudioListener.DefaultListeners.ListenerList)
+                if (listener && listener.isActiveAndEnabled)
+                    nearest = Mathf.Min(nearest, Vector3.Distance(transform.position, listener.transform.position));
+            // Native attenuation is disabled in the bank to avoid applying distance twice.
+            float fade = 1f - Mathf.InverseLerp(AH64StaticValues.rotorHoverMinDistance,
+                AH64StaticValues.rotorHoverMaxDistance, nearest);
+            return fade * fade;
+        }
+
+        private bool IsLocalPilot()
+        {
+            if (!body) return false;
+            foreach (LocalUser user in LocalUserManager.readOnlyLocalUsersList)
+                if (user.cachedBody == body) return true;
+            return false;
+        }
+
+        private void CheckResult(AKRESULT result, string operation)
+        {
+            if (result == AKRESULT.AK_Success || mixErrorLogged) return;
+            mixErrorLogged = true;
+            Log.Error($"AH-64 rotor {operation} failed: {result}.");
+        }
+
+        private void EnsurePlaying()
+        {
+            if (playingId != 0 || startAttempts >= 3 || Time.unscaledTime < retryAt) return;
+            startAttempts++;
+            retryAt = Time.unscaledTime + 3f;
+            playingId = AkSoundEngine.PostEvent("Play_AH64_Rotor", emitter,
+                (uint)(AkCallbackType.AK_EndOfEvent | AkCallbackType.AK_EnableGetSourcePlayPosition),
+                OnAudioEvent, null);
+            diagnosticCount = 0;
+            previousPosition = -1;
+            diagnosticAt = Time.unscaledTime + 0.75f;
+            if (playingId == 0) Log.Error($"AH-64 rotor event failed to start (attempt {startAttempts}).");
+            else Log.Info($"AH-64 rotor Wwise candidate C started: id={playingId}, local={IsLocalPilot()}, gain={gain:F3}.");
+        }
+
+        private void OnAudioEvent(object cookie, AkCallbackType type, AkCallbackInfo info)
+        {
+            AkEventCallbackInfo ended = info as AkEventCallbackInfo;
+            if (type != AkCallbackType.AK_EndOfEvent || ended == null || ended.playingID != playingId) return;
+            Log.Warning($"AH-64 rotor loop ended unexpectedly: id={playingId}.");
+            playingId = 0;
+        }
+
+        private void CheckPlayback()
+        {
+            if (playingId == 0 || diagnosticCount >= 3 || Time.unscaledTime < diagnosticAt
+                || !Application.isFocused || gain <= 0f) return;
+            diagnosticAt = Time.unscaledTime + 0.75f;
+            diagnosticCount++;
+            AKRESULT result = AkSoundEngine.GetSourcePlayPosition(playingId, out int position);
+            Log.Info($"AH-64 rotor playback: id={playingId}, query={result}, positionMs={position}, "
+                + $"previousMs={previousPosition}, gain={gain:F3}, pitch={pitch:F3}.");
+            if (result != AKRESULT.AK_Success || position == previousPosition)
+                Log.Warning("AH-64 rotor playback time is unavailable or stationary; capture ah64_audio_status while playing.");
+            previousPosition = position;
+        }
+
+        [ConCommand(commandName = "ah64_audio_status", flags = ConVarFlags.None,
+            helpText = "Print AH-64 rotor Wwise playback position and current mix.")]
+        private static void AudioStatus(ConCommandArgs args)
+        {
+            AH64FlightAudio[] rotors = FindObjectsOfType<AH64FlightAudio>();
+            Debug.Log($"AH-64 audio: rotors={rotors.Length}, paused={PauseManager.isPaused}.");
+            foreach (AH64FlightAudio rotor in rotors)
             {
-                float climbFactor = hoverController ? Mathf.Clamp01(hoverController.AscentPitchWeight) : 0f;
-                float targetVolume = climbFactor * AH64PlaytestConfig.RotorClimbVolume;
-                climbSource.volume = Mathf.SmoothDamp(
-                    climbSource.volume, targetVolume, ref climbVolumeVelocity,
-                    AH64StaticValues.rotorLayerFadeTime, Mathf.Infinity, deltaTime);
+                AKRESULT result = AkSoundEngine.GetSourcePlayPosition(rotor.playingId, out int position);
+                Debug.Log($"AH-64 rotor: id={rotor.playingId}, query={result}, positionMs={position}, "
+                    + $"gain={rotor.gain:F3}, pitch={rotor.pitch:F3}, local={rotor.IsLocalPilot()}.");
             }
         }
 
-        private void OnDisable()
-        {
-            StopRotor();
-        }
-
+        private void OnDisable() { StopRotor(); }
         private void OnDestroy()
         {
             StopRotor();
+            if (emitter) Destroy(emitter);
         }
 
         private void StopRotor()
         {
-            if (rotorSource)
-                rotorSource.Stop();
-            if (inFlightSource)
-                inFlightSource.Stop();
-            if (climbSource)
-                climbSource.Stop();
+            uint stopped = playingId;
+            playingId = 0; // End callback must not classify an intentional stop as a failure.
+            if (stopped != 0) AkSoundEngine.StopPlayingID(stopped);
         }
     }
 }

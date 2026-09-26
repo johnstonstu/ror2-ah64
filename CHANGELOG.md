@@ -8,14 +8,20 @@ presents to players as a lobby rejection.
 
 ---
 
-## 1.1.0 (unreleased visual staging)
+## 1.1.0 (unreleased combined playtest)
 
-This isolated checkpoint contains visual work only. The separate 1.1 audio and
-hover changes still need integration; this is not the final release candidate.
+Combined visual, Wwise audio and hover candidate. In-game playtesting is pending.
 
 - Added permanent two-level inboard missile racks, recessed engine openings,
   tapered cowls/wing roots, and rotor hub detail while preserving attachment points.
 - Tidied canopy/intake clearance and aligned both main landing-gear supports to their wheel hubs.
+- Extended the tail assembly and raised the tail rotor to clear the main rotor,
+  upper fin and stabilator; a build-time mesh sweep guard checks regressions.
+- Integrated the Wwise rotor bank with live volume, pitch, tone and response controls;
+  playback diagnostics help verify the loop in the game.
+- XM301 wind-up/down has its own emitter and volume control.
+- Smoke Backflip rotates nose-up first; fall-damage immunity and external vertical
+  motion are preserved. Equipment flight and lift volumes remain effective.
 - Added selectable Desert and Arctic paint schemes with matching lobby previews.
 - Weapon heat follows the selected skin after asynchronous skin application.
 - Rotor wash now follows terrain on each client; blur/new wash respect cloak,

@@ -51,8 +51,12 @@ namespace AH64.Survivors
 
         private static ConfigEntry<bool> rotorWashEnabled;
         private static ConfigEntry<float> rotorHoverVolume;
-        private static ConfigEntry<float> rotorInFlightVolume;
-        private static ConfigEntry<float> rotorClimbVolume;
+        private static ConfigEntry<float> gatlingSpoolVolume;
+        private static ConfigEntry<float> rotorPitch;
+        private static ConfigEntry<float> rotorLoadPitch;
+        private static ConfigEntry<float> rotorLoadGain;
+        private static ConfigEntry<float> rotorResponse;
+        private static ConfigEntry<float> rotorToneCutoff;
 
         internal static float BaseMoveSpeed => baseMoveSpeed.Value;
         internal static float Acceleration => acceleration.Value;
@@ -84,8 +88,12 @@ namespace AH64.Survivors
         internal static float DashRampFraction => dashRampFraction.Value;
         internal static bool RotorWashEnabled => rotorWashEnabled.Value;
         internal static float RotorHoverVolume => rotorHoverVolume.Value;
-        internal static float RotorInFlightVolume => rotorInFlightVolume.Value;
-        internal static float RotorClimbVolume => rotorClimbVolume.Value;
+        internal static float GatlingSpoolVolume => gatlingSpoolVolume.Value;
+        internal static float RotorPitch => rotorPitch.Value;
+        internal static float RotorLoadPitch => rotorLoadPitch.Value;
+        internal static float RotorLoadGain => rotorLoadGain.Value;
+        internal static float RotorResponse => rotorResponse.Value;
+        internal static float RotorToneCutoff => rotorToneCutoff.Value;
 
         internal static void Init(ConfigFile config)
         {
@@ -171,20 +179,29 @@ namespace AH64.Survivors
 
             rotorWashEnabled = config.Bind(Presentation, "Low-hover rotor wash", true,
                 "Enable restrained rotor wash while near the ground, including stationary hover.");
-            //Clamp raised 0.40 -> 1.0 per the 2026-08-03 audio investigation: the gain-matched bed
-            //(0.75) cannot reach its correct level under the old clamp.
-            rotorHoverVolume = Bind(config, Presentation, "Grounded rotor volume", AH64StaticValues.rotorHoverVolume, 0f, 1.0f,
-                "Volume of the CC0 grounded rotor bed. It should sit under combat, not dominate it.");
-            rotorInFlightVolume = Bind(config, Presentation, "In-flight rotor volume", AH64StaticValues.rotorInFlightMaxVolume, 0f, 1.0f,
-                "Peak volume of the fuller engine+rotor layer, reached at full horizontal speed.");
-            rotorClimbVolume = Bind(config, Presentation, "Climb rotor volume", AH64StaticValues.rotorClimbMaxVolume, 0f, 1.0f,
-                "Peak volume of the collective/climb layer, reached at full ascent intent.");
+            //A new key avoids inheriting the much louder gain used with the old quiet recording.
+            rotorHoverVolume = Bind(config, Presentation, "Rotor volume", AH64StaticValues.rotorHoverVolume, 0f, 1f,
+                "Rotor bed volume before master/SFX. The local pilot hears it without distance fade. Movement adds up to 2 dB; start at 0.45.");
+            gatlingSpoolVolume = Bind(config, Presentation, "Gatling spool volume", AH64StaticValues.gatlingSpoolVolume, 0f, 1f,
+                "XM301 wind-up/down volume only. 0.6 is about 4.4 dB quieter; gunfire volume is unchanged.");
+            rotorPitch = Bind(config, Presentation, "Rotor pitch", AH64StaticValues.rotorHoverPitch, 0.7f, 1.2f,
+                "Base playback speed/pitch. Lower is a slower, heavier chop. 1 is the recorded speed.");
+            rotorLoadPitch = Bind(config, Presentation, "Rotor movement pitch change",
+                AH64StaticValues.rotorFullLoadPitch - AH64StaticValues.rotorHoverPitch, 0f, 0.12f,
+                "Pitch added at full movement or climb. Zero keeps rotor speed constant.");
+            rotorLoadGain = Bind(config, Presentation, "Rotor movement boost dB", AH64StaticValues.rotorFullLoadGainDb, 0f, 6f,
+                "Extra rotor loudness at full movement or climb. Unity caps final source gain at 1.");
+            rotorResponse = Bind(config, Presentation, "Rotor response seconds", AH64StaticValues.rotorLayerFadeTime, 0.1f, 2f,
+                "How gradually rotor pitch and volume respond to movement. Higher is smoother.");
+            rotorToneCutoff = Bind(config, Presentation, "Rotor high-frequency cutoff Hz", AH64StaticValues.rotorToneCutoff, 600f, 20000f,
+                "Approximate tonal target mapped to Wwise low-pass. Lower removes hiss; 20000 adds no filtering.");
 
             AH64RiskOfOptions.Register(
                 baseMoveSpeed, acceleration, radarFacingSpeedBonus,
                 chaingunDamage, chaingunMaxSpread, chaingunBloom, chaingunReload, chaingunSplashDamage, chaingunSplashRadius, chaingunSplashVfxScale,
                 dashCooldown, dashPeakSpeed, dashClimbHeight, dashRampFraction,
-                rotorWashEnabled, rotorHoverVolume, rotorInFlightVolume, rotorClimbVolume);
+                rotorWashEnabled, rotorHoverVolume, gatlingSpoolVolume,
+                rotorPitch, rotorLoadPitch, rotorLoadGain, rotorResponse, rotorToneCutoff);
         }
 
         private static ConfigEntry<float> Bind(ConfigFile config, string section, string name, float value, float min, float max, string description)

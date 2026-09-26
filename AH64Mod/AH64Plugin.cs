@@ -7,6 +7,7 @@ using System.Security;
 using System.Security.Permissions;
 
 [module: UnverifiableCode]
+[assembly: HG.Reflection.SearchableAttribute.OptIn]
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
 
 namespace AH64

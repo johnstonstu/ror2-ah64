@@ -24,6 +24,11 @@ public static class AH64VisualStageBuilder
             if (AH64BuildSafety.ProfileDeploymentRequested)
                 throw new InvalidOperationException("Visual staging forbids profile deployment.");
             var baseline = CaptureAnchors(AssetDatabase.LoadAssetAtPath<GameObject>(BundleRoot + "mdlAH64.prefab"));
+            // Approved tail extension moves only this cosmetic item anchor. All gameplay
+            // anchors remain unchanged; use an absolute target so repeated builds are safe.
+            Matrix4x4 tailTip = baseline["TailTip"];
+            tailTip.SetColumn(3, new Vector4(0f, 1.16f, -3.75f, 1f));
+            baseline["TailTip"] = tailTip;
             string error = AH64Phase4Builder.RefreshPrefabsFromFbx();
             if (error != null) throw new InvalidOperationException(error);
             VerifyPrefab(AssetDatabase.LoadAssetAtPath<GameObject>(BundleRoot + "mdlAH64.prefab"), baseline);

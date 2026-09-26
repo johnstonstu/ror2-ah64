@@ -126,6 +126,17 @@ New-Item -ItemType Directory -Force -Path $bundleDest | Out-Null
 Copy-Item $UnityBundle (Join-Path $bundleDest 'ah64') -Force
 Ok ("assetbundle ah64 ({0:N2} MB)" -f ((Get-Item $UnityBundle).Length / 1MB))
 
+# Validate the independently authored Wwise bank before staging. Copy only this
+# bank: shipping our authoring Init.bnk would conflict with the game's hierarchy.
+& (Join-Path $PSScriptRoot 'build-rotor-bank.ps1') -ValidateOnly
+$rotorBank = Join-Path $RepoRoot 'Art\Wwise\AH64Audio\GeneratedSoundBanks\Windows\AH64Rotor.bnk'
+$bankDest = Join-Path $BuildDir 'plugins\SoundBanks'
+New-Item -ItemType Directory -Force -Path $bankDest | Out-Null
+Copy-Item -LiteralPath $rotorBank -Destination (Join-Path $bankDest 'AH64Rotor.bnk') -Force
+if (Get-ChildItem (Join-Path $BuildDir 'plugins') -Recurse -File -Filter Init.bnk) {
+    Fail 'Build/plugins contains Init.bnk. Never ship a replacement game initialization bank.'
+}
+
 # --- 5. stage ----------------------------------------------------------------
 # Thunderstore requires manifest/README/icon/plugins at the ZIP ROOT with no
 # enclosing directory, so stage an exact image of the zip and compress its
@@ -173,7 +184,7 @@ try {
 } finally { $archive.Dispose() }
 
 foreach ($required in @('manifest.json', 'README.md', 'icon.png', 'CHANGELOG.md',
-                        'plugins/AH64.dll', 'plugins/AssetBundles/ah64')) {
+                        'plugins/AH64.dll', 'plugins/AssetBundles/ah64', 'plugins/SoundBanks/AH64Rotor.bnk')) {
     if ($entries -notcontains $required) {
         Fail "zip is missing '$required'.`n      Entries found: $($entries -join ', ')"
     }

@@ -9,8 +9,7 @@ sub-agent work, local staging and user playtest. No push or public release yet.
 - Worktree: `C:\Users\stuwj\.codex\worktrees\ah64-visuals\ror2-ah64`.
 - Base: `6a184d77bc1b7a3d406dc43222fd2fac1c3cb85a` (`dev/1.1.0` committed baseline).
 - Primary checkout and its uncommitted audio/gameplay work remain untouched.
-- Audio/hover fixes from the other agent are NOT included in this branch yet.
-  Integrate that agent's finished checkpoint before calling this a 1.1 release candidate.
+- Finished audio/hover sources were integrated read-only from the primary checkout on 2026-09-26.
 - Never run tooling from or export to the retired `ror2-chopper` tree.
 
 ## Build safety
@@ -42,7 +41,7 @@ It deliberately does not regenerate audio or install a profile.
 ## Acceptance before user test
 
 - Source and built bundle have 25 meshes, one material/submesh each, exact ChildLocator mapping.
-- Attachment/muzzle anchor transforms and hurtbox sizes unchanged from baseline.
+- Muzzle anchors and hurtboxes unchanged; cosmetic TailTip anchor follows the approved tail extension.
 - Gatling correction and forward spin axis intact; persistent racks survive empty ammunition.
 - Imported vertices below 15,000 (baseline documented as 7,496).
 - All three skins distinguishable, correct in lobby and gameplay, no shared material contamination.
@@ -70,12 +69,7 @@ It deliberately does not regenerate audio or install a profile.
 - Missile depletion timing/networking remains intentionally unchanged and is
   documented in VISUAL-LAUNCH-REVIEW.md. Permanent empty rack geometry is implemented.
 
-Next: integrate the sound agent's finished checkpoint, reconcile version/changelog
-and builder changes while preserving no-deploy defaults, then build one combined
-1.1 candidate for Stuart's fresh-profile playtest. The visual-only ZIP can be used
-for isolated art checks, but must not replace the audio agent's active test profile.
-
-Visual-only ZIP SHA-256: D38E0D987AF35CEB6799A80F8ED23D89B881D7B68C68DDE89B144E17AD183CCC
+The initial checkpoint above was visual-only. The combined checkpoint below supersedes its package status.
 
 ## Visual review follow-up
 
@@ -88,3 +82,34 @@ wheel positions and overall bounds are unchanged. The two braces previously ende
 0.34 units ahead of the wheels. All 39 FBX transforms and the 25-mesh contract still
 pass the round-trip checks. Updated multi-angle Arctic previews are named
 `dist/visual-review/inspect-arctic-*.png`; junction-before/after show the canopy fix.
+## Combined playtest checkpoint
+
+Finished audio/hover sources and Wwise authoring assets were copied from the primary
+checkout without changing it. Packaging validates and includes only AH64Rotor.bnk,
+never Init.bnk. Both build systems retain opt-in profile deployment.
+
+Tail assembly extended 0.80 authoring units; tail rotor, axle and gearbox raised
+0.10. The cosmetic TailTip anchor moves with the tail; all other attachment/muzzle
+anchors and collider dimensions stay fixed. Imported FBX preserves all 39 names,
+parents and material slots; 36 object transforms unchanged, three approved tail
+transforms moved. No renderer or vertex-count increase from these corrections.
+
+The continuous main/tail mesh and blur-envelope minimum gap is 0.0976 units, above
+the 0.05 guard. Main sweep/fin margin passes the continuous test. Mesh intersections
+were absent across 72 sampled phases per rotor. Tail/static continuous clearance
+is conservative/inconclusive near attached hub hardware; sampled checks pass.
+The original model fails the validator, demonstrating the collision regression check.
+
+The user must verify skins/lobby, overlays, rotor/gear clearance in motion, empty
+racks, weapons, hover/external lifts, rotor sound and volume 0 vs 0.30 in game.
+Multiplayer/late-join missile-depletion presentation remains a known follow-up.
+No push or public release authorized.
+Combined validation: C# 22 existing warnings / 0 errors; visual Unity bundle audit PASS;
+audio bundle PCM/loop seam audit PASS; Wwise bank generation/format/events PASS;
+package freshness, version and required entries PASS. Installed the exact ZIP's
+three payload files into demo time new, checked against staged hashes. Configuration
+was unchanged; previous mod/config backed up under dist/combined-backup-20260926-141247.
+ZIP SHA256: 1C424D37A6562D8701788CDCC35B3C7AADA5DB7C5D07E1459270EAF37A150F8F.
+DLL SHA256: AEF32494DBD29A08AE599DDC4C125585288B8E9A222766BB6638E59A29DBB9FD.
+Bundle SHA256: D11693B149A55DEEB1F0E91D88BF280295F3FDC2C55ECA412BFA24CED8207130.
+Bank SHA256: DC9C5018207019BA8010190D7024479AAC2047B0F00CAA8FE05FC0A705AEC0C3.

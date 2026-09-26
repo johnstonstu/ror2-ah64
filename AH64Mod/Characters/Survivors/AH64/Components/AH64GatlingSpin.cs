@@ -59,6 +59,8 @@ namespace AH64.Survivors.Components
         private bool spoolUpPlayed;
         private bool gatlingEquipped;
         private bool appliedOnce;
+        private GameObject spoolEmitter;
+        private bool warnedSpoolAudio;
 
         /// <summary>Set by <see cref="SkillStates.FireGatling"/> on every round fired.</summary>
         public void NotifyFiring()
@@ -150,6 +152,8 @@ namespace AH64.Survivors.Components
             if (!equipped)
             {
                 StopLoop();
+                if (spoolEmitter)
+                    AkSoundEngine.StopAll(spoolEmitter);
                 currentRpm = 0f;
                 firing = false;
                 spoolUpPlayed = false;
@@ -174,7 +178,7 @@ namespace AH64.Survivors.Components
             {
                 if (!spoolUpPlayed)
                 {
-                    Util.PlaySound(SpoolUpSound, gameObject);
+                    PlaySpoolSound(SpoolUpSound);
                     spoolUpPlayed = true;
                 }
                 currentRpm = Mathf.Min(MaxRpm, currentRpm + SpoolUpRpmPerSecond * dt);
@@ -184,7 +188,7 @@ namespace AH64.Survivors.Components
                 if (spoolUpPlayed && currentRpm > 0f)
                 {
                     //Wind-down is played once, at release, not once per frame of decay.
-                    Util.PlaySound(SpoolDownSound, gameObject);
+                    PlaySpoolSound(SpoolDownSound);
                     spoolUpPlayed = false;
                 }
                 currentRpm = Mathf.Max(0f, currentRpm - SpoolDownRpmPerSecond * dt);
@@ -217,6 +221,35 @@ namespace AH64.Survivors.Components
             loopPlaying = false;
         }
 
+        private void PlaySpoolSound(string sound)
+        {
+            if (!spoolEmitter)
+            {
+                // Output-bus gain affects every sound on an emitter. Keep transitions off
+                // the body emitter so shots, impacts and the firing loop retain their mix.
+                spoolEmitter = new GameObject("AH64GatlingSpoolAudio");
+                spoolEmitter.transform.SetParent(transform, false);
+                spoolEmitter.AddComponent<AkGameObj>();
+            }
+            AKRESULT result = AkSoundEngine.SetGameObjectOutputBusVolume(
+                AkSoundEngine.GetAkGameObjectID(spoolEmitter), ulong.MaxValue,
+                Mathf.Clamp01(AH64PlaytestConfig.GatlingSpoolVolume));
+            if (result != AKRESULT.AK_Success)
+            {
+                if (!warnedSpoolAudio)
+                {
+                    warnedSpoolAudio = true;
+                    Log.Warning($"Cannot set gatling spool gain: {result}; skipping transition sound.");
+                }
+                return;
+            }
+            if (Util.PlaySound(sound, spoolEmitter) == 0 && !warnedSpoolAudio)
+            {
+                warnedSpoolAudio = true;
+                Log.Warning($"Cannot post gatling transition sound {sound}.");
+            }
+        }
+
         /// <summary>
         /// Unconditional stop. Death, despawn and stage transitions all route through here,
         /// and a Wwise loop that survives its emitter keeps playing for the rest of the run.
@@ -224,9 +257,17 @@ namespace AH64.Survivors.Components
         private void OnDisable()
         {
             StopLoop();
+            if (spoolEmitter)
+                AkSoundEngine.StopAll(spoolEmitter);
             currentRpm = 0f;
             firing = false;
             spoolUpPlayed = false;
+        }
+
+        private void OnDestroy()
+        {
+            if (spoolEmitter)
+                Destroy(spoolEmitter);
         }
     }
 }
