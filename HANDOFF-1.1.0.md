@@ -1,5 +1,10 @@
 # AH-64 1.1.0 — local dev handoff
 
+> **Next task / current status:** Read [HANDOFF-1.1-WEAPON-MODELS.md](HANDOFF-1.1-WEAPON-MODELS.md).
+> It identifies the accepted combined build and the existing staging worktree.
+> Continue weapon-model and live lobby-preview work there, not in the live checkout.
+
+
 Updated 2026-09-26 for the next voice playthrough/review chat. Read `AGENTS.md`
 first. This file's current-test sections supersede the older `AH64_HANDOFF.md`
 release status and the historical notes explicitly labeled below.
