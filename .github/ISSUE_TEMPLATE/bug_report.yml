@@ -7,17 +7,22 @@ body:
     attributes:
       value: |
         Thanks for reporting. The single most useful thing you can attach is the
-        **BepInEx log** — most crashes and "it didn't spawn / didn't load" bugs
-        are unreadable without it. Where to find it:
+        **BepInEx log**. Most bugs can't be diagnosed without it. Where to find it:
 
         - **r2modman / Thunderstore Mod Manager:** Settings → *Browse profile folder* → `BepInEx/LogOutput.log`
         - **Manual install:** `<game>/BepInEx/LogOutput.log`
+
+        Grab it **right after the bug happens, before relaunching the game**.
+        Each launch overwrites it.
+
+        Before filing, please check the [open issues](https://github.com/johnstonstu/ror2-ah64/issues)
+        in case it's already reported. If it is, a 👍 or a comment with your log helps just as much.
 
   - type: input
     id: version
     attributes:
       label: AH-64 version
-      description: Shown on the Thunderstore page and in the mod manager.
+      description: Exact version from your mod manager's installed list (e.g. `1.0.0`). "Latest" makes it hard to tell whether a fix has shipped.
       placeholder: "1.0.0"
     validations:
       required: true
@@ -26,7 +31,7 @@ body:
     id: what-happened
     attributes:
       label: What happened
-      description: What went wrong, and what you expected instead.
+      description: What went wrong, and what you expected instead. Screenshots or clips are welcome.
     validations:
       required: true
 
@@ -42,33 +47,79 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: stage
+    attributes:
+      label: Stage / map
+      description: Where it happened. Many movement bugs are tied to a specific stage or object (jump pads, drops, teleporters).
+      placeholder: "e.g. Commencement (moon) - pillar jump pad"
+    validations:
+      required: true
+
   - type: dropdown
-    id: context
+    id: players
     attributes:
       label: Singleplayer or multiplayer
-      description: Networking bugs often only show up as a client. If multiplayer, note whether you were host or client in "What happened".
       options:
         - Singleplayer
-        - Multiplayer - I was host
-        - Multiplayer - I was a client
+        - Multiplayer
         - Not sure
     validations:
       required: true
+
+  - type: dropdown
+    id: network-role
+    attributes:
+      label: Host or client
+      description: Networking bugs often only show up for clients. Pick "Singleplayer" if you played alone.
+      options:
+        - Singleplayer (not applicable)
+        - I was the host
+        - I was a client
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: profile-code
+    attributes:
+      label: r2modman profile code
+      description: |
+        The fastest way to share your exact mod list. In r2modman / Thunderstore Mod Manager:
+        **Settings → Profile → Export profile as code**, then paste the code here.
+      placeholder: "01a0ac13-ae2f-8532-b72b-8031d2dfccc6"
+    validations:
+      required: false
 
   - type: textarea
     id: other-mods
     attributes:
       label: Other mods installed
-      description: Paste your mod list, or say "AH-64 and its dependencies only". Conflicts with other mods are a common cause.
+      description: Only needed if you didn't share a profile code above. Paste your mod list, or say "AH-64 and its dependencies only".
       placeholder: "AH-64 only (plus required dependencies)"
     validations:
-      required: true
+      required: false
 
+  # No `render:` on this field: GitHub disables file attachments on textareas
+  # that set it, which would make the drag-and-drop instruction a lie.
   - type: textarea
     id: log
     attributes:
-      label: BepInEx log
-      description: Drag `LogOutput.log` into this box to attach it, or paste the relevant lines. Look for lines tagged `AH64` or `Error`.
-      render: text
+      label: BepInEx log (LogOutput.log)
+      description: |
+        **Drag `LogOutput.log` into this box** to attach it. If attaching fails, paste the
+        lines around the problem (search for `AH64`, `Error` or `Exception`) inside a
+        ```` ``` ```` code block.
+      placeholder: Drag LogOutput.log here
     validations:
       required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I attached my `LogOutput.log`, or explained above why I can't.
+          required: false
+        - label: I checked the open issues and this isn't already reported.
+          required: false

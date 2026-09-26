@@ -1,10 +1,13 @@
-# Force reporters through the bug-report form so reports arrive with a log and
-# repro steps, instead of a one-line "it's broken".
+# Force reporters through the forms so reports arrive with a log and repro
+# steps, instead of a one-line "it's broken".
 blank_issues_enabled: false
 contact_links:
-  - name: Feature idea or general feedback
-    url: https://github.com/johnstonstu/ror2-ah64/discussions
-    about: Balance thoughts, kit suggestions, or anything that isn't a bug. (Falls back to the Thunderstore comments if Discussions is off.)
-  - name: Thunderstore page
-    url: https://thunderstore.io/c/riskofrain2/p/JohnstonStu/AH64/
-    about: Quick comments and questions can also go on the Thunderstore package page.
+  - name: Questions and general chat
+    url: https://github.com/johnstonstu/ror2-ah64/discussions/categories/q-a
+    about: How does a skill work, is this intended, is it compatible with X? Ask in Discussions.
+  - name: Balance and feel feedback
+    url: https://github.com/johnstonstu/ror2-ah64/discussions/categories/general
+    about: Share how AH-64 plays, what you love and what feels off.
+  - name: Ideas
+    url: https://github.com/johnstonstu/ror2-ah64/discussions/categories/ideas
+    about: Loose ideas to kick around before they become a feature request.
