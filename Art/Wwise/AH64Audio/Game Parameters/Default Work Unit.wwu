@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WwiseDocument Type="WorkUnit" ID="{1EA641DD-1D75-4624-93E0-99E408F80234}" SchemaVersion="119">
+	<GameParameters>
+		<WorkUnit Name="Default Work Unit" ID="{1EA641DD-1D75-4624-93E0-99E408F80234}" PersistMode="Standalone">
+			<ChildrenList>
+				<GameParameter Name="AH64_RotorPitch" ID="{4163DAB6-F61E-44BD-AC36-B4C0B5A9209B}">
+					<PropertyList>
+						<Property Name="InitialValue" Type="Real64" Value="0"/>
+						<Property Name="Max" Type="Real64" Value="600"/>
+						<Property Name="Min" Type="Real64" Value="-700"/>
+					</PropertyList>
+				</GameParameter>
+				<GameParameter Name="AH64_RotorLowpass" ID="{649D6177-EAB1-48CB-A032-350BA97B0157}">
+					<PropertyList>
+						<Property Name="InitialValue" Type="Real64" Value="0"/>
+					</PropertyList>
+				</GameParameter>
+				<GameParameter Name="AH64_RotorSpatial" ID="{B847448E-9DDF-45CF-B5A9-B3F29CEA0121}">
+					<PropertyList>
+						<Property Name="InitialValue" Type="Real64" Value="0"/>
+					</PropertyList>
+				</GameParameter>
+			</ChildrenList>
+		</WorkUnit>
+	</GameParameters>
+</WwiseDocument>

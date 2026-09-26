@@ -7,6 +7,7 @@ using System.Security;
 using System.Security.Permissions;
 
 [module: UnverifiableCode]
+[assembly: HG.Reflection.SearchableAttribute.OptIn]
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
 
 namespace AH64
@@ -26,7 +27,7 @@ namespace AH64
         //BepInEx 5 requires System.Version format: major.minor[.build[.revision]] — NOT semver
         //letters. A suffix like "1.0.0-rc1" silently skips the plugin while still registering
         //achievements, which presents as a hang at 99%.
-        public const string MODVERSION = "1.0.1";
+        public const string MODVERSION = "1.1.0";
 
         public static AH64Plugin instance;
 

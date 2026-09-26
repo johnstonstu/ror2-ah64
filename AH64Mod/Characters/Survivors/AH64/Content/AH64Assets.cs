@@ -30,13 +30,12 @@ namespace AH64.Survivors
 
         /// <summary>
         /// Set by <c>AH64Survivor.AddPrimarySkills</c>. <see cref="Components.AH64GatlingSpin"/>
-        /// compares the equipped primary against this to decide which barrel to show, so it
+        /// compares the equipped primary against this to drive its spool; presentation also uses
+        /// exact SkillDef identity to select the meshes, so the definitions
         /// has to be reachable from a component that has no reference to the survivor class.
         /// </summary>
         public static RoR2.Skills.SkillDef gatlingSkillDef;
-        public static AudioClip rotorHoverLoop;
-        public static AudioClip rotorInFlightLoop;
-        public static AudioClip rotorClimbLoop;
+        public static RoR2.Skills.SkillDef cannonSkillDef;
 
         //projectiles
         public static GameObject hellfireProjectilePrefab;
@@ -75,15 +74,11 @@ namespace AH64.Survivors
             }
         }
 
-        /// <summary>
-        /// MuzzleflashSmokeRing moved out of the legacy Resources tree. The legacy path is kept first
-        /// so this still resolves if it ever comes back; the addressable is what actually hits today.
-        /// LoadVanilla only logs when every path misses, so the dead entry costs nothing.
-        /// </summary>
+        // Verified against the installed addressables catalog. The Assets/.../MuzzleFlashes
+        // string is its internal ID, not its address key; loading that ID prints InvalidKeyException.
         private static readonly string[] SmokeRingPaths =
         {
-            "Prefabs/Effects/MuzzleFlashes/MuzzleflashSmokeRing",
-            "Assets/RoR2/Base/Common/VFX/MuzzleFlashes/MuzzleflashSmokeRing.prefab"
+            "RoR2/Base/Common/VFX/MuzzleflashSmokeRing.prefab"
         };
 
         /// <summary>
@@ -343,38 +338,32 @@ namespace AH64.Survivors
 
         private static GameObject LoadAddressable(string addressablePath)
         {
+            // Optional fallback addresses may not exist in every game build. Check before
+            // loading so a normal miss does not make Addressables emit a Unity exception.
+            bool located = false;
+            foreach (var locator in Addressables.ResourceLocators)
+                if (locator.Locate(addressablePath, typeof(GameObject), out var locations)
+                    && locations != null && locations.Count > 0)
+                {
+                    located = true;
+                    break;
+                }
+            if (!located) return null;
+
             try
             {
-                var handle = Addressables.LoadAssetAsync<GameObject>(addressablePath);
-                GameObject loaded = handle.WaitForCompletion();
-                if (loaded)
-                    return loaded;
+                return Addressables.LoadAssetAsync<GameObject>(addressablePath).WaitForCompletion();
             }
-            catch (System.Exception)
+            catch (System.Exception error)
             {
-                //InvalidKeyException is expected for several catalog paths on this install
+                Log.Error($"AH-64 could not load catalog asset {addressablePath}: {error}");
+                throw;
             }
-
-            return null;
         }
 
         public static void Init(AssetBundle assetBundle)
         {
             _assetBundle = assetBundle;
-            rotorHoverLoop = _assetBundle.LoadAsset<AudioClip>("sfxAH64RotorHoverGrounded");
-            if (!rotorHoverLoop)
-                Log.Warning("Approved grounded rotor hover clip was not found in the ah64 bundle; flight audio will stay silent.");
-
-            //Movement layers: fade in on top of the grounded bed above. Missing either is non-fatal —
-            //AH64FlightAudio just skips the layer and keeps the grounded bed.
-            rotorInFlightLoop = _assetBundle.LoadAsset<AudioClip>("sfxAH64RotorInFlight");
-            if (!rotorInFlightLoop)
-                Log.Warning("Rotor in-flight layer clip was not found in the ah64 bundle; forward-speed layer will stay silent.");
-
-            rotorClimbLoop = _assetBundle.LoadAsset<AudioClip>("sfxAH64RotorClimb");
-            if (!rotorClimbLoop)
-                Log.Warning("Rotor climb layer clip was not found in the ah64 bundle; collective layer will stay silent.");
-
             //effects must exist before projectiles: the rockets' impact explosions reference them
             CreateEffects();
 
@@ -424,7 +413,7 @@ namespace AH64.Survivors
             if (!hellfireMuzzleFlashEffect)
                 hellfireMuzzleFlashEffect = _assetBundle.LoadEffect("AH64HellfireMuzzleFlash", true);
 
-            dashThrusterEffect = LoadVanilla(SmokeRingPaths);
+            dashThrusterEffect = hydraMuzzleFlashEffect;
 
             //Must be built here, not lazily on first hover: an EffectDef is only picked up while the
             //ContentPack is still being assembled.

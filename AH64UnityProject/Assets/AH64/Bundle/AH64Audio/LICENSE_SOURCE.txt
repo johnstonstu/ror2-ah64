@@ -1,4 +1,30 @@
-AH-64 GROUNDED ROTOR HOVER BED
+AH-64 1.1 DEVELOPMENT ROTOR (2026-09-26)
+
+Runtime asset: sfxAH64RotorHoverGrounded.wav
+Title: Helicopter Sounds
+Creator: aquinn
+License: CC0, verified on the original source page 2026-09-26
+Source: https://opengameart.org/content/helicopter-sounds
+Original download: https://opengameart.org/sites/default/files/helicopter_0.mp3
+Prepared loop: https://github.com/johnstonstu/Dust-Front/blob/main/assets/audio/rotor_loop.wav
+Git blob: 518b52baf94acde3facc514b1f9239ae069915ab
+SHA-256: BD70EB8AE5A472018AB75F3212395826B01E07BBFCB5EBECB29952B943FC6B36
+
+Dust Front cropped a steady segment, normalized and crossfaded it for looping.
+Original preserved at Art/Audio/rotor-aquinn-original.wav (outside Unity).
+Candidate B, 2026-09-26: tools/prepare_rotor.py applies a 35 Hz rumble cut,
+broad +6 dB low shelf and gentle 3.5 kHz treble rolloff, then normalizes the
+peak to -1 dBFS. No added pulse train; natural blade timing is preserved.
+Prepared SHA-256: DA89EE5B3EE0CBC602506BBCFA393AFAC69E58BEA143B11AE8C70DC2068E78C4
+Format unchanged: 44.1 kHz, mono, 16-bit PCM, 131418 frames.
+Measured RMS -10.94 dBFS; low/high band energy ratio increases 7.29 dB.
+Unity imports PCM at the original rate. Runtime controls gain, pitch and cutoff.
+This replaces the qubodup hover WAV described below. The two legacy movement
+clips remain bundled for now, but the 1.1 audio driver plays only this loop.
+
+---
+
+LEGACY 1.0 GROUNDED ROTOR HOVER BED (provenance retained)
 
 Runtime asset:
 sfxAH64RotorHoverGrounded.wav

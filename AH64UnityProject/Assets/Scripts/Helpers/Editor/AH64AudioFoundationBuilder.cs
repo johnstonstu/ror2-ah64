@@ -7,9 +7,8 @@ using UnityEngine;
 /// </summary>
 public static class AH64AudioFoundationBuilder
 {
-    // Switched from .mp3 to .wav 2026-08-03: the mp3 had 45ms leading / 15ms trailing encoder
-    // padding, causing a silent gap every loop (AUDIO_INVESTIGATION.md). The wav is a trimmed,
-    // lossless re-export of the same approved clip with that padding removed.
+    //Aquinn CC0 mono loop, prepared by Dust Front and EQ'd by tools/prepare_rotor.py.
+    //A three-second PCM loop is cheap and needs no lossy re-encoding.
     public const string RotorClipPath =
         "Assets/AH64/Bundle/AH64Audio/sfxAH64RotorHoverGrounded.wav";
 
@@ -40,15 +39,15 @@ public static class AH64AudioFoundationBuilder
             return "AudioImporter was not available for " + RotorClipPath + ".";
 
         importer.forceToMono = false;
-        importer.loadInBackground = true;
+        importer.loadInBackground = false;
         importer.preloadAudioData = true;
         importer.ambisonic = false;
         importer.defaultSampleSettings = new AudioImporterSampleSettings
         {
             loadType = AudioClipLoadType.DecompressOnLoad,
-            compressionFormat = AudioCompressionFormat.Vorbis,
-            quality = 0.45f,
-            sampleRateSetting = AudioSampleRateSetting.OptimizeSampleRate,
+            compressionFormat = AudioCompressionFormat.PCM,
+            quality = 1f,
+            sampleRateSetting = AudioSampleRateSetting.PreserveSampleRate,
         };
         importer.assetBundleName = "ah64";
         importer.SaveAndReimport();

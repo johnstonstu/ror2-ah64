@@ -68,15 +68,15 @@ namespace AH64.Modules
         /// skin and it would. Building the parallel set here keeps the lobby honest and drops the three
         /// startup warnings.</para>
         /// </summary>
-        internal static void CreateDisplaySkinController(GameObject displayPrefab, SkinDef[] bodySkins)
+        internal static void CreateDisplaySkinController(GameObject displayPrefab, SkinDef[] bodySkins, Func<Material, Material> prepareMaterial = null)
         {
             if (!displayPrefab || bodySkins == null || bodySkins.Length == 0)
                 return;
 
             CharacterModel displayModel = displayPrefab.GetComponent<CharacterModel>();
-            if (!displayModel || displayModel.baseRendererInfos == null || displayModel.baseRendererInfos.Length == 0)
+            if (!displayModel)
             {
-                Log.Warning("display prefab has no CharacterModel renderer infos; leaving its skins to R2API's fallback");
+                Log.Warning("display prefab has no CharacterModel; leaving its skins to R2API's fallback");
                 return;
             }
 
@@ -84,25 +84,64 @@ namespace AH64.Modules
             if (!controller)
                 controller = displayPrefab.AddComponent<ModelSkinController>();
 
-            //the array length is what R2API compares, so this must stay 1:1 with the body's skins
+            // Never trust displayModel.baseRendererInfos here: CreateDisplayPrefab can fall back
+            // to the body's array when the bundled CharacterModel data is unavailable at runtime.
+            // Material-name matching alone leaves body Renderer references in a display-rooted skin.
+            Renderer[] displayRenderers = displayPrefab.GetComponentsInChildren<Renderer>(true);
             SkinDef[] displaySkins = new SkinDef[bodySkins.Length];
             for (int i = 0; i < bodySkins.Length; i++)
             {
                 SkinDef source = bodySkins[i];
-                SkinDef displaySkin = CreateSkinDef(source.name,
-                    source.icon,
-                    displayModel.baseRendererInfos,
-                    displayPrefab,
-                    source.unlockableDef);
-
-                //CreateSkinDef sets nameToken from the name; keep the body's token so the lobby label matches
+                var displayInfos = MapDisplayRenderers(source, displayPrefab, displayRenderers, prepareMaterial);
+                SkinDef displaySkin = CreateSkinDef(source.name + "_Display",
+                    source.icon, displayInfos, displayPrefab, source.unlockableDef);
                 displaySkin.nameToken = source.nameToken;
                 displaySkins[i] = displaySkin;
+                Log.Debug($"AH64 lobby skin {source.name}: verified {displayInfos.Length} display-owned renderers.");
             }
 
             controller.skins = displaySkins;
+            if (!displayPrefab.GetComponent<DisplaySkinVerifier>()) displayPrefab.AddComponent<DisplaySkinVerifier>();
+            // Make the default preview readable before the mannequin's first asynchronous apply,
+            // and replace the borrowed body array rather than mutating its entries in place.
+            displayModel.baseRendererInfos = (CharacterModel.RendererInfo[])displaySkins[0].skinDefParams.rendererInfos.Clone();
+            foreach (CharacterModel.RendererInfo info in displayModel.baseRendererInfos)
+                info.renderer.sharedMaterial = info.defaultMaterial;
         }
 
+        private static CharacterModel.RendererInfo[] MapDisplayRenderers(SkinDef source, GameObject root,
+            Renderer[] renderers, Func<Material, Material> prepareMaterial)
+        {
+            var infos = (CharacterModel.RendererInfo[])source.skinDefParams.rendererInfos.Clone();
+            var prepared = new Dictionary<Material, Material>();
+            for (int i = 0; i < infos.Length; i++)
+            {
+                Renderer bodyRenderer = infos[i].renderer;
+                Renderer match = null;
+                foreach (Renderer candidate in renderers)
+                {
+                    if (!bodyRenderer || candidate.name != bodyRenderer.name) continue;
+                    if (match) throw new InvalidOperationException("Duplicate display renderer " + candidate.name);
+                    match = candidate;
+                }
+                if (!match || !match.transform.IsChildOf(root.transform))
+                    throw new InvalidOperationException("Skin " + source.name + " cannot map display renderer "
+                        + (bodyRenderer ? bodyRenderer.name : "<null>"));
+                infos[i].renderer = match;
+                Material material = infos[i].defaultMaterial;
+                if (material && prepareMaterial != null)
+                {
+                    if (!prepared.TryGetValue(material, out Material lobbyMaterial))
+                    {
+                        lobbyMaterial = prepareMaterial(material);
+                        prepared.Add(material, lobbyMaterial);
+                    }
+                    material = lobbyMaterial;
+                }
+                infos[i].defaultMaterial = material;
+            }
+            return infos;
+        }
         internal struct SkinDefInfo
         {
             internal SkinDef[] BaseSkins;

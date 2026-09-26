@@ -18,7 +18,6 @@ namespace AH64.Modules
                 return mat.name.Contains(materialName);
             });
             if (tempMat) {
-                Log.Debug($"{tempMat.name} has already been loaded. returning cached");
                 return tempMat;
             }
             tempMat = assetBundle.LoadAsset<Material>(materialName);
@@ -36,14 +35,12 @@ namespace AH64.Modules
         public static Material ConvertDefaultShaderToHopoo(this Material tempMat)
         {
             if (cachedMaterials.Contains(tempMat)) {
-                Log.Debug($"{tempMat.name} has already been converted. returning cached");
                 return tempMat;
             }
 
             string name = tempMat.shader.name.ToLowerInvariant();
             if (!name.StartsWith("standard") && !name.StartsWith("autodesk"))
             {
-                Log.Debug($"{tempMat.name} is not unity standard shader. aborting material conversion");
                 return tempMat;
             }
 

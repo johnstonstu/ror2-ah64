@@ -309,7 +309,7 @@ namespace AH64.Modules
             bool preattached = characterModel != null;
             //Route B probe: if the bundle's pre-attached CharacterModel stub failed to resolve in-game,
             //this reads "preattached: False" and we silently fell back to customRendererInfos
-            Log.Info($"SetupCharacterModel({bodyPrefab.name}) preattached: {preattached}");
+            Log.Debug($"SetupCharacterModel({bodyPrefab.name}) preattached: {preattached}");
             if (!preattached)
                 characterModel = bodyPrefab.GetComponent<ModelLocator>().modelTransform.gameObject.AddComponent<CharacterModel>();
 
@@ -667,7 +667,7 @@ namespace AH64.Modules
             }
             else
             {
-                Log.Message($"An Entity State Machine already exists with the name {machineName}. replacing.");
+                Log.Debug($"An Entity State Machine already exists with the name {machineName}. replacing.");
             }
             //Set up entitystatemachine
             entityStateMachine.customName = machineName;
@@ -732,7 +732,7 @@ namespace AH64.Modules
             }
             else
             {
-                Log.Message($"An Entity State Machine already exists with the name {machineName}. replacing.");
+                Log.Debug($"An Entity State Machine already exists with the name {machineName}. replacing.");
             }
 
             //Create entitystatemachine

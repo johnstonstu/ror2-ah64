@@ -28,6 +28,11 @@ public static class AH64BundleBuilder
     [MenuItem("AH64/Build AssetBundle %&b")]
     public static void BuildBundles()
     {
+        BuildBundlesChecked();
+    }
+
+    public static AssetBundleManifest BuildBundlesChecked(bool forceRebuild = false)
+    {
         // Unity keeps a bundle name registered even after the last asset using it is retagged, so
         // GetAllAssetBundleNames() reports names that have no content. Purge those first.
         AssetDatabase.RemoveUnusedAssetBundleNames();
@@ -44,7 +49,7 @@ public static class AH64BundleBuilder
                 "Select the Assets/AH64/Bundle folder and set its AssetBundle name at the " +
                 "bottom of the Inspector.",
                 "OK");
-            return;
+            return null;
         }
 
         string outputPath = Path.Combine(Path.GetDirectoryName(Application.dataPath) ?? "", OutputFolderName);
@@ -52,13 +57,13 @@ public static class AH64BundleBuilder
 
         AssetBundleManifest manifest = BuildPipeline.BuildAssetBundles(
             outputPath,
-            BuildAssetBundleOptions.ChunkBasedCompression, // LZ4 - the RoR2 convention
+            BuildAssetBundleOptions.ChunkBasedCompression | (forceRebuild ? BuildAssetBundleOptions.ForceRebuildAssetBundle : BuildAssetBundleOptions.None),
             BuildTarget.StandaloneWindows64);              // RoR2 is Windows 64-bit only
 
         if (manifest == null)
         {
             Debug.LogError("[AH64BundleBuilder] Build failed. Check the Console above for the cause.");
-            return;
+            return null;
         }
 
         foreach (string bundleName in manifest.GetAllAssetBundles())
@@ -67,10 +72,12 @@ public static class AH64BundleBuilder
             var info = new FileInfo(builtFile);
             Debug.Log($"[AH64BundleBuilder] Built '{bundleName}' - {info.Length / 1024f / 1024f:F2} MB\n{builtFile}");
 
-            CopyToProfile(builtFile, bundleName);
+            if (AH64BuildSafety.ProfileDeploymentRequested)
+                CopyToProfile(builtFile, bundleName);
         }
 
         AssetDatabase.Refresh();
+        return manifest;
     }
 
     private static void CopyToProfile(string builtFile, string bundleName)

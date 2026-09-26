@@ -25,7 +25,7 @@ namespace AH64.Survivors.Components
     /// <c>AH64Main.HandleMovements</c> instead, because <c>GenericCharacterMain.HandleMovements</c>
     /// overwrites <c>moveDirection</c> with the horizontal input vector every single frame.</para>
     /// </summary>
-    internal class AH64HoverController : MonoBehaviour
+    internal partial class AH64HoverController : MonoBehaviour
     {
         /// <summary>Altitude the chopper is currently trying to hold, in units above the terrain below it.</summary>
         public float TargetHeight { get; private set; }
@@ -66,8 +66,6 @@ namespace AH64.Survivors.Components
         private bool externalLaunchActive;
         private float externalLaunchAge;
         private bool lastDisableAirControl;
-        private float liftAge;
-        private bool liftIgnored;
         private CapsuleCollider capsule;
         private Collider proxiedLaunchVolume;
         private readonly Collider[] launchVolumeHits = new Collider[16];
@@ -77,16 +75,22 @@ namespace AH64.Survivors.Components
             motor = GetComponent<CharacterMotor>();
             body = GetComponent<CharacterBody>();
             capsule = GetComponent<CapsuleCollider>();
+            //GlobalEventManager checks this on impact, including after jump-pad launches.
+            if (body)
+                body.bodyFlags |= CharacterBody.BodyFlags.IgnoreFallDamage;
         }
 
         private void OnEnable()
         {
             MapZone.onBodyTeleportGlobal += OnMapZoneTeleport;
+            On.RoR2.CharacterMotor.ApplyForceImpulse += OnApplyForceImpulse;
         }
 
         private void OnDisable()
         {
             MapZone.onBodyTeleportGlobal -= OnMapZoneTeleport;
+            On.RoR2.CharacterMotor.ApplyForceImpulse -= OnApplyForceImpulse;
+            SetHoverGranters(false);
         }
 
         //TeleportHelper keeps the downward part of the velocity, so a body teleported mid free fall
@@ -128,8 +132,7 @@ namespace AH64.Survivors.Components
             if (!motor)
                 return;
 
-            motor.flightParameters = new CharacterFlightParameters { channeledFlightGranterCount = 1 };
-            motor.gravityParameters = new CharacterGravityParameters { channeledAntiGravityGranterCount = 1 };
+            SetHoverGranters(true);
             motor.airControl = AH64StaticValues.hoverAirControl;
         }
 
@@ -140,20 +143,7 @@ namespace AH64.Survivors.Components
         /// </summary>
         private void UseVanillaPhysics(float airControl)
         {
-            CharacterFlightParameters flight = motor.flightParameters;
-            if (flight.channeledFlightGranterCount != 0)
-            {
-                flight.channeledFlightGranterCount = 0;
-                motor.flightParameters = flight;
-            }
-
-            CharacterGravityParameters gravity = motor.gravityParameters;
-            if (gravity.channeledAntiGravityGranterCount != 0)
-            {
-                gravity.channeledAntiGravityGranterCount = 0;
-                motor.gravityParameters = gravity;
-            }
-
+            SetHoverGranters(false);
             motor.airControl = airControl;
         }
 
@@ -183,6 +173,9 @@ namespace AH64.Survivors.Components
             if (spawnGrace > 0f)
                 spawnGrace -= deltaTime;
 
+            if (ApplyEquipmentFlight(jumpHeld, descendHeld, deltaTime))
+                return;
+
             if (!externalLaunchActive)
                 TriggerLaunchVolumesBelow();
 
@@ -207,8 +200,7 @@ namespace AH64.Survivors.Components
                 return;
             }
 
-            if (!motor.isFlying || motor.useGravity)
-                ConfigureMotor();
+            ConfigureMotor();
 
             UpdateTargetHeight(jumpHeld, descendHeld, deltaTime);
             UpdateAscentPitch(deltaTime);
@@ -250,7 +242,7 @@ namespace AH64.Survivors.Components
         }
 
         /// <summary>
-        /// Detects and rides out an external launch (jump pad, knock-up). Returns true while the hover
+        /// Detects and rides out an external launch (jump pad, knock-up or pull). Returns true while the hover
         /// must keep its hands off the vertical axis. See <c>AH64StaticValues.externalLaunchMinExcessSpeed</c>.
         /// </summary>
         private bool UpdateExternalLaunch(float deltaTime)
@@ -261,7 +253,9 @@ namespace AH64.Survivors.Components
             bool flagRaised = airControlFlag && !lastDisableAirControl;
             lastDisableAirControl = airControlFlag;
 
-            bool lifted = UpdateVerticalLift(deltaTime);
+            //VerticalLift clears useCustomGravity on exit. Keep yielding for the full lift,
+            //including slow lifts that outlast the launch safety timeout.
+            bool lifted = motor.useCustomGravity && motor.CustomGravity > 0f;
 
             if (!externalLaunchActive)
             {
@@ -298,32 +292,7 @@ namespace AH64.Survivors.Components
                 return false;
             }
 
-            UseVanillaPhysics(AH64StaticValues.externalLaunchAirControl);
-            return true;
-        }
-
-        /// <summary>
-        /// True while a VerticalLift has switched on upward custom gravity. See
-        /// <c>AH64StaticValues.verticalLiftMaxDuration</c>.
-        /// </summary>
-        private bool UpdateVerticalLift(float deltaTime)
-        {
-            if (!motor.useCustomGravity || motor.CustomGravity <= 0f)
-            {
-                liftAge = 0f;
-                liftIgnored = false;
-                return false;
-            }
-
-            if (liftIgnored)
-                return false;
-
-            liftAge += deltaTime;
-            if (liftAge >= AH64StaticValues.verticalLiftMaxDuration)
-            {
-                liftIgnored = true;
-                return false;
-            }
+            YieldToExternalMotion();
             return true;
         }
 

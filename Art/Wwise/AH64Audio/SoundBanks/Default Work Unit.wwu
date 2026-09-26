@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WwiseDocument Type="WorkUnit" ID="{165B6355-6F4B-4D0E-B312-CBCFDC51EEA2}" SchemaVersion="119">
+	<SoundBanks>
+		<WorkUnit Name="Default Work Unit" ID="{165B6355-6F4B-4D0E-B312-CBCFDC51EEA2}" PersistMode="Standalone">
+			<ChildrenList>
+				<SoundBank Name="AH64Rotor" ID="{982D6EE9-A398-41AC-BECE-7544747C2C41}">
+					<ObjectInclusionList>
+						<ObjectRef Name="Stop_AH64_Rotor" ID="{2E375EA8-DF80-47D5-B58A-31B17D2CE447}" WorkUnitID="{4BD2CFF2-6DD5-44A8-A022-9E5F610BE8B5}" Origin="Manual" Filter="7"/>
+						<ObjectRef Name="Play_AH64_Rotor" ID="{4A498E61-37ED-4A35-AB54-7D0D2EAE8509}" WorkUnitID="{4BD2CFF2-6DD5-44A8-A022-9E5F610BE8B5}" Origin="Manual" Filter="7"/>
+					</ObjectInclusionList>
+					<ObjectExclusionList/>
+					<GameSyncExclusionList/>
+				</SoundBank>
+			</ChildrenList>
+		</WorkUnit>
+	</SoundBanks>
+</WwiseDocument>

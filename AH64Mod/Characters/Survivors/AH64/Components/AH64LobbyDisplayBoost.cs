@@ -91,7 +91,7 @@ namespace AH64.Survivors.Components
             if (!loggedOnce)
             {
                 loggedOnce = true;
-                Log.Info($"AH64LobbyDisplayBoost: brightened {boosted} lobby material slot(s).");
+                Log.Debug($"AH64LobbyDisplayBoost: brightened {boosted} lobby material slot(s).");
             }
         }
 

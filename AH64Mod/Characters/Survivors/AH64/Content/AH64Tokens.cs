@@ -47,7 +47,8 @@ namespace AH64.Survivors
             Language.Add(prefix + "OUTRO_FAILURE", outroFailure);
 
             #region Skins
-            Language.Add(prefix + "MASTERY_SKIN_NAME", "Alternate");
+            Language.Add(prefix + "DESERT_SKIN_NAME", "Desert");
+            Language.Add(prefix + "ARCTIC_SKIN_NAME", "Arctic");
             #endregion
 
             #region Passive

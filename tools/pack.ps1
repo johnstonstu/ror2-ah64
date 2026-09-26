@@ -42,6 +42,8 @@ $Icon        = Join-Path $BuildDir 'icon.png'
 $Readme      = Join-Path $BuildDir 'README.md'
 # Repo-root changelog, shipped at the zip root so Thunderstore's Changelog tab is populated.
 $Changelog   = Join-Path $RepoRoot 'CHANGELOG.md'
+$License     = Join-Path $RepoRoot 'LICENSE'
+$AudioLicense = Join-Path $RepoRoot 'AH64UnityProject/Assets/AH64/Bundle/AH64Audio/LICENSE_SOURCE.txt'
 $UnityBundle = Join-Path $RepoRoot 'AH64UnityProject\AssetBundles\ah64'
 $StageDir    = Join-Path $RepoRoot 'dist\_stage'
 $DistDir     = Join-Path $RepoRoot 'dist'
@@ -89,7 +91,7 @@ Ok "manifest.json, README.md, icon.png (256x256), CHANGELOG.md"
 # --- 3. compile --------------------------------------------------------------
 if (-not $SkipBuild) {
     Write-Host "`nbuilding..." -ForegroundColor Cyan
-    & dotnet build $Csproj -c Release -v minimal
+    & dotnet build $Csproj -c Release -v minimal /p:AH64DeployToProfiles=false
     if ($LASTEXITCODE -ne 0) { Fail "dotnet build failed" }
 }
 $dll = Join-Path $BuildDir 'plugins\AH64.dll'
@@ -126,18 +128,45 @@ New-Item -ItemType Directory -Force -Path $bundleDest | Out-Null
 Copy-Item $UnityBundle (Join-Path $bundleDest 'ah64') -Force
 Ok ("assetbundle ah64 ({0:N2} MB)" -f ((Get-Item $UnityBundle).Length / 1MB))
 
+# Validate the independently authored Wwise bank before staging. Copy only this
+# bank: shipping our authoring Init.bnk would conflict with the game's hierarchy.
+& (Join-Path $PSScriptRoot 'build-rotor-bank.ps1') -ValidateOnly
+$rotorBank = Join-Path $RepoRoot 'Art\Wwise\AH64Audio\GeneratedSoundBanks\Windows\AH64Rotor.bnk'
+$bankDest = Join-Path $BuildDir 'plugins\SoundBanks'
+New-Item -ItemType Directory -Force -Path $bankDest | Out-Null
+Copy-Item -LiteralPath $rotorBank -Destination (Join-Path $bankDest 'AH64Rotor.bnk') -Force
+if (Get-ChildItem (Join-Path $BuildDir 'plugins') -Recurse -File -Filter Init.bnk) {
+    Fail 'Build/plugins contains Init.bnk. Never ship a replacement game initialization bank.'
+}
+
 # --- 5. stage ----------------------------------------------------------------
 # Thunderstore requires manifest/README/icon/plugins at the ZIP ROOT with no
 # enclosing directory, so stage an exact image of the zip and compress its
 # contents rather than the folder itself.
-if (Test-Path $StageDir) { Remove-Item $StageDir -Recurse -Force }
+if (Test-Path $StageDir) {
+    if ((Resolve-Path -LiteralPath $StageDir).Path -ne [IO.Path]::GetFullPath((Join-Path $RepoRoot 'dist\_stage'))) { Fail 'Unexpected staging path' }
+    Remove-Item -LiteralPath $StageDir -Recurse -Force
+}
 New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
 
-Copy-Item $Manifest $StageDir
-Copy-Item $Readme   $StageDir
-Copy-Item $Icon     $StageDir
-Copy-Item $Changelog $StageDir
-Copy-Item (Join-Path $BuildDir 'plugins') $StageDir -Recurse
+# Deliberate allowlist: never sweep debug files, configs or unrelated mods into a release.
+$packageFiles = [ordered]@{
+    'manifest.json' = $Manifest
+    'README.md' = $Readme
+    'icon.png' = $Icon
+    'CHANGELOG.md' = $Changelog
+    'LICENSE' = $License
+    'plugins/AH64.dll' = $dll
+    'plugins/AssetBundles/ah64' = (Join-Path $bundleDest 'ah64')
+    'plugins/SoundBanks/AH64Rotor.bnk' = (Join-Path $bankDest 'AH64Rotor.bnk')
+    'plugins/SoundBanks/LICENSE_SOURCE.txt' = $AudioLicense
+}
+foreach ($entry in $packageFiles.GetEnumerator()) {
+    if (-not (Test-Path -LiteralPath $entry.Value -PathType Leaf)) { Fail "Missing package input: $($entry.Key)" }
+    $target = Join-Path $StageDir $entry.Key
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
+    Copy-Item -LiteralPath $entry.Value -Destination $target
+}
 
 New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
 $zip = Join-Path $DistDir "AH64-$modVersion.zip"
@@ -169,16 +198,20 @@ try {
     $entries = $archive.Entries | ForEach-Object { $_.FullName }
 } finally { $archive.Dispose() }
 
-foreach ($required in @('manifest.json', 'README.md', 'icon.png', 'CHANGELOG.md',
-                        'plugins/AH64.dll', 'plugins/AssetBundles/ah64')) {
+foreach ($required in $packageFiles.Keys) {
     if ($entries -notcontains $required) {
         Fail "zip is missing '$required'.`n      Entries found: $($entries -join ', ')"
     }
 }
+if ($entries.Count -ne $packageFiles.Count -or
+    @($entries | Where-Object { -not $packageFiles.Contains($_) }).Count -gt 0) {
+    Fail 'ZIP contains duplicate or unexpected files outside the package allowlist.'
+}
 # A backslash here means the archiver wrote non-conformant separators.
 if ($entries | Where-Object { $_ -like '*\*' }) { Fail "zip contains backslash path separators" }
 
-Remove-Item $StageDir -Recurse -Force
+if ((Resolve-Path -LiteralPath $StageDir).Path -ne [IO.Path]::GetFullPath((Join-Path $RepoRoot 'dist\_stage'))) { Fail 'Unexpected staging path' }
+Remove-Item -LiteralPath $StageDir -Recurse -Force
 
 Write-Host ("-" * 60)
 $zipMB = (Get-Item $zip).Length / 1MB

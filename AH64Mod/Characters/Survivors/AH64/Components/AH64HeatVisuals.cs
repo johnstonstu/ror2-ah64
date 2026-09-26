@@ -27,6 +27,7 @@ namespace AH64.Survivors
         private SkillLocator skillLocator;
         private ChildLocator childLocator;
         private Material wristMaterial;
+        private CharacterModel characterModel;
         private bool wasReloading;
 
         private void Start()
@@ -39,7 +40,12 @@ namespace AH64.Survivors
 
             childLocator = model.GetComponent<ChildLocator>();
 
-            CharacterModel characterModel = model.GetComponent<CharacterModel>();
+            characterModel = model.GetComponent<CharacterModel>();
+            RefreshHeatMaterial();
+        }
+
+        private void RefreshHeatMaterial()
+        {
             if (characterModel == null || characterModel.baseRendererInfos == null) return;
 
             for (int i = 0; i < characterModel.baseRendererInfos.Length; i++)
@@ -47,14 +53,23 @@ namespace AH64.Survivors
                 Renderer renderer = characterModel.baseRendererInfos[i].renderer;
                 if (renderer && renderer.name == heatRendererName)
                 {
-                    wristMaterial = new Material(characterModel.baseRendererInfos[i].defaultMaterial);
+                    Material selected = characterModel.baseRendererInfos[i].defaultMaterial;
+                    if (!selected || selected == wristMaterial) return;
+                    // Skin application can finish after Start, or replace the material later. Clone
+                    // that palette instead of continuing to heat an orphaned material from the old skin.
+                    Material previous = wristMaterial;
+                    wristMaterial = new Material(selected);
                     characterModel.baseRendererInfos[i].defaultMaterial = wristMaterial;
+                    characterModel.forceUpdate = true;
+                    if (previous) Destroy(previous);
+                    return;
                 }
             }
         }
 
         private void Update()
         {
+            RefreshHeatMaterial();
             GenericSkill primary = skillLocator ? skillLocator.primary : null;
             if (primary == null || wristMaterial == null) return;
 

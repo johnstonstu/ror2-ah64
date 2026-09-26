@@ -7,7 +7,7 @@ namespace AH64.Survivors.SkillStates
 {
     /// <summary>
     /// Alternate primary. The M789 heavy cannon: eight very heavy, very accurate hitscan
-    /// rounds, each with a real blast, out of the existing M230 barrel.
+    /// rounds, each with a real blast, out of a dedicated reinforced barrel.
     ///
     /// <para>Deliberately still a <b>cannon</b> — hitscan, flat, instant. That is the whole
     /// answer to "why not just use Hydra". Drop the rate of fire far enough and a slow
@@ -94,9 +94,10 @@ namespace AH64.Survivors.SkillStates
             Vector3 muzzleOrigin = AH64Muzzles.GunOrigin(childLocator, aimRay);
             Vector3 muzzleAim = AH64Muzzles.AimDirection(muzzleOrigin, aimRay);
 
+            Vector3 visualOrigin = AH64Muzzles.Origin(childLocator, "MuzzleCannon", aimRay);
             characterBody.AddSpreadBloom(spreadBloom);
-            SpawnBarrelFlash(AH64Assets.chaingunMuzzleFlashEffect, muzzleOrigin, muzzleAim);
-            SpawnBarrelFlash(AH64Assets.chaingunShellEjectEffect, muzzleOrigin, muzzleAim);
+            SpawnBarrelFlash(AH64Assets.chaingunMuzzleFlashEffect, visualOrigin, muzzleAim);
+            SpawnBarrelFlash(AH64Assets.chaingunShellEjectEffect, visualOrigin, muzzleAim);
             Util.PlaySound(fireCrackSoundString, gameObject);
             Util.PlaySound(fireBodySoundString, gameObject);
 
@@ -143,10 +144,9 @@ namespace AH64.Survivors.SkillStates
                 maxSpread = maxSpread,
                 isCrit = crit,
                 owner = gameObject,
-                //Same reason as the other two: BulletAttack reattaches its tracer to
-                //muzzleName even when origin is correct, and the exported Muzzle empty
-                //drifts from the articulated barrel after an FBX update.
-                muzzleName = string.Empty,
+                //The verified cosmetic anchor moves only the tracer start to the short
+                //cannon muzzle. BulletAttack ray origin/aim above retain their gameplay values.
+                muzzleName = "MuzzleCannon",
                 smartCollision = true,
                 procChainMask = default,
                 procCoefficient = procCoefficient,

@@ -95,6 +95,10 @@ public static class AH64MaterialFoundationBuilder
             // highlight while it spins rather than going flat black.
             { "ChinGatling", new SurfaceSpec("matAH64DarkGatling",
                 new Color(0.225f, 0.245f, 0.192f), 0.34f, 0.38f, 4.0f) },
+            { "ChinGatlingHousing", new SurfaceSpec("matAH64DarkGatling",
+                new Color(0.225f, 0.245f, 0.192f), 0.34f, 0.38f, 4.0f) },
+            { "ChinCannon", new SurfaceSpec("matAH64DarkGun",
+                new Color(0.375f, 0.400f, 0.310f), 0.25f, 0.44f, 4.0f) },
             { "PodRocketL", new SurfaceSpec("matAH64DarkRocketPod",
                 new Color(0.355f, 0.400f, 0.245f), 0.04f, 0.32f, 2.0f, false) },
             { "PodRocketR", new SurfaceSpec("matAH64DarkRocketPod",

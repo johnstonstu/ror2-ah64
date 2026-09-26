@@ -7,13 +7,13 @@ re-run, done. Do NOT hand-edit geometry in the .blend and expect it to survive -
 the next run of this script discards everything in the AH64 collection.
 
     Inside Blender (Scripting workspace, or via the MCP bridge):
-        exec(compile(open(PATH).read(), PATH, "exec"))
+        import runpy; runpy.run_path(PATH, run_name="__main__")
 
     Headless:
         "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe" ^
             --background --python Art\\Blender\\build_ah64.py
 
-Conventions, fixed - see AH64_HANDOFF.md before changing any of them:
+Fixed coordinate conventions (see AGENTS.md before changing these):
   * Authoring is nose +Y, up +Z. Every CONFIG table, comment and validate()
     check reads that way, so keep authoring in it.
   * BUT Blender's FBX export maps Blender (x,y,z) onto Unity (-x, z, -y) - a
@@ -54,13 +54,16 @@ version you intended.
 
 Object count is also renderer count, and every renderer needs a matching
 ChildLocator entry plus a customRendererInfos entry on the Unity side, so these
-names are expensive to change once the assetbundle exists. Current set, 17:
+names are expensive to change once the assetbundle exists. Current set, 27:
 
     Airframe  AirframeDark  Canopy
     AirframeMarkings
     NoseOptics
     MainRotor  TailRotor  ChinTurret  ChinBarrel  ChinGatling
+    ChinGatlingHousing  ChinCannon
     PodRocketL  PodRocketR  PodMissileL  PodMissileR
+    MissileL0  MissileL1  MissileL2  MissileL3
+    MissileR0  MissileR1  MissileR2  MissileR3
     RadarDome
     RotorBlurMain  RotorBlurTail
 
@@ -70,7 +73,8 @@ independently. It is parented under ChinTurret *after* bake_unity_orientation
 
 ChinGatling is the alternate primary's spinning barrel cluster, parented one level
 deeper under ChinBarrel so it inherits pitch. It ships hidden; the loadout turns
-the ChinBarrel *renderer* off and the ChinGatling renderer on. Toggle renderers,
+the ChinBarrel *renderer* off and the ChinGatling/Housing renderers on. ChinCannon
+is the third assembly; AH64PrimaryWeaponVisuals owns selection. Toggle renderers,
 never SetActive on ChinBarrel - that would hide the gatling with it, and take the
 Muzzle anchor down too.
 
@@ -85,12 +89,15 @@ import bpy
 import bmesh
 import math
 import os
+from pathlib import Path
 from mathutils import Matrix, Vector
 
 # ---------------------------------------------------------------- CONFIG ----
 
-BLEND_PATH = r"C:\Users\stuwj\Documents\Coding\ror2-chopper\Art\Blender\AH64.blend"
-FBX_PATH = r"C:\Users\stuwj\Documents\Coding\ror2-chopper\AH64UnityProject\Assets\AH64\Source\FBX\AH64.fbx"
+# Resolve from this script, so isolated checkouts never overwrite the live model.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BLEND_PATH = str(PROJECT_ROOT / "Art/Blender/AH64.blend")
+FBX_PATH = str(PROJECT_ROOT / "AH64UnityProject/Assets/AH64/Source/FBX/AH64.fbx")
 COLLECTION = "AH64"
 SAVE_ON_RUN = True
 EXPORT_FBX_ON_RUN = True   # headless __main__ runs export_fbx() after build()
@@ -132,12 +139,21 @@ MAST_HOUSING = [
 # the root falling only to 0.20 at the tail - which read as a fat tube rather than
 # the hard taper an Apache boom has. Depth now falls 0.50 -> 0.16 and the section
 # narrows with it, so the tail rotor sits on something that looks like it tapered
-# to get there. Kept the same station positions so nothing hung off the boom moves.
+# to get there. The extension below moves all tail-mounted parts together.
+# Keep the full tail assembly beyond the main rotor's sweep, including blur discs.
+# The boom root stays embedded in the hull; only its length changes.
+TAIL_EXTENSION = 0.80
+
+
+def tail_y(station):
+    return station - TAIL_EXTENSION
+
+
 TAIL_BOOM = [
     (-1.10, 0.260, 0.860, 1.360),
-    (-1.70, 0.193, 0.995, 1.315),
-    (-2.35, 0.148, 1.045, 1.265),
-    (-2.95, 0.120, 1.080, 1.240),
+    (-1.70 - TAIL_EXTENSION * (0.60 / 1.85), 0.193, 0.995, 1.315),
+    (-2.35 - TAIL_EXTENSION * (1.25 / 1.85), 0.148, 1.045, 1.265),
+    (tail_y(-2.95), 0.120, 1.080, 1.240),
 ]
 
 # Vertical fin: (z, half_width, y_leading, y_trailing). Leading edge sweeps aft
@@ -147,19 +163,19 @@ TAIL_BOOM = [
 # planted on the boom; a real fin is a wing section, fat where it carries load and
 # thin at the tip. The taper is what stops it looking like a cutout.
 TAIL_FIN = [
-    (1.05, 0.115, -2.30, -3.10),
-    (1.60, 0.092, -2.50, -3.14),
-    (2.10, 0.062, -2.72, -3.16),
-    (2.35, 0.034, -2.86, -3.14),
+    (1.05, 0.115, tail_y(-2.30), tail_y(-3.10)),
+    (1.60, 0.092, tail_y(-2.50), tail_y(-3.14)),
+    (2.10, 0.062, tail_y(-2.72), tail_y(-3.16)),
+    (2.35, 0.034, tail_y(-2.86), tail_y(-3.14)),
 ]
 
 # Spanwise surfaces: (x, y_leading, y_trailing, z_centre, half_thickness)
 STABILATOR = [
-    (-0.88, -2.56, -2.88, 1.15, 0.035),
-    (-0.55, -2.49, -2.92, 1.15, 0.050),
-    (0.00, -2.45, -2.95, 1.15, 0.055),
-    (0.55, -2.49, -2.92, 1.15, 0.050),
-    (0.88, -2.56, -2.88, 1.15, 0.035),
+    (-0.88, tail_y(-2.56), tail_y(-2.88), 1.15, 0.035),
+    (-0.55, tail_y(-2.49), tail_y(-2.92), 1.15, 0.050),
+    (0.00, tail_y(-2.45), tail_y(-2.95), 1.15, 0.055),
+    (0.55, tail_y(-2.49), tail_y(-2.92), 1.15, 0.050),
+    (0.88, tail_y(-2.56), tail_y(-2.88), 1.15, 0.035),
 ]
 # Stub wings. Anhedral (droop) is the single strongest Apache silhouette cue and
 # the wing read as a flat plank without it - every section used to sit at z=1.00.
@@ -223,7 +239,8 @@ RADAR_COLLAR_DEPTH = 0.12
 RADAR_COLLAR_CENTRE = (0.0, 0.0, 2.18)
 # Hub sits just outside the fin face (fin half-width ~0.07 + hub radius 0.09).
 # 0.28 left a visible air gap that read as "floating off the tail".
-TAIL_ROTOR_CENTRE = (0.16, -2.88, 1.75)
+# Lift the entire hub assembly so the blade and blur sweeps clear the stabilator.
+TAIL_ROTOR_CENTRE = (0.16, tail_y(-2.88), 1.85)
 
 # Rotor blur discs - thin cylinders the runtime fades in with rotor effort.
 # Radii match the blade tip spans so the blur reads as the blades' own disc.
@@ -232,7 +249,9 @@ ROTOR_BLUR_MAIN_Z = 2.16   # a hair above the blade mid-plane (blades are z 2.15
 ROTOR_BLUR_TAIL_R = 0.58   # TAIL_BLADE tip span
 ROTOR_BLUR_TAIL_X = 0.17   # match hub face just outboard of the fin
 
-ENGINE_X = 0.58
+# Keep the intake inner rim clear of the rear canopy shoulder (2026-09-26).
+# At the widest 0.246-radius rim this leaves a small gap outside the glass.
+ENGINE_X = 0.67
 ENGINE_Y = -0.60
 ENGINE_Z = 1.45
 
@@ -245,15 +264,8 @@ PITCH_Y = TURRET_Y + 0.20
 PITCH_Z = HOUSING_Z
 BARREL_LEN = 1.30          # long enough to read at third-person camera distance
 
-# Gatling primary variant (0.2.0). A separate barrel assembly, NOT a reskin of the
-# M230 - the whole point is that it visibly spins, so it needs its own renderer with
-# an origin sitting on the bore axis. Deliberately shorter and fatter than the M230
-# tube so the two read as different weapons in the loadout preview.
-GATLING_BARRELS = 6
-GATLING_RING_R = 0.058     # bore-axis offset of each tube; sets the visible spin radius
-GATLING_TUBE_R = 0.021
-GATLING_LEN = 1.00
-GATLING_ROOT_Y = PITCH_Y + 0.20   # where the cluster starts, clear of the breech
+# Primary weapon dimensions and distinct silhouettes live in build_primary_weapons.py.
+# That helper preserves the barrel's RX90 local frame and all shared aiming pivots.
 
 # Gear. The strut is ANGLED: its foot is outboard at the wheel and its head is
 # inboard and buried in the hull. A vertical strut at the wheel's track sits
@@ -261,12 +273,13 @@ GATLING_ROOT_Y = PITCH_Y + 0.20   # where the cluster starts, clear of the breec
 GEAR_WHEEL_X = 0.50
 GEAR_Y = -0.30
 GEAR_HEAD = (0.26, 0.72)   # (x, z) inboard/high - must land inside the hull
-GEAR_FOOT = (0.50, 0.10)   # (x, z) outboard/low  - inside the wheel
 GEAR_WHEEL_R = 0.19
 GEAR_WHEEL_W = 0.20
+# Both support members terminate at the axle centre, not below/ahead of it.
+GEAR_FOOT = (GEAR_WHEEL_X, GEAR_WHEEL_R)
 GEAR_STRUT_W = 0.09        # narrower than the wheel, so head-on the tyre reads
 
-TAILGEAR_Y = -2.42
+TAILGEAR_Y = tail_y(-2.42)
 TAILGEAR_TOP = 1.10        # boom underside here is ~1.02
 TAILGEAR_BOTTOM = 0.72
 TAILGEAR_WHEEL_R = 0.12
@@ -286,7 +299,7 @@ ANCHORS = {
     # the old flat heights fires rockets and missiles out of empty air above the pods.
     "WingL":         ((-1.45, -0.10, wing_z(1.45, 1.00)), None),
     "WingR":         ((1.45, -0.10, wing_z(1.45, 1.00)), None),
-    "TailTip":       ((0.00, -2.95, 1.16), None),
+    "TailTip":       ((0.00, tail_y(-2.95), 1.16), None),
     "MainHurtbox":   ((0.00, 0.00, 1.05), None),
     "HeadHurtbox":   ((0.00, 1.10, 1.40), None),
     "AimOrigin":     ((0.00, 0.80, 1.45), None),
@@ -344,6 +357,8 @@ EXPECTED_RENDERER_MATERIALS = {
     #Own material, not matAH64DarkGun: the cluster is a much larger unbroken metal mass
     #than the M230's thin tube, so the same albedo reads noticeably lighter on it.
     "ChinGatling": "matAH64DarkGatling",
+    "ChinGatlingHousing": "matAH64DarkGatling",
+    "ChinCannon": "matAH64DarkGun",
     "PodRocketL": "matAH64DarkRocketPod",
     "PodRocketR": "matAH64DarkRocketPod",
     "PodMissileL": "matAH64DarkHellfire",
@@ -430,6 +445,29 @@ def add_cyl(col, name, r, d, loc=(0, 0, 0), rot=(0, 0, 0), verts=12, m=None):
     o.location = loc
     if m:
         put_mat(o, m)
+    return o
+
+
+def add_duct(col, name, x, z, y_back, y_front, radius_back, radius_front, wall, m):
+    """Faceted hollow shell with a real rim; capped cylinders erase recesses."""
+    profile = [(y_back, radius_back), (y_front, radius_front),
+               (y_front, radius_front - wall), (y_back, radius_back - wall)]
+    bm = bmesh.new()
+    rings = [[bm.verts.new((x + radius * math.cos(i * math.tau / 12), y,
+                           z + radius * math.sin(i * math.tau / 12)))
+              for i in range(12)] for y, radius in profile]
+    for j in range(4):
+        a, b = rings[j], rings[(j + 1) % 4]
+        for i in range(12):
+            k = (i + 1) % 12
+            bm.faces.new((a[i], a[k], b[k], b[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    o = bpy.data.objects.new(name, mesh)
+    col.objects.link(o)
+    put_mat(o, m)
     return o
 
 
@@ -656,36 +694,9 @@ def build_airframe(col, M):
                 RX90, 10, m=gun),
     ], origin=(0.0, TURRET_Y, TURRET_PIVOT_Z))
 
-    join_as("ChinBarrel", [
-        add_cyl(col, "BarrelBreech", 0.085, 0.22,
-                (0.0, PITCH_Y + 0.11, PITCH_Z), RX90, 10, m=gun),
-        add_cyl(col, "BarrelTube", 0.05, BARREL_LEN,
-                (0.0, PITCH_Y + BARREL_LEN * 0.5, PITCH_Z), RX90, 10, m=gun),
-        add_cyl(col, "BarrelMuzzle", 0.065, 0.08,
-                (0.0, PITCH_Y + BARREL_LEN - 0.04, PITCH_Z), RX90, 8, m=gun),
-    ], origin=(0.0, PITCH_Y, PITCH_Z))
-
-    # Gatling barrel cluster — alternate primary, hidden by default in the prefab.
-    # Origin is put on the bore axis at the pitch pivot, the SAME origin ChinBarrel
-    # uses, so AH64GatlingSpin can rotate this transform about the bore without the
-    # cluster wobbling off-centre. Do not let join_as pick the origin here.
-    gatling = [
-        add_cyl(col, "GatlingRotorHousing", 0.105, 0.28,
-                (0.0, PITCH_Y + 0.12, PITCH_Z), RX90, 12, m=gatling_mat),
-    ]
-    for i in range(GATLING_BARRELS):
-        a = math.radians(i * (360.0 / GATLING_BARRELS))
-        ox = GATLING_RING_R * math.cos(a)
-        oz = GATLING_RING_R * math.sin(a)
-        gatling.append(add_cyl(col, "GatlingTube%d" % i, GATLING_TUBE_R, GATLING_LEN,
-                               (ox, GATLING_ROOT_Y + GATLING_LEN * 0.5, PITCH_Z + oz),
-                               RX90, 6, m=gatling_mat))
-    # Front clamp ring ties the tubes together — without it the cluster reads as
-    # loose sticks once it is spinning.
-    gatling.append(add_cyl(col, "GatlingClamp", 0.082, 0.055,
-                           (0.0, GATLING_ROOT_Y + GATLING_LEN - 0.10, PITCH_Z),
-                           RX90, 12, m=gatling_mat))
-    join_as("ChinGatling", gatling, origin=(0.0, PITCH_Y, PITCH_Z))
+    # Keep weapon authoring isolated; this generator remains the source of truth.
+    import runpy
+    runpy.run_path(str(PROJECT_ROOT / "Art/Blender/build_primary_weapons.py"))["build"](globals(), col, M)
 
     for sx in (-1, 1):
         s = "L" if sx < 0 else "R"
@@ -700,26 +711,29 @@ def build_airframe(col, M):
             add_cube(col, "EngineFairing" + s, (0.30, 0.86, 0.30),
                      (sx * (ENGINE_X - 0.145), ENGINE_Y + 0.02, ENGINE_Z - 0.105),
                      m=dark),
-            add_cyl(col, "Intake" + s, 0.21, 0.14, (X, -0.04, ENGINE_Z), RX90, 12, dark),
-            add_cyl(col, "Nozzle" + s, 0.19, 0.22, (X, -1.18, ENGINE_Z), RX90, 12, dark),
-            # Small lips make the nacelles read as turbines instead of plain tubes.
-            add_cyl(col, "IntakeLip" + s, 0.235, 0.045, (X, 0.045, ENGINE_Z), RX90, 12, dark),
-            add_cyl(col, "NozzleLip" + s, 0.215, 0.055, (X, -1.305, ENGINE_Z), RX90, 12, dark),
-            # Apache nacelles are not just round tubes: a raised cowl, an intake
-            # splitter and a heat-dark exhaust shroud give them a deliberate
-            # turbine silhouette from the normal third-person camera.
-            add_cube(col, "EngineCowl" + s, (0.26, 0.48, 0.105),
-                     (X, -0.50, ENGINE_Z + 0.225), m=dark),
-            add_cyl(col, "EngineVent" + s, 0.055, 0.055,
-                    (X, -0.48, ENGINE_Z + 0.335), verts=10, m=dark),
-            add_cube(col, "IntakeSplitter" + s, (0.038, 0.060, 0.165),
-                     (X, 0.125, ENGINE_Z), m=dark),
-            add_cyl(col, "ExhaustShroud" + s, 0.232, 0.115,
-                    (X, -1.36, ENGINE_Z), RX90, 12, dark),
-            # A broad dark wing-root fairing separates the stores station from
-            # the olive fuselage without introducing another renderer/material.
-            add_cube(col, "WingRootFairing" + s, (0.30, 0.62, 0.075),
-                     (sx * 0.78, -0.03, wing_z(0.78, 1.105)), m=dark),
+            # The nacelle end caps sit deep behind these open shells. The rim,
+            # tunnel and recessed backing shade correctly with a single material.
+            add_duct(col, "Intake" + s, X, ENGINE_Z,
+                     -0.115, 0.095, 0.246, 0.235, 0.035, dark),
+            add_duct(col, "Nozzle" + s, X, ENGINE_Z,
+                     -1.075, -1.445, 0.242, 0.205, 0.030, dark),
+            # A tapered saddle replaces the rectangular block on top of the can.
+            loft(col, "EngineCowl" + s, [
+                side_sec_y(sx, -0.12, ENGINE_X - 0.15, ENGINE_X + 0.15,
+                           ENGINE_Z + 0.17, ENGINE_Z + 0.24),
+                side_sec_y(sx, -0.48, ENGINE_X - 0.17, ENGINE_X + 0.17,
+                           ENGINE_Z + 0.17, ENGINE_Z + 0.31),
+                side_sec_y(sx, -0.99, ENGINE_X - 0.12, ENGINE_X + 0.12,
+                           ENGINE_Z + 0.16, ENGINE_Z + 0.21),
+            ], m=dark),
+            add_cube(col, "IntakeSplitter" + s, (0.032, 0.045, 0.422),
+                     (X, 0.065, ENGINE_Z), m=dark),
+            # Taper down into the wing skin; no floating plate above its surface.
+            loft(col, "WingRootFairing" + s, [
+                sec_x(sx * 0.43, 0.29, -0.42, wing_z(0.43, 1.05), 0.07),
+                sec_x(sx * 0.72, 0.23, -0.34, wing_z(0.72, 1.025), 0.05),
+                sec_x(sx * 0.98, 0.16, -0.26, wing_z(0.98, 1.005), 0.025),
+            ], m=dark),
             add_cube(col, "OuterStationPlate" + s, (0.25, 0.48, 0.055),
                      (sx * POD_ROCKET_X, -0.05, wing_z(POD_ROCKET_X, 1.025)), m=dark),
             add_cube(col, "PylonIn" + s, (0.16, 0.42, 0.28),
@@ -756,7 +770,7 @@ def build_airframe(col, M):
     # which is the single thing that made the tail read as an assembly of flat
     # plates. A tapered wedge blends the leading edge into the spine.
     trim.append(add_cube(col, "FinRootFairing", (0.115, 0.62, 0.20),
-                         (0.0, -2.44, 1.09), m=dark))
+                         (0.0, tail_y(-2.44), 1.09), m=dark))
     return trim
 
 
@@ -776,6 +790,14 @@ def build_rotors(col, M):
         parts.append(b)
         parts.append(add_cube(col, "Grip%d" % i, (0.095, 0.22, 0.085),
                               (-0.26 * math.sin(a), 0.26 * math.cos(a), 0.0),
+                              (0, 0, a), m=dark))
+        # Pitch links and broad root cuffs make each blade visibly driven.
+        parts.append(strut_between(col, "PitchLink%d" % i,
+                     (-0.18 * math.sin(a), 0.18 * math.cos(a), -0.18),
+                     (-0.34 * math.sin(a), 0.34 * math.cos(a), -0.025),
+                     0.032, dark))
+        parts.append(add_cube(col, "RootCuff%d" % i, (0.145, 0.16, 0.075),
+                              (-0.40 * math.sin(a), 0.40 * math.cos(a), 0),
                               (0, 0, a), m=dark))
     # origin AT the hub - a rotor whose origin is off-centre wobbles, not spins,
     # and that is not visible in the viewport
@@ -818,17 +840,9 @@ def build_ordnance(col, M):
                                  for k in range(6)]
         # Tube mouths stand PROUD of the face as individual stubs (2026-08-03).
         #
-        # They cannot be holes: one renderer = one material means the pod is a single
-        # solid, so there is nothing to boolean against. A recessed muzzle collar was
-        # tried and is worse - add_cyl produces a CAPPED cylinder, so the collar just
-        # became a larger flat plate covering the mouths entirely. There is no ring
-        # primitive in this file.
-        #
-        # Protruding stubs get the read for free instead: the gaps between them shade
-        # as crevices, which is what makes the cluster legible. It also matches the
-        # real M261, whose tube ends do stand slightly out of the fairing. The old
-        # flush mouths were the failure - same colour, same plane, so they resolved as
-        # faint embossed hexagons on a brightly lit disc.
+        # Retain the proven protruding tube-end silhouette. The gaps between
+        # stubs stay readable at game distance; the engine duct changes do not
+        # alter these launch stations or their existing muzzle anchors.
         for (ox, oz) in mouths:
             pod.append(add_cyl(col, "Mouth", 0.052, 0.16,
                                (X + ox, 0.43, pod_z + oz), RX90, 6, rocket))
@@ -837,11 +851,22 @@ def build_ordnance(col, M):
         X = sx * POD_MISSILE_X
         rack_z = wing_z(POD_MISSILE_X, 0.70)
 
-        # The rail alone keeps the PodMissile{L,R} name, so the existing ChildLocator
-        # entry and item-display rules that reference it stay valid.
-        join_as("PodMissile" + s,
-                [add_cube(col, "Rail", (0.26, 0.46, 0.07), (X, -0.05, rack_z), m=missile)],
-                origin=(X, -0.05, rack_z))
+        # Permanent open ladder frame: every empty station still has a rail.
+        # Merge into the existing rack renderer; only the eight missiles disappear.
+        rack = [add_cube(col, "RackSaddle", (0.29, 0.38, 0.065),
+                         (X, -0.05, rack_z), m=missile)]
+        for y in (-0.25, 0.16):
+            # Central web connects both cross-members back to the wing pylon.
+            rack.append(add_cube(col, "RackWeb", (0.035, 0.045, 0.215),
+                                 (X, y, rack_z - 0.080), m=missile))
+            for oz in (-0.038, -0.148):
+                rack.append(add_cube(col, "RackCrossMember", (0.27, 0.055, 0.028),
+                                     (X, y, rack_z + oz), m=missile))
+        for ox in (-0.08, 0.08):
+            for oz in (-0.038, -0.148):
+                rack.append(add_cube(col, "LaunchRail", (0.035, 0.64, 0.025),
+                                     (X + ox, -0.045, rack_z + oz), m=missile))
+        join_as("PodMissile" + s, rack, origin=(X, -0.05, rack_z))
 
         # Each Hellfire is its own renderer so AH64PylonMissiles can hide them one at
         # a time as the special is spent. They were previously joined into the rack,
@@ -974,11 +999,11 @@ def build_gear(col, M):
                                GEAR_STRUT_W * 1.35, m=dark))
         g.append(strut_between(col, "GearOleo" + s, foot, mid,
                                GEAR_STRUT_W * 0.78, m=dark))
-        # Drag brace back to the hull — cheap, and it stops the leg looking like it
-        # is floating unattached under a smooth belly.
+        # Both support members meet the axle. The old brace ended ahead of the
+        # wheel, leaving a visibly dangling strip under the fuselage.
         g.append(strut_between(col, "GearBrace" + s,
-                               (sx * (GEAR_FOOT[0] - 0.04), GEAR_Y + 0.34, GEAR_FOOT[1] + 0.10),
-                               (sx * GEAR_HEAD[0] * 0.7, GEAR_Y + 0.02, GEAR_HEAD[1] - 0.02),
+                               foot,
+                               (sx * GEAR_HEAD[0], GEAR_Y + 0.22, GEAR_HEAD[1]),
                                0.038, m=dark))
         g.append(add_cyl(col, "GearWheel" + s, GEAR_WHEEL_R, GEAR_WHEEL_W,
                          (sx * GEAR_WHEEL_X, GEAR_Y, GEAR_WHEEL_R), RY90, 12, dark))
@@ -1017,6 +1042,8 @@ def parent_chin_barrel():
 
     reparent_keep_world(barrel, turret)
     reparent_keep_world(gatling, barrel)
+    for name in ("ChinGatlingHousing", "ChinCannon"):
+        reparent_keep_world(bpy.data.objects[name], barrel)
 
 
 def reparent_keep_world(child, parent):
@@ -1330,6 +1357,10 @@ def build():
     bpy.context.view_layer.update()
     check_single_material(col)
     check_unity_orientation(col)
+    import runpy
+    import json
+    clearance = runpy.run_path(str(PROJECT_ROOT / "Art/Blender/validate_rotor_clearance.py"))["validate_rotor_clearance"]()
+    print("ROTOR_CLEARANCE_REPORT=" + json.dumps(clearance, sort_keys=True))
 
     meshes = [o for o in col.objects if o.type == "MESH"]
     for o in meshes:
@@ -1373,7 +1404,7 @@ def build():
 
 
 def export_fbx():
-    """Export the AH64 collection with the settings recorded in AH64_HANDOFF.md.
+    """Export the AH64 collection with the fixed coordinate settings documented below.
 
     Do not re-derive these; they were found by measurement against a live Unity
     import. The two non-defaults each fix a real defect: FBX_SCALE_ALL stops

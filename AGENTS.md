@@ -177,12 +177,11 @@ standalone bundle entry. Do not "fix" this by re-tagging the Source folder.
 
 ### MCP servers
 
-- **UnityMCP is in `.mcp.json` at project scope**, alongside Blender. Registering
+- **UnityMCP is in the local, ignored `.mcp.json` at project scope**, alongside Blender. Contributors start from `.mcp.example.json`; see `docs/development/TOOLING.md`. Registering
   an MCP server against a single absolute path has bitten before: servers load
   only for the exact path they're registered under, so a session started in a
   differently-named directory comes up with **no Unity tools at all, silently and
-  with no error**. Project scope fixes that permanently — the registration
-  travels with the directory, including across this repo's rename.
+  with no error**. Project scope keeps the local registration with the checkout. Machine-specific paths stay in the ignored config.
 - **UnityMCP runs `uvx --offline`, which makes it hostage to the shared uv
   cache.** `--offline` can only resolve from cached packages, so unrelated `uv`
   or `uvx` work elsewhere on the machine can evict or shift versions and leave
@@ -289,6 +288,15 @@ The `demo time` profile already has R2API, DebugToolkit, and MMHOOK loaded.
 Each of these was found the expensive way. They are the highest-value paragraphs
 in this file.
 
+- **RoR2 disables Unity's built-in audio backend.** Verified 2026-09-26 by reading
+  `Risk of Rain 2_Data/globalgamemanagers`: `AudioManager.m_DisableAudio = true`.
+  An assetbundle AudioClip can load correctly and an AudioListener can exist while
+  `AudioSource.Play()` never produces playback (`isPlaying` remains false). The
+  mod's Unity project audio settings do not override the host game. Use Wwise for
+  custom rotor playback; do not keep tuning silent Unity AudioSources or patch
+  the game's settings file. Installed Wwise runtime is 2023.1.4.8496, bank format
+  150. See `docs/development/AUDIO.md` for the verified backend constraints and current Wwise implementation.
+
 - **Hold-to-fire states must override `GetMinimumInterruptPriority()`.** Without
   it, the skill re-enters itself every physics tick — the predecessor project's
   blaster fired ~60 bolts/sec. The chain gun primary is exactly this shape.
@@ -300,8 +308,11 @@ in this file.
   addressables catalog.
 - The vanilla Wwise event list is in the game install at
   `Risk of Rain 2_Data/StreamingAssets/Audio/GeneratedSoundBanks/Windows/SoundbanksInfo.xml`.
-  Vanilla events dodge the six-event soundbank limit. **This mod ships no custom
-  soundbank** — only the three CC0 rotor clips in the assetbundle.
+  The 1.1 development build ships `SoundBanks/AH64Rotor.bnk`, authored with
+  Wwise **2023.1.4.8496**, format 150. Build with `tools/build-rotor-bank.ps1`
+  before packaging. It resolves the game's existing `SFX_BUS`; never distribute
+  or load the authoring project's `Init.bnk`. The old six-event-limit claim was
+  not verified and must not guide implementation.
 - **`MODVERSION` and `Build/manifest.json` must stay in step** —
   `NetworkCompatibility` is `EveryoneNeedSameModVersion`, so a mismatch is a
   lobby rejection. `tools/pack.ps1` enforces this; don't bypass it.

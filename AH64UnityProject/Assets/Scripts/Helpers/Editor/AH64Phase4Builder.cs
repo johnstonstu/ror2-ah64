@@ -31,7 +31,7 @@ public static class AH64Phase4Builder
     private static readonly string[] RendererNames =
     {
         "Airframe", "AirframeDark", "Canopy", "AirframeMarkings", "NoseOptics",
-        "MainRotor", "TailRotor", "ChinTurret", "ChinBarrel", "ChinGatling",
+        "MainRotor", "TailRotor", "ChinTurret", "ChinBarrel", "ChinGatling", "ChinGatlingHousing", "ChinCannon",
         "PodRocketL", "PodRocketR", "PodMissileL", "PodMissileR",
         // Individual Hellfires — own renderers so AH64PylonMissiles can deplete them.
         "MissileL0", "MissileL1", "MissileL2", "MissileL3",
@@ -170,7 +170,7 @@ public static class AH64Phase4Builder
 
         string pluginFolder = Environment.ExpandEnvironmentVariables(
             @"%APPDATA%\r2modmanPlus-local\RiskOfRain2\profiles\demo time new\BepInEx\plugins\JohnstonStu-AH64");
-        if (Directory.Exists(pluginFolder))
+        if (AH64BuildSafety.ProfileDeploymentRequested && Directory.Exists(pluginFolder))
         {
             string destFolder = Path.Combine(pluginFolder, "AssetBundles");
             Directory.CreateDirectory(destFolder);
@@ -179,7 +179,7 @@ public static class AH64Phase4Builder
         }
         else
         {
-            Debug.LogWarning("[AH64Phase4Builder] Profile plugin folder missing; bundle built but not installed.\n" + pluginFolder);
+            Debug.Log("[AH64Phase4Builder] Bundle staged locally; profile deployment skipped.");
         }
 
         var info = new FileInfo(builtFile);
@@ -268,28 +268,25 @@ public static class AH64Phase4Builder
         // Corrected here rather than pre-compensated in Blender: a -90 fudge in the build
         // script would make the .blend disagree with itself and break the moment the
         // exporter is fixed. Identity is what the source of truth actually says.
-        Transform gatlingPivot = FindDeep(instance.transform, "ChinGatling");
-        if (gatlingPivot)
-            gatlingPivot.localRotation = Quaternion.identity;
-
-        // Gatling ships hidden — it is the alternate primary, the M230 is default.
-        //
-        // This only covers prefabs CharacterModel does not drive, such as the
-        // character-select display. On a live body it is NOT sufficient:
-        // CharacterModel.UpdateMaterials sets renderer.enabled = true on every entry in
-        // baseRendererInfos whenever materials go dirty, so this flag is overwritten
-        // within a frame. Runtime visibility is owned by AH64GatlingSpin via
-        // Renderer.forceRenderingOff, which CharacterModel does not touch.
-        //
-        // Disable the RENDERER, not the GameObject: ChinGatling is a child of ChinBarrel,
-        // so SetActive(false) would take the M230 and the shared Muzzle anchor with it.
-        Transform gatling = FindDeep(instance.transform, "ChinGatling");
-        if (gatling)
+        // All three grandchildren have identity local rotation in the source blend.
+        foreach (string name in new[] { "ChinGatling", "ChinGatlingHousing", "ChinCannon" })
         {
-            MeshRenderer gatRenderer = gatling.GetComponent<MeshRenderer>();
-            if (gatRenderer)
-                gatRenderer.enabled = false;
+            Transform weapon = FindDeep(instance.transform, name);
+            weapon.localRotation = Quaternion.identity;
+            // FBX also exports a (-.34, .06) pitch-space offset although the source
+            // pivots coincide. Restore the measured source pivot, not a Blender fudge.
+            weapon.localPosition = Vector3.zero;
+            weapon.GetComponent<Renderer>().enabled = false;
         }
+
+        // Cosmetic cannon muzzle follows the pitch transform. Bullet origin/aim stay
+        // unchanged; only flashes and the tracer's start use this shorter-barrel anchor.
+        Transform barrel = FindDeep(instance.transform, "ChinBarrel");
+        var cannonMuzzle = new GameObject("MuzzleCannon").transform;
+        cannonMuzzle.SetParent(barrel, false);
+        cannonMuzzle.localPosition = new Vector3(0f, 0.98f, 0f);
+        pairs.Add(new ChildLocator.NameTransformPair { name = "MuzzleCannon", transform = cannonMuzzle });
+        locator.transformPairs = pairs.ToArray();
 
         // CharacterModel is added at runtime by Prefabs.SetupCharacterModel when missing; leaving it
         // off the authored prefab keeps Route A (customRendererInfos) as the source of truth.

@@ -3,9 +3,8 @@ using BepInEx.Configuration;
 namespace AH64.Survivors
 {
     /// <summary>
-    /// Small, deliberate set of local playtest controls. Defaults always match the tuned build.
-    /// These are not public-release balance options: test an isolated hypothesis, record the result,
-    /// then move the winning value back into <see cref="AH64StaticValues"/>.
+    /// Player-facing balance and presentation controls. Keep existing config keys so upgrades
+    /// preserve players' values; Risk of Options supplies the friendlier category labels.
     /// </summary>
     internal static class AH64PlaytestConfig
     {
@@ -51,8 +50,12 @@ namespace AH64.Survivors
 
         private static ConfigEntry<bool> rotorWashEnabled;
         private static ConfigEntry<float> rotorHoverVolume;
-        private static ConfigEntry<float> rotorInFlightVolume;
-        private static ConfigEntry<float> rotorClimbVolume;
+        private static ConfigEntry<float> gatlingSpoolVolume;
+        private static ConfigEntry<float> rotorPitch;
+        private static ConfigEntry<float> rotorLoadPitch;
+        private static ConfigEntry<float> rotorLoadGain;
+        private static ConfigEntry<float> rotorResponse;
+        private static ConfigEntry<float> rotorToneCutoff;
 
         internal static float BaseMoveSpeed => baseMoveSpeed.Value;
         internal static float Acceleration => acceleration.Value;
@@ -84,8 +87,12 @@ namespace AH64.Survivors
         internal static float DashRampFraction => dashRampFraction.Value;
         internal static bool RotorWashEnabled => rotorWashEnabled.Value;
         internal static float RotorHoverVolume => rotorHoverVolume.Value;
-        internal static float RotorInFlightVolume => rotorInFlightVolume.Value;
-        internal static float RotorClimbVolume => rotorClimbVolume.Value;
+        internal static float GatlingSpoolVolume => gatlingSpoolVolume.Value;
+        internal static float RotorPitch => rotorPitch.Value;
+        internal static float RotorLoadPitch => rotorLoadPitch.Value;
+        internal static float RotorLoadGain => rotorLoadGain.Value;
+        internal static float RotorResponse => rotorResponse.Value;
+        internal static float RotorToneCutoff => rotorToneCutoff.Value;
 
         internal static void Init(ConfigFile config)
         {
@@ -171,20 +178,35 @@ namespace AH64.Survivors
 
             rotorWashEnabled = config.Bind(Presentation, "Low-hover rotor wash", true,
                 "Enable restrained rotor wash while near the ground, including stationary hover.");
-            //Clamp raised 0.40 -> 1.0 per the 2026-08-03 audio investigation: the gain-matched bed
-            //(0.75) cannot reach its correct level under the old clamp.
-            rotorHoverVolume = Bind(config, Presentation, "Grounded rotor volume", AH64StaticValues.rotorHoverVolume, 0f, 1.0f,
-                "Volume of the CC0 grounded rotor bed. It should sit under combat, not dominate it.");
-            rotorInFlightVolume = Bind(config, Presentation, "In-flight rotor volume", AH64StaticValues.rotorInFlightMaxVolume, 0f, 1.0f,
-                "Peak volume of the fuller engine+rotor layer, reached at full horizontal speed.");
-            rotorClimbVolume = Bind(config, Presentation, "Climb rotor volume", AH64StaticValues.rotorClimbMaxVolume, 0f, 1.0f,
-                "Peak volume of the collective/climb layer, reached at full ascent intent.");
+            //A new key avoids inheriting the much louder gain used with the old quiet recording.
+            rotorHoverVolume = Bind(config, Presentation, "Rotor volume", AH64StaticValues.rotorHoverVolume, 0f, 1f,
+                "Rotor bed volume before master/SFX and a fixed -1.94 dB mix trim. The local pilot hears it without distance fade. Movement and ability response use the approved mix.");
+            // Keep development audio keys bound so existing profiles retain their accepted mix.
+            // Only rotor volume is exposed in the release UI and balance report.
+            gatlingSpoolVolume = Bind(config, Presentation, "Gatling spool volume", AH64StaticValues.gatlingSpoolVolume, 0f, 1f,
+                "XM301 wind-up/down volume only. 0.6 is about 4.4 dB quieter; gunfire volume is unchanged.");
+            rotorPitch = Bind(config, Presentation, "Rotor pitch", AH64StaticValues.rotorHoverPitch, 0.7f, 1.2f,
+                "Base playback speed/pitch. Lower is a slower, heavier chop. 1 is the recorded speed.");
+            rotorLoadPitch = Bind(config, Presentation, "Rotor movement pitch change",
+                AH64StaticValues.rotorFullLoadPitch - AH64StaticValues.rotorHoverPitch, 0f, 0.12f,
+                "Directional pitch depth (three times this value, capped at 0.12). Forward/climb raise pitch; reverse/descent lower it; strafe adds a smaller lift. Zero keeps pitch constant.");
+            rotorLoadGain = Bind(config, Presentation, "Rotor movement boost dB", AH64StaticValues.rotorFullLoadGainDb, 0f, 6f,
+                "Extra rotor loudness at full movement or climb. The final Wwise emitter gain is capped at 1.");
+            rotorResponse = Bind(config, Presentation, "Rotor response seconds", AH64StaticValues.rotorLayerFadeTime, 0.1f, 2f,
+                "How gradually rotor pitch and volume respond to movement. Higher is smoother.");
+            rotorToneCutoff = Bind(config, Presentation, "Rotor high-frequency cutoff Hz", AH64StaticValues.rotorToneCutoff, 600f, 20000f,
+                "Approximate tonal target mapped to Wwise low-pass. Lower removes hiss; 20000 adds no filtering.");
 
-            AH64RiskOfOptions.Register(
+            var entries = new ConfigEntryBase[] {
                 baseMoveSpeed, acceleration, radarFacingSpeedBonus,
                 chaingunDamage, chaingunMaxSpread, chaingunBloom, chaingunReload, chaingunSplashDamage, chaingunSplashRadius, chaingunSplashVfxScale,
+                gatlingDamage, gatlingSpooledDuration, gatlingMaxSpread, gatlingBloom, gatlingReload,
+                gatlingSplashDamage, gatlingSplashRadius, gatlingSplashVfxScale,
+                cannonDamage, cannonDuration, cannonReload, cannonSplashDamage, cannonSplashRadius, cannonSplashVfxScale,
                 dashCooldown, dashPeakSpeed, dashClimbHeight, dashRampFraction,
-                rotorWashEnabled, rotorHoverVolume, rotorInFlightVolume, rotorClimbVolume);
+                rotorWashEnabled, rotorHoverVolume };
+            AH64BalanceFeedback.Init(config, entries);
+            AH64RiskOfOptions.Register(entries);
         }
 
         private static ConfigEntry<float> Bind(ConfigFile config, string section, string name, float value, float min, float max, string description)

@@ -8,6 +8,41 @@ presents to players as a lobby rejection.
 
 ---
 
+## 1.1.0
+
+### Added
+
+- Three distinct primary weapon models, with immediate loadout previews in character select.
+- Desert and Arctic paint schemes alongside Olive, with matching lobby previews and skin-aware weapon heat.
+- More airframe detail: inboard missile racks, recessed engine openings, tapered cowls and wing roots, and rotor hub detail.
+- Optional Risk of Options controls for movement, primary weapons, utility, impact visuals, rotor wash and rotor volume.
+- Settings reports with comments, changed defaults and pending restart values. Copy a report and open a prefilled GitHub form, with clipboard fallback for long reports; review before submitting.
+
+### Changed
+
+- Custom Wwise rotor audio responds to movement and abilities. The local pilot hears a consistent rotor bed; remote aircraft use distance fading.
+- Rotor volume is the only exposed Audio slider. Existing development audio tuning remains compatible with saved profiles.
+- Refreshed primary icons and documentation, with direct bug-report, balance-feedback and discussion links.
+- Builds stage locally by default; profile deployment is opt-in.
+- Removed automatic rotor playback diagnostics and routine console chatter; explicit audio diagnostics remain available.
+
+### Fixed
+
+- Primary weapon visibility and lobby skin bindings, including skin changes after asynchronous material updates.
+- Gameplay materials retain their authored colors; lobby readability adjustments use separate materials.
+- Rotor clearance, canopy/intake clearance and landing-gear alignment.
+- Smoke Backflip starts nose-up. Hover preserves external vertical forces, equipment flight and lift volumes; AH-64 is immune to fall damage.
+- Rotor wash follows terrain, and rotor blur/wash respect cloak, invisibility and death.
+- The rotor sound restarts when the chopper is re-enabled, such as after a respawn or stage change.
+- The smoke-ring effect used by the Hydra and Longbow launches and the dash thruster loads from its verified Addressables catalog address. The old lookup used an internal asset ID, which raised `InvalidKeyException`.
+
+### Known limitations
+
+- Gameplay tuning is not synchronized between players.
+- Missile rack depletion follows local special stock, including Longbow lock reservations; remote and late-join presentation needs dedicated verification.
+- Laser-guided Hellfire remains deferred.
+
+---
 ## 1.0.1
 
 Hotfix for two run-blocking bugs.

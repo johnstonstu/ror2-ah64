@@ -22,8 +22,8 @@ body:
     id: version
     attributes:
       label: AH-64 version
-      description: Exact version from your mod manager's installed list (e.g. `1.0.0`). "Latest" makes it hard to tell whether a fix has shipped.
-      placeholder: "1.0.0"
+      description: Exact version from your mod manager's installed list (e.g. `1.1.0`). "Latest" makes it hard to tell whether a fix has shipped.
+      placeholder: "1.1.0"
     validations:
       required: true
 
@@ -87,7 +87,7 @@ body:
       description: |
         The fastest way to share your exact mod list. In r2modman / Thunderstore Mod Manager:
         **Settings → Profile → Export profile as code**, then paste the code here.
-      placeholder: "01a0ac13-ae2f-8532-b72b-8031d2dfccc6"
+      placeholder: "Paste your exported profile code"
     validations:
       required: false
 
