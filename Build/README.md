@@ -64,13 +64,26 @@ than a desync.
 - All in-game sound effects other than the rotor beds are vanilla Risk of Rain 2
   Wwise events.
 
+## Known issues
+
+- **Jump pads and launch pads** (including the moon pillar pad up to Mithrix and
+  False Son's pads) did nothing in 1.0.0: the hover cancelled the launch and
+  floated you back down. **Fixed in 1.0.1**, pending playtest confirmation. If a
+  pad still won't take you, please report it with the stage name.
+- **Solutional Haunt** sent the AH-64 back to the start of the opening shaft, which
+  locked the run. **Fixed in 1.0.1**, pending playtest confirmation.
+- Behaviour change in 1.0.1: over a drop deeper than the hover's ground sensor
+  (about 60 units), the AH-64 now falls under normal gravity like other survivors
+  instead of sinking slowly.
+
 ## Bugs & feedback
 
 - **Found a bug?** File it on the [issue tracker](https://github.com/johnstonstu/ror2-ah64/issues/new/choose).
   Please include your **BepInEx log** (`BepInEx/LogOutput.log`) and your mod list —
   it turns "it's broken" into something fixable.
-- **Balance thoughts, ideas, or a quick question?** Drop a comment right here on
-  this Thunderstore page.
+- **Balance thoughts, ideas, or a quick question?** Start a thread in
+  [GitHub Discussions](https://github.com/johnstonstu/ror2-ah64/discussions).
+  Thunderstore has no comments, so messages can't be left on this page.
 
 All players in a lobby need the **same version** of the mod, or the game will
 refuse to let you join together.

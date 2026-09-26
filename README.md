@@ -72,8 +72,9 @@ presents as the game hanging at 99% load.
 
 Report bugs on the [issue tracker](https://github.com/johnstonstu/ror2-ah64/issues/new/choose)
 — the form asks for the BepInEx log and mod list, which is what makes a report
-actionable. Quick comments can also go on the
-[Thunderstore page](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/AH64/).
+actionable. Balance thoughts, ideas and questions go in
+[GitHub Discussions](https://github.com/johnstonstu/ror2-ah64/discussions) —
+Thunderstore packages have no comment section.
 
 ## Notes for contributors
 
