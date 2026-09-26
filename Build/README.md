@@ -18,7 +18,7 @@ The **AH-64** hovers above terrain and strafes like a ground character, with tem
 
 **In 1.1:** distinct models for all three primaries, immediate weapon previews in character select, Olive/Desert/Arctic paint schemes, responsive rotor audio, and optional balance controls with a shareable settings report.
 
-[Thunderstore](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/AH64/) · [Changelog](https://github.com/johnstonstu/ror2-ah64/blob/main/CHANGELOG.md) · [Help balance AH-64](#help-balance-ah-64)
+[Thunderstore](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/AH64/) · [Changelog](https://github.com/johnstonstu/ror2-ah64/blob/main/CHANGELOG.md) · [Help balance AH-64](https://github.com/johnstonstu/ror2-ah64#help-balance-ah-64)
 
 ## The kit
 
@@ -28,7 +28,7 @@ The **AH-64** hovers above terrain and strafes like a ground character, with tem
 | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64PrimaryIcon.png" width="64" alt="M230 Chain Gun"><br>**Primary** | **M230 Chain Gun** | A fixed drum that reloads all at once rather than trickling. Tap at range to keep the burst tight; hose the whole drum up close where the spread stops mattering. The reload runs whether or not you emptied it, so top up before you commit. Attack speed helps the reload, not just the fire rate. |
 | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64GatlingIcon.png" width="64" alt="XM301 Rotary Cannon"><br>*Primary variant* | **XM301 Rotary Cannon** | The gatling alternative to the M230: a six-barrel rotary cannon. |
 | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64CannonIcon.png" width="64" alt="M789 Heavy Cannon"><br>*Primary variant* | **M789 Heavy Cannon** | A low-rate, high-damage cannon. |
-| <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64SecondaryIcon.png" width="64" alt="Hydra 70 Rocket Pods"><br>**Secondary** | **Hydra 70 Rocket Pods** | A ripple salvo spread over most of a second — hold your aim through it. Runs on its own cooldown and stays available while the primary is reloading. |
+| <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64SecondaryIcon.png" width="64" alt="Hydra-70 Pods"><br>**Secondary** | **Hydra-70 Pods** | A ripple salvo spread over most of a second — hold your aim through it. Runs on its own cooldown and stays available while the primary is reloading. |
 | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64UtilityIcon.png" width="64" alt="Evasive Roll"><br>**Utility** | **Evasive Roll** | A climbing forward-diagonal barrel roll with i-frames through the motion. Hold jump for altitude; hold back or down to dump height faster. |
 | *Utility variant* | **Smoke Backflip** | A smoke backflip in place of the roll. |
 | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64SpecialIcon.png" width="64" alt="AGM-114L Longbow"><br>**Special** | **AGM-114L Longbow** | Hold to paint radar locks while you keep firing the gun and the Hydras, then release to launch. |
@@ -70,21 +70,23 @@ Everyone in a lobby needs the **same mod version**. Gameplay tuning is local, so
 
 ## Help balance AH-64
 
-Install [Risk of Options](https://thunderstore.io/c/riskofrain2/p/Rune580/Risk_Of_Options/) to open **Settings → Mod Options → AH-64**. It is optional: AH-64 works with its defaults without it.
+I want AH-64 to feel right, and the quickest way there is seeing what you actually play with. Your settings show me where players agree on balance, and they're the place to ask for sliders that don't exist yet.
 
-Movement, each primary weapon, utility, audio and presentation have their own categories. The 30 controls cover gameplay tuning, impact visuals, rotor wash and rotor volume. **Rotor volume is the only Audio slider.** Existing development audio settings are retained for compatibility, but their temporary tuning sliders are hidden.
+The tuning menu needs [Risk of Options](https://thunderstore.io/c/riskofrain2/p/Rune580/Risk_Of_Options/). It's optional: AH-64 runs on its defaults without it.
 
-Base speed, acceleration, primary reload times and Evasive Roll cooldown require a restart. Other controls are read during play; an action already underway may finish using its previous values. Audio preferences can differ between players.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/feedback/balance-flow.jpg" alt="How to share AH-64 settings: tune the sliders, press Copy &amp; open GitHub, paste and add notes, submit" width="100%">
+</p>
 
-### Share your settings
+1. Open **Settings → Mod Options → AH-64** and tune the sliders. The tabs are Movement, M230, XM301 Gatling, M789 Cannon, Utility, Presentation, Audio and Feedback. Base speed, acceleration, primary reload times and Evasive Roll cooldown apply after a restart.
+2. Optional: add notes in **Feedback → Comments**.
+3. At the end of any tab, press **Share settings → Copy & open GitHub**. It copies a report of every AH-64 setting plus your comments, then opens the feedback form.
+4. The **AH-64 settings and comments** field is usually prefilled. If it's blank (long reports don't fit in the link), paste the copied report. Fill in **What kind of feedback** and **Your idea**, including what felt too strong or too weak.
+5. Click **Create**.
 
-1. Adjust the controls and try a run.
-2. Add optional notes in **Feedback → Comments**.
-3. Choose **Share settings → Copy & open GitHub** in any category.
-4. Review the prefilled **“AH-64 settings and comments”** field. If it is blank, **paste the copied report** there; long reports use this fallback.
-5. Add your difficulty, loadout, stage, other balance mods and what felt too strong or weak. Review the report and submit it.
+**Feedback → Copy all settings** copies the same report without opening a browser.
 
-**Feedback → Copy all settings** copies the report without opening a browser. Reports include every exposed control, the mod version, changed defaults, pending restart values and your comments. Comments remain saved locally until cleared. Opening a prefilled form sends its text to GitHub in the link, but does not create an issue. Use copy-only to review the text first. Submitting requires a GitHub account.
+**Privacy:** nothing is sent automatically. The buttons copy to your clipboard and open the form; a prefilled form carries the report in its link, but nothing is posted until you click **Create**. Submitting needs a GitHub account.
 
 ### Bugs, ideas and questions
 

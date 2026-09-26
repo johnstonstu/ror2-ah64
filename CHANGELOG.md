@@ -8,7 +8,7 @@ presents to players as a lobby rejection.
 
 ---
 
-## 1.1.0 (unreleased)
+## 1.1.0
 
 ### Added
 
@@ -33,6 +33,8 @@ presents to players as a lobby rejection.
 - Rotor clearance, canopy/intake clearance and landing-gear alignment.
 - Smoke Backflip starts nose-up. Hover preserves external vertical forces, equipment flight and lift volumes; AH-64 is immune to fall damage.
 - Rotor wash follows terrain, and rotor blur/wash respect cloak, invisibility and death.
+- The rotor sound restarts when the chopper is re-enabled, such as after a respawn or stage change.
+- The smoke-ring effect used by the Hydra and Longbow launches and the dash thruster loads from its verified Addressables catalog address. The old lookup used an internal asset ID, which raised `InvalidKeyException`.
 
 ### Known limitations
 
