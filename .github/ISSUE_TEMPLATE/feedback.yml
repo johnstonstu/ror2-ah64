@@ -1,0 +1,50 @@
+name: Feature request / feedback
+description: An idea, a balance thought, or how AH-64 feels to play. Not a bug.
+title: "[Feedback] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Open-ended chat and quick reactions fit better in
+        [Discussions](https://github.com/johnstonstu/ror2-ah64/discussions). Use this form
+        for a concrete request you'd like tracked. If something is **broken**, please use
+        the bug report form instead.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of feedback is this?
+      options:
+        - New feature or skill idea
+        - Balance (too strong / too weak)
+        - Game feel (movement, handling, visuals, audio)
+        - Compatibility with another mod
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Your idea or feedback
+      description: What would you change, add or keep? If it's about balance, which skill and in what situation?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What problem does it solve, or what felt off? Examples from a run help a lot.
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: AH-64 version
+      description: Exact version from your mod manager, if relevant.
+      placeholder: "1.0.0"
+    validations:
+      required: false
