@@ -54,8 +54,7 @@ than a desync.
 
 ## Credits
 
-- Built on the Risk of Rain 2 survivor mod template (`HenryTutorial` lineage) and
-  R2API.
+- Built with R2API and the Risk of Rain 2 modding community's survivor framework.
 - Airframe modelled from scratch in Blender for this mod. No third-party or
   ripped aircraft geometry is included or redistributed.
 - Rotor audio: "Helicopter Rotor Loop", "Helicopter Loop" and "OH-58 Helicopter
@@ -77,6 +76,24 @@ than a desync.
   instead of sinking slowly.
 
 ## Bugs & feedback
+
+### Optional balance controls
+
+Install [Risk of Options](https://thunderstore.io/c/riskofrain2/p/Rune580/Risk_Of_Options/)
+to adjust AH-64 under **Settings → Mod Options → AH-64**. It is optional. Movement,
+primary weapons, utility, audio, and presentation are grouped into categories;
+the defaults are the intended balance and the controls remain available in releases.
+Restart the game after changing base speed, acceleration, primary reload times,
+or Evasive Roll cooldown. Other settings are read during play, though an action
+already in progress may use its earlier values. Gameplay settings are not synced:
+use matching values in multiplayer. Audio preferences can differ between players.
+
+Want to share a setup? Add optional **Feedback → Comments**, then choose
+**Share settings → Copy & open GitHub** in any category. Paste into the form,
+review, and submit. Every copy includes all exposed sliders and toggles, the mod
+version, changed defaults, pending restart values, and comments. Use **Feedback →
+Copy all settings** to copy without opening a browser. Comments stay saved locally
+until cleared. Nothing is submitted automatically; GitHub requires an account.
 
 - **Found a bug?** File it on the [issue tracker](https://github.com/johnstonstu/ror2-ah64/issues/new/choose).
   Please include your **BepInEx log** (`BepInEx/LogOutput.log`) and your mod list —

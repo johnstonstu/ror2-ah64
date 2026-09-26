@@ -113,3 +113,21 @@ ZIP SHA256: 1C424D37A6562D8701788CDCC35B3C7AADA5DB7C5D07E1459270EAF37A150F8F.
 DLL SHA256: AEF32494DBD29A08AE599DDC4C125585288B8E9A222766BB6638E59A29DBB9FD.
 Bundle SHA256: D11693B149A55DEEB1F0E91D88BF280295F3FDC2C55ECA412BFA24CED8207130.
 Bank SHA256: DC9C5018207019BA8010190D7024479AAC2047B0F00CAA8FE05FC0A705AEC0C3.
+
+## Full playtest reinstall: skins, feedback and icons
+
+The previous installed combined DLL was overwritten by a later primary-checkout
+balance-feedback build (AE3A7D216F340895BC7935FF0CE265F3E0E430596276CDA9F0B6EDCD2C1DAEF6).
+The resulting model/new-DLL mismatch explains absent alternate skins and lobby skin errors.
+Integrated its four feedback/config C# files into this branch, preserving all visual code.
+Normalized comparison confirms all other primary-checkout C# sources match except the
+five intentional visual changes; AH64Skins is additionally present here.
+Feedback tests PASS:35 sliders plus toggle, seven categories, precision, restart state,
+comments and export isolation. M230 now uses single-bore icon artwork; Unity validates
+all three primary Sprite assets. C# build0errors/22existing warnings; bundle and pack PASS.
+Installed exact ZIP payload into demo time new; settings unchanged. No publication.
+Latest installation record (hashes and backup): dist/full-playtest-install.json.
+DLL SHA256: 44C4FAAE28AE1B6492FF28B290A38C1155285A934575B50F4FA59EB6EA9726B0
+ZIP SHA256: FB885D961BAD6148C3C54440D12042453D20533E6D0D24F481C9F668901EE102
+Only install from this combined staging branch during this playtest; the primary
+checkout's normal post-build profile copy can overwrite the candidate again.

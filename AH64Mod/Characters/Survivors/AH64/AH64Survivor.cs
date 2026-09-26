@@ -687,6 +687,7 @@ namespace AH64.Survivors
             // Bake complete display-rooted overrides for each palette. Runtime lobby boosting used
             // to overwrite every skin with olive and could lose its edits when CharacterModel updated.
             Skins.CreateDisplaySkinController(displayPrefab, skinController.skins, AH64Skins.CreateLobbyMaterial);
+            Log.Info("AH64 visual staging: registered Default, Desert and Arctic body/display skins.");
         }
         #endregion skins
 

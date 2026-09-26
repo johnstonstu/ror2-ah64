@@ -16,6 +16,7 @@ using UnityEngine;
 /// </summary>
 public static class AH64GatlingIconBaker
 {
+    private const string PrimaryOutputPath = "Assets/AH64/Bundle/Icons/texAH64PrimaryIcon.png";
     private const string OutputPath =
         "Assets/AH64/Bundle/Icons/texAH64GatlingIcon.png";
     private const string CannonOutputPath =
@@ -35,7 +36,7 @@ public static class AH64GatlingIconBaker
     private static readonly Color MuzzleHot = new Color32(0xFF, 0xC1, 0x4A, 0xFF);
     private static readonly Color MuzzleWarm = new Color32(0xE8, 0x7C, 0x1E, 0xFF);
 
-    [MenuItem("AH64/Bake Alternate Primary Skill Icons")]
+    [MenuItem("AH64/Bake Primary Skill Icons")]
     public static void BakeFromMenu()
     {
         BakeAll();
@@ -46,6 +47,8 @@ public static class AH64GatlingIconBaker
     /// <summary>Dialog-free entry point for batch/MCP runs.</summary>
     public static string BakeAll()
     {
+        // M230: narrow single bore and squared receiver, distinct from the heavy cannon.
+        Bake(PrimaryOutputPath, bores: 1, ringRadiusPx: 0f, boreRadiusPx: 100f, housingRadiusPx: 270f, squareReceiver: true);
         // Six small bores on a ring — reads as a rotary cannon at skill-bar size.
         Bake(OutputPath, bores: 6, ringRadiusPx: 210f, boreRadiusPx: 74f, housingRadiusPx: 332f);
         // One big bore, no ring — a single heavy barrel. The silhouette difference is the
@@ -57,7 +60,7 @@ public static class AH64GatlingIconBaker
     public static string Bake() => BakeAll();
 
     private static string Bake(string outputPath, int bores, float ringRadiusPx,
-        float boreRadiusPx, float housingRadiusPx)
+        float boreRadiusPx, float housingRadiusPx, bool squareReceiver = false)
     {
         int hi = Size * Supersample;
         var hiRes = new Color[hi * hi];
@@ -107,7 +110,9 @@ public static class AH64GatlingIconBaker
                 float lambert = Mathf.Clamp01(
                     0.32f + 0.68f * (Mathf.Cos(facetAngle - Mathf.PI * 0.75f) * 0.5f + 0.5f));
 
-                float housingR = 332f * unit;
+                float housingR = housingRadiusPx * unit;
+                if (squareReceiver && Mathf.Abs(dx) < 330f * unit && Mathf.Abs(dy) < 270f * unit)
+                    col = Mathf.Abs(dy) > 235f * unit ? HousingLit : HousingDark;
                 if (r < housingR)
                 {
                     Color body = Color.Lerp(HousingDark, HousingLit, lambert);

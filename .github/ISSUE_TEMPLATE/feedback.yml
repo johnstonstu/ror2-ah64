@@ -33,6 +33,23 @@ body:
       required: true
 
   - type: textarea
+    id: settings
+    attributes:
+      label: AH-64 settings and comments
+      description: In Risk of Options, use Share settings in any AH-64 category, then paste the complete clipboard report here. It includes every exposed slider and toggle, defaults for changed values, restart status, and your comments.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: run_context
+    attributes:
+      label: Run context
+      description: Difficulty, artifacts, solo or multiplayer, loadout, stage, and other balance mods. For multiplayer, include the host's settings too if possible.
+    validations:
+      required: false
+
+  - type: textarea
     id: why
     attributes:
       label: Why

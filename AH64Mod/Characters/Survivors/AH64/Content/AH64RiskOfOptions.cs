@@ -1,92 +1,82 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using BepInEx.Bootstrap;
 using BepInEx.Configuration;
+using UnityEngine.Events;
 
 namespace AH64.Survivors
 {
-    /// <summary>
-    /// Optional in-game playtest UI. Reflection keeps Risk Of Options out of the shipped
-    /// assembly references, so the AH-64 still loads normally when the client-side helper is absent.
-    /// </summary>
+    /// <summary>Optional UI: no assembly reference to Risk of Options is required at runtime.</summary>
     internal static class AH64RiskOfOptions
     {
         private const string PluginGuid = "com.rune580.riskofoptions";
 
-        internal static void Register(
-            ConfigEntry<float> baseMoveSpeed, ConfigEntry<float> acceleration, ConfigEntry<float> radarFacingSpeedBonus,
-            ConfigEntry<float> chaingunDamage, ConfigEntry<float> chaingunMaxSpread, ConfigEntry<float> chaingunBloom,
-            ConfigEntry<float> chaingunReload, ConfigEntry<float> chaingunSplashDamage, ConfigEntry<float> chaingunSplashRadius,
-            ConfigEntry<float> chaingunSplashVfxScale,
-            ConfigEntry<float> dashCooldown, ConfigEntry<float> dashPeakSpeed, ConfigEntry<float> dashClimbHeight,
-            ConfigEntry<float> dashRampFraction, ConfigEntry<bool> rotorWashEnabled, ConfigEntry<float> rotorHoverVolume,
-            ConfigEntry<float> gatlingSpoolVolume, ConfigEntry<float> rotorPitch,
-            ConfigEntry<float> rotorLoadPitch, ConfigEntry<float> rotorLoadGain,
-            ConfigEntry<float> rotorResponse, ConfigEntry<float> rotorToneCutoff)
+        internal static void Register(IEnumerable<ConfigEntryBase> entries)
         {
-            if (!Chainloader.PluginInfos.ContainsKey(PluginGuid))
-            {
-                return;
-            }
-
+            if (!Chainloader.PluginInfos.ContainsKey(PluginGuid)) return;
             try
             {
-                RegisterSlider(baseMoveSpeed, 7f, 14f);
-                RegisterSlider(acceleration, 60f, 180f, "{0:0}");
-                RegisterSlider(radarFacingSpeedBonus, 0f, 0.35f, "{0:0%}");
-
-                RegisterSlider(chaingunDamage, 0.30f, 1.00f);
-                RegisterSlider(chaingunMaxSpread, 0.50f, 5f);
-                RegisterSlider(chaingunBloom, 0f, 0.25f);
-                RegisterSlider(chaingunReload, 0.50f, 4f);
-                RegisterSlider(chaingunSplashDamage, 0f, 0.75f);
-                RegisterSlider(chaingunSplashRadius, 0f, 12f);
-                RegisterSlider(chaingunSplashVfxScale, 0.50f, 3f);
-
-                RegisterSlider(dashCooldown, 1f, 10f);
-                RegisterSlider(dashPeakSpeed, 1f, 4f);
-                RegisterSlider(dashClimbHeight, 0f, 12f);
-                RegisterSlider(dashRampFraction, 0.10f, 0.60f);
-
-                RegisterToggle(rotorWashEnabled);
-                RegisterSlider(rotorHoverVolume, 0f, 1f);
-                RegisterSlider(gatlingSpoolVolume, 0f, 1f);
-                RegisterSlider(rotorPitch, 0.7f, 1.2f);
-                RegisterSlider(rotorLoadPitch, 0f, 0.12f, "{0:0.000}");
-                RegisterSlider(rotorLoadGain, 0f, 6f, "{0:0.0} dB");
-                RegisterSlider(rotorResponse, 0.1f, 2f, "{0:0.00} s");
-                RegisterSlider(rotorToneCutoff, 600f, 20000f, "{0:0} Hz");
+                foreach (var group in entries.GroupBy(AH64BalanceReport.Category))
+                {
+                    foreach (var entry in group) RegisterEntry(entry, group.Key);
+                    RegisterShare(group.Key);
+                }
+                object inputConfig = Create("OptionConfigs.InputFieldConfig");
+                SetField(inputConfig, "richText", false);
+                AddOption(Create("Options.StringInputFieldOption", AH64BalanceFeedback.Comments, inputConfig));
+                RegisterShare("Feedback");
+                AddOption(Create("Options.GenericButtonOption", "Copy all settings", "Feedback",
+                    "Copies every AH-64 slider, toggle, mod version and your comments. Paste wherever you prefer. Nothing is submitted automatically.",
+                    "Copy", new UnityAction(AH64BalanceFeedback.Copy)));
+                TypeOf("ModSettingsManager").GetMethod("SetModDescription", new[] { typeof(string), typeof(string), typeof(string) })
+                    .Invoke(null, new object[] { "Tune movement, weapons and audio. Defaults are the intended balance. "
+                        + "Use Share settings in any category to copy the whole setup and open GitHub. "
+                        + "Restart after changing settings marked as requiring it. Gameplay settings are local and are not synchronized between players.",
+                        AH64Plugin.MODUID, "AH-64" });
             }
             catch (Exception error)
             {
-                Log.Warning("AH-64 could not register Risk Of Options playtest controls: " + error.Message);
+                Log.Error("AH-64 could not register Risk of Options controls: " + error);
+                throw;
             }
         }
 
-        private static void RegisterSlider(ConfigEntry<float> entry, float min, float max, string format = "{0:0.00}")
+        private static void RegisterEntry(ConfigEntryBase entry, string category)
         {
-            Type sliderConfigType = Type.GetType("RiskOfOptions.OptionConfigs.SliderConfig, RiskOfOptions");
-            Type sliderOptionType = Type.GetType("RiskOfOptions.Options.SliderOption, RiskOfOptions");
-            object config = Activator.CreateInstance(sliderConfigType);
-            SetField(config, "min", min);
-            SetField(config, "max", max);
-            SetField(config, "formatString", format);
-            AddOption(Activator.CreateInstance(sliderOptionType, entry, config));
+            bool isSlider = entry is ConfigEntry<float>;
+            object config = Create(isSlider ? "OptionConfigs.SliderConfig" : "OptionConfigs.CheckBoxConfig");
+            SetField(config, "category", category);
+            SetField(config, "restartRequired", AH64BalanceReport.RequiresRestart(entry));
+            if (isSlider)
+            {
+                var range = (AcceptableValueRange<float>)entry.Description.AcceptableValues;
+                SetField(config, "min", range.MinValue);
+                SetField(config, "max", range.MaxValue);
+                // Three decimals keep the gatling cadence and small pitch changes readable.
+                SetField(config, "formatString", "{0:0.###}");
+            }
+            AddOption(Create(isSlider ? "Options.SliderOption" : "Options.CheckBoxOption", entry, config));
         }
 
-        private static void RegisterToggle(ConfigEntry<bool> entry)
+        private static void RegisterShare(string category)
         {
-            Type checkBoxConfigType = Type.GetType("RiskOfOptions.OptionConfigs.CheckBoxConfig, RiskOfOptions");
-            Type checkBoxOptionType = Type.GetType("RiskOfOptions.Options.CheckBoxOption, RiskOfOptions");
-            object config = Activator.CreateInstance(checkBoxConfigType);
-            AddOption(Activator.CreateInstance(checkBoxOptionType, entry, config));
+            AddOption(Create("Options.GenericButtonOption", "Share settings", category,
+                "Copies ALL AH-64 settings and Feedback comments, then opens GitHub. "
+                + "Paste into the settings field, review, and submit there. Requires a GitHub account. "
+                + "No report is sent automatically. Use the Feedback category for copy-only.",
+                "Copy & open GitHub", new UnityAction(AH64BalanceFeedback.CopyAndOpen)));
         }
+
+        private static Type TypeOf(string name) => Type.GetType("RiskOfOptions." + name + ", RiskOfOptions", true);
+        private static object Create(string name, params object[] args) => Activator.CreateInstance(TypeOf(name), args);
 
         private static void AddOption(object option)
         {
-            Type managerType = Type.GetType("RiskOfOptions.ModSettingsManager, RiskOfOptions");
-            MethodInfo addOption = managerType.GetMethod("AddOption", new[] { option.GetType().BaseType, typeof(string), typeof(string) });
-            addOption.Invoke(null, new object[] { option, AH64Plugin.MODUID, AH64Plugin.MODNAME });
+            MethodInfo addOption = TypeOf("ModSettingsManager").GetMethod("AddOption",
+                new[] { TypeOf("Options.BaseOption"), typeof(string), typeof(string) });
+            addOption.Invoke(null, new object[] { option, AH64Plugin.MODUID, "AH-64" });
         }
 
         private static void SetField(object instance, string name, object value)

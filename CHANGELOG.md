@@ -22,6 +22,8 @@ Combined visual, Wwise audio and hover candidate. In-game playtesting is pending
 - XM301 wind-up/down has its own emitter and volume control.
 - Smoke Backflip rotates nose-up first; fall-damage immunity and external vertical
   motion are preserved. Equipment flight and lift volumes remain effective.
+- Added all 35 tuning sliders, feedback comments, and copy/share settings actions.
+- Corrected the M230 primary icon to a single bore; all three primary sprites are bundle-validated.
 - Added selectable Desert and Arctic paint schemes with matching lobby previews.
 - Weapon heat follows the selected skin after asynchronous skin application.
 - Rotor wash now follows terrain on each client; blur/new wash respect cloak,

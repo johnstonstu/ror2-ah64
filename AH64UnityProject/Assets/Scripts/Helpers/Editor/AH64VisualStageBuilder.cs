@@ -33,6 +33,7 @@ public static class AH64VisualStageBuilder
             if (error != null) throw new InvalidOperationException(error);
             VerifyPrefab(AssetDatabase.LoadAssetAtPath<GameObject>(BundleRoot + "mdlAH64.prefab"), baseline);
             VerifyPrefab(AssetDatabase.LoadAssetAtPath<GameObject>(BundleRoot + "AH64Display.prefab"), baseline);
+            AH64GatlingIconBaker.BakeAll();
             AssetDatabase.SaveAssets();
             // Phase4 refresh only prepares model materials/prefabs. Audio assets stay untouched.
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
@@ -47,6 +48,9 @@ public static class AH64VisualStageBuilder
             if (!bundle) throw new InvalidOperationException("Cannot load staged bundle: " + bundlePath);
             VerifyPrefab(bundle.LoadAsset<GameObject>("mdlAH64"), baseline);
             VerifyPrefab(bundle.LoadAsset<GameObject>("AH64Display"), baseline);
+            foreach (string iconName in new[] { "texAH64PrimaryIcon", "texAH64GatlingIcon", "texAH64CannonIcon" })
+                if (!bundle.LoadAsset<Sprite>(iconName))
+                    throw new InvalidOperationException("Missing primary sprite: " + iconName);
             var duplicateNames = bundle.GetAllAssetNames().GroupBy(p => Path.GetFileNameWithoutExtension(p).ToLowerInvariant())
                 .Where(g => g.Count() > 1).Select(g => g.Key).ToArray();
             if (duplicateNames.Length > 0)

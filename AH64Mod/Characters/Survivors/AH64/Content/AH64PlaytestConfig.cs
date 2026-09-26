@@ -3,9 +3,8 @@ using BepInEx.Configuration;
 namespace AH64.Survivors
 {
     /// <summary>
-    /// Small, deliberate set of local playtest controls. Defaults always match the tuned build.
-    /// These are not public-release balance options: test an isolated hypothesis, record the result,
-    /// then move the winning value back into <see cref="AH64StaticValues"/>.
+    /// Player-facing balance and presentation controls. Keep existing config keys so upgrades
+    /// preserve players' values; Risk of Options supplies the friendlier category labels.
     /// </summary>
     internal static class AH64PlaytestConfig
     {
@@ -196,12 +195,17 @@ namespace AH64.Survivors
             rotorToneCutoff = Bind(config, Presentation, "Rotor high-frequency cutoff Hz", AH64StaticValues.rotorToneCutoff, 600f, 20000f,
                 "Approximate tonal target mapped to Wwise low-pass. Lower removes hiss; 20000 adds no filtering.");
 
-            AH64RiskOfOptions.Register(
+            var entries = new ConfigEntryBase[] {
                 baseMoveSpeed, acceleration, radarFacingSpeedBonus,
                 chaingunDamage, chaingunMaxSpread, chaingunBloom, chaingunReload, chaingunSplashDamage, chaingunSplashRadius, chaingunSplashVfxScale,
+                gatlingDamage, gatlingSpooledDuration, gatlingMaxSpread, gatlingBloom, gatlingReload,
+                gatlingSplashDamage, gatlingSplashRadius, gatlingSplashVfxScale,
+                cannonDamage, cannonDuration, cannonReload, cannonSplashDamage, cannonSplashRadius, cannonSplashVfxScale,
                 dashCooldown, dashPeakSpeed, dashClimbHeight, dashRampFraction,
                 rotorWashEnabled, rotorHoverVolume, gatlingSpoolVolume,
-                rotorPitch, rotorLoadPitch, rotorLoadGain, rotorResponse, rotorToneCutoff);
+                rotorPitch, rotorLoadPitch, rotorLoadGain, rotorResponse, rotorToneCutoff };
+            AH64BalanceFeedback.Init(config, entries);
+            AH64RiskOfOptions.Register(entries);
         }
 
         private static ConfigEntry<float> Bind(ConfigFile config, string section, string name, float value, float min, float max, string description)
