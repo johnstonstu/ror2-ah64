@@ -35,18 +35,37 @@ namespace AH64.Survivors
         //the probe starts this far above the feet, so sitting on a lip doesn't start the ray inside geometry
         public const float hoverProbeOriginLift = 0.5f;
 
-        //Off the edge of the map. The chopper DESCENDS rather than holding altitude, which is what makes
-        //RoR2's own out-of-bounds handling work: MapZone fires on OnTriggerExit, so something has to
-        //physically leave the bounds volume for the game to react. Holding altitude meant the chopper
-        //never exited, never got recovered, and could sink into a chasm too deep for the collective to
-        //climb back out of - with no way to recover. (Playtested; this replaces the earlier hold.)
-        public const float voidDescendSpeed = 12f;
+        //Off the edge of the map, or over any drop deeper than the probe. The chopper hands the motor
+        //back to vanilla gravity and falls like any other survivor. Holding altitude meant it never left
+        //the MapZone bounds volume (OnTriggerExit), so it was never recovered. The earlier fixed 12 u/s
+        //descent broke stages whose intended route is a long drop: Solutional Haunt opens with a shaft
+        //far deeper than the probe, slowed only near the bottom, and the old 3 s failsafe below teleported
+        //the chopper back to the start every time (Solutional Haunt report, issue 3).
+        //
+        //Failsafe, so the chopper can never be permanently lost on a stage whose bounds volume doesn't
+        //catch it. Only fires after this long in free fall with no terrain beneath us - over a thousand
+        //units at vanilla gravity, far past any real stage drop, so MapZone always gets first crack.
+        public const float voidRecoveryDelay = 12f;
 
-        //Failsafe, so the chopper can never be permanently lost even on a stage whose bounds volume
-        //doesn't catch it. After this long with no terrain at all beneath us we run the same recovery
-        //MapZone runs on a player: find a safe position and teleport there. Long enough that the stage's
-        //own MapZone gets first crack, and that skimming a genuinely deep gorge isn't punished instantly.
-        public const float voidRecoveryDelay = 3f;
+        //External launches: jump pads (JumpVolume, including the moon pillar pads to Mithrix), False
+        //Son's pads, and big knock-ups. JumpVolume computes its jumpVelocity as a gravity arc, so the PD
+        //altitude hold - which clamps climb to hoverMaxClimbSpeed and runs with gravity off - killed the
+        //launch within a few ticks and floated the chopper back down (the jump-pad reports, issues 1, 2,
+        //4 and 5). While launched, the motor runs as a plain vanilla character; the hover takes over again
+        //on landing or when falling back to within externalLaunchHandbackHeight of the ground.
+        //
+        //Upward speed beyond hoverMaxClimbSpeed that counts as a launch when the pad does not also set
+        //disableAirControlUntilCollision. Our own utilities peak around 13-17 u/s, so they never trip it.
+        public const float externalLaunchMinExcessSpeed = 6f;
+        //Ignore the landing check this long after launch, so the frame we leave the pad doesn't end it.
+        public const float externalLaunchMinDuration = 0.3f;
+        //Past apex and this close to the ground: hand back to the hover so it brakes instead of slamming.
+        public const float externalLaunchHandbackHeight = 8f;
+        //Safety cap, in case a launch never lands (e.g. flung into a void with no MapZone).
+        public const float externalLaunchMaxDuration = 10f;
+        //Vanilla CharacterMotor default. hoverAirControl (1.0) would let neutral stick brake the pad's
+        //horizontal velocity at full acceleration and drop the chopper short of the target.
+        public const float externalLaunchAirControl = 0.25f;
 
         //Collective: hold jump to climb toward a jump-count-scaled ceiling; release to settle back to
         //hoverHeight. Hold rawMoveDown to dump altitude faster. Vanilla jump is suppressed —

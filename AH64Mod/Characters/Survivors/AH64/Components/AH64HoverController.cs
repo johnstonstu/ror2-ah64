@@ -63,6 +63,9 @@ namespace AH64.Survivors.Components
         private float lastValidGroundDistance;
         private float probeMissTimer;
         private float pitchWeightVelocity;
+        private bool externalLaunchActive;
+        private float externalLaunchAge;
+        private bool lastDisableAirControl;
 
         private void Awake()
         {
@@ -91,6 +94,30 @@ namespace AH64.Survivors.Components
             motor.airControl = AH64StaticValues.hoverAirControl;
         }
 
+        /// <summary>
+        /// Drops our flight and anti-gravity granters so the motor behaves like any vanilla survivor.
+        /// Read-modify-write, so environmental anti-gravity a stage grants while we're in this mode
+        /// (e.g. a slow-fall volume) is respected.
+        /// </summary>
+        private void UseVanillaPhysics(float airControl)
+        {
+            CharacterFlightParameters flight = motor.flightParameters;
+            if (flight.channeledFlightGranterCount != 0)
+            {
+                flight.channeledFlightGranterCount = 0;
+                motor.flightParameters = flight;
+            }
+
+            CharacterGravityParameters gravity = motor.gravityParameters;
+            if (gravity.channeledAntiGravityGranterCount != 0)
+            {
+                gravity.channeledAntiGravityGranterCount = 0;
+                motor.gravityParameters = gravity;
+            }
+
+            motor.airControl = airControl;
+        }
+
         public float GetCeiling()
         {
             return AH64StaticValues.hoverHeight + GetMaxRise();
@@ -112,15 +139,36 @@ namespace AH64.Survivors.Components
             if (!motor || !body)
                 return;
 
-            if (!motor.isFlying || motor.useGravity)
-                ConfigureMotor();
-
             ResolveGroundDistance(deltaTime);
-            UpdateTargetHeight(jumpHeld, descendHeld, deltaTime);
-            UpdateAscentPitch(deltaTime);
 
             if (spawnGrace > 0f)
                 spawnGrace -= deltaTime;
+
+            if (UpdateExternalLaunch(deltaTime))
+            {
+                UpdateAscentPitch(deltaTime);
+                return;
+            }
+
+            if (GroundDistance < 0f && spawnGrace <= 0f)
+            {
+                //Nothing within probe range: fall under vanilla gravity. See voidRecoveryDelay.
+                UseVanillaPhysics(AH64StaticValues.hoverAirControl);
+                TargetHeight = AH64StaticValues.hoverHeight;
+                IsAscending = false;
+                UpdateAscentPitch(deltaTime);
+
+                timeWithoutGround += deltaTime;
+                if (timeWithoutGround >= AH64StaticValues.voidRecoveryDelay)
+                    RecoverFromVoid();
+                return;
+            }
+
+            if (!motor.isFlying || motor.useGravity)
+                ConfigureMotor();
+
+            UpdateTargetHeight(jumpHeld, descendHeld, deltaTime);
+            UpdateAscentPitch(deltaTime);
 
             float maxClimb = AH64StaticValues.hoverMaxClimbSpeed;
             float maxDescend = AH64StaticValues.hoverMaxDescendSpeed;
@@ -128,15 +176,7 @@ namespace AH64.Survivors.Components
                 maxDescend *= AH64StaticValues.collectiveCrouchSettleMult;
 
             float desiredVerticalSpeed;
-            if (GroundDistance < 0f && spawnGrace <= 0f)
-            {
-                desiredVerticalSpeed = -AH64StaticValues.voidDescendSpeed;
-                timeWithoutGround += deltaTime;
-
-                if (timeWithoutGround >= AH64StaticValues.voidRecoveryDelay)
-                    RecoverFromVoid();
-            }
-            else if (GroundDistance < 0f)
+            if (GroundDistance < 0f)
             {
                 desiredVerticalSpeed = 0f;
                 timeWithoutGround = 0f;
@@ -164,6 +204,54 @@ namespace AH64.Survivors.Components
             Vector3 moveDirection = motor.moveDirection;
             moveDirection.y = desiredVerticalSpeed / walkSpeed;
             motor.moveDirection = moveDirection;
+        }
+
+        /// <summary>
+        /// Detects and rides out an external launch (jump pad, knock-up). Returns true while the hover
+        /// must keep its hands off the vertical axis. See <c>AH64StaticValues.externalLaunchMinExcessSpeed</c>.
+        /// </summary>
+        private bool UpdateExternalLaunch(float deltaTime)
+        {
+            //Edge-triggered: the flag stays set until the next collision, so a level check would
+            //re-enter the launch the tick after we hand back.
+            bool airControlFlag = motor.disableAirControlUntilCollision;
+            bool flagRaised = airControlFlag && !lastDisableAirControl;
+            lastDisableAirControl = airControlFlag;
+
+            if (!externalLaunchActive)
+            {
+                bool launchedFast = motor.velocity.y
+                    > AH64StaticValues.hoverMaxClimbSpeed + AH64StaticValues.externalLaunchMinExcessSpeed;
+                if (!flagRaised && !launchedFast)
+                    return false;
+
+                externalLaunchActive = true;
+                externalLaunchAge = 0f;
+                timeWithoutGround = 0f;
+                IsAscending = false;
+            }
+
+            externalLaunchAge += deltaTime;
+
+            bool pastMinimum = externalLaunchAge >= AH64StaticValues.externalLaunchMinDuration;
+            bool landed = motor.isGrounded;
+            bool fallingNearGround = motor.velocity.y <= 0f && GroundDistance >= 0f
+                && GroundDistance <= AH64StaticValues.externalLaunchHandbackHeight;
+
+            if ((pastMinimum && (landed || fallingNearGround))
+                || externalLaunchAge >= AH64StaticValues.externalLaunchMaxDuration)
+            {
+                externalLaunchActive = false;
+                TargetHeight = AH64StaticValues.hoverHeight;
+                //Otherwise CharacterMotor keeps zero air acceleration until we touch something and the
+                //hover can't brake the fall. ServoDash and SmokeBackflip clear it on exit for the same reason.
+                motor.disableAirControlUntilCollision = false;
+                lastDisableAirControl = false;
+                return false;
+            }
+
+            UseVanillaPhysics(AH64StaticValues.externalLaunchAirControl);
+            return true;
         }
 
         private void ResolveGroundDistance(float deltaTime)
@@ -240,6 +328,7 @@ namespace AH64.Survivors.Components
         {
             timeWithoutGround = 0f;
             probeMissTimer = 0f;
+            externalLaunchActive = false;
             lastValidGroundDistance = AH64StaticValues.hoverHeight;
             spawnGrace = AH64StaticValues.hoverSpawnGrace;
             TargetHeight = AH64StaticValues.hoverHeight;
