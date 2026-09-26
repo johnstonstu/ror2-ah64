@@ -7,7 +7,7 @@ re-run, done. Do NOT hand-edit geometry in the .blend and expect it to survive -
 the next run of this script discards everything in the AH64 collection.
 
     Inside Blender (Scripting workspace, or via the MCP bridge):
-        exec(compile(open(PATH).read(), PATH, "exec"))
+        import runpy; runpy.run_path(PATH, run_name="__main__")
 
     Headless:
         "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe" ^
@@ -54,13 +54,15 @@ version you intended.
 
 Object count is also renderer count, and every renderer needs a matching
 ChildLocator entry plus a customRendererInfos entry on the Unity side, so these
-names are expensive to change once the assetbundle exists. Current set, 17:
+names are expensive to change once the assetbundle exists. Current set, 25:
 
     Airframe  AirframeDark  Canopy
     AirframeMarkings
     NoseOptics
     MainRotor  TailRotor  ChinTurret  ChinBarrel  ChinGatling
     PodRocketL  PodRocketR  PodMissileL  PodMissileR
+    MissileL0  MissileL1  MissileL2  MissileL3
+    MissileR0  MissileR1  MissileR2  MissileR3
     RadarDome
     RotorBlurMain  RotorBlurTail
 
@@ -85,12 +87,15 @@ import bpy
 import bmesh
 import math
 import os
+from pathlib import Path
 from mathutils import Matrix, Vector
 
 # ---------------------------------------------------------------- CONFIG ----
 
-BLEND_PATH = r"C:\Users\stuwj\Documents\Coding\ror2-chopper\Art\Blender\AH64.blend"
-FBX_PATH = r"C:\Users\stuwj\Documents\Coding\ror2-chopper\AH64UnityProject\Assets\AH64\Source\FBX\AH64.fbx"
+# Resolve from this script, so isolated checkouts never overwrite the live model.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BLEND_PATH = str(PROJECT_ROOT / "Art/Blender/AH64.blend")
+FBX_PATH = str(PROJECT_ROOT / "AH64UnityProject/Assets/AH64/Source/FBX/AH64.fbx")
 COLLECTION = "AH64"
 SAVE_ON_RUN = True
 EXPORT_FBX_ON_RUN = True   # headless __main__ runs export_fbx() after build()
@@ -433,6 +438,29 @@ def add_cyl(col, name, r, d, loc=(0, 0, 0), rot=(0, 0, 0), verts=12, m=None):
     return o
 
 
+def add_duct(col, name, x, z, y_back, y_front, radius_back, radius_front, wall, m):
+    """Faceted hollow shell with a real rim; capped cylinders erase recesses."""
+    profile = [(y_back, radius_back), (y_front, radius_front),
+               (y_front, radius_front - wall), (y_back, radius_back - wall)]
+    bm = bmesh.new()
+    rings = [[bm.verts.new((x + radius * math.cos(i * math.tau / 12), y,
+                           z + radius * math.sin(i * math.tau / 12)))
+              for i in range(12)] for y, radius in profile]
+    for j in range(4):
+        a, b = rings[j], rings[(j + 1) % 4]
+        for i in range(12):
+            k = (i + 1) % 12
+            bm.faces.new((a[i], a[k], b[k], b[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    o = bpy.data.objects.new(name, mesh)
+    col.objects.link(o)
+    put_mat(o, m)
+    return o
+
+
 def add_cone(col, name, r, d, loc=(0, 0, 0), rot=(0, 0, 0), verts=8, m=None):
     bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r, radius2=0.0,
                                     depth=d, location=(0, 0, 0))
@@ -700,26 +728,29 @@ def build_airframe(col, M):
             add_cube(col, "EngineFairing" + s, (0.30, 0.86, 0.30),
                      (sx * (ENGINE_X - 0.145), ENGINE_Y + 0.02, ENGINE_Z - 0.105),
                      m=dark),
-            add_cyl(col, "Intake" + s, 0.21, 0.14, (X, -0.04, ENGINE_Z), RX90, 12, dark),
-            add_cyl(col, "Nozzle" + s, 0.19, 0.22, (X, -1.18, ENGINE_Z), RX90, 12, dark),
-            # Small lips make the nacelles read as turbines instead of plain tubes.
-            add_cyl(col, "IntakeLip" + s, 0.235, 0.045, (X, 0.045, ENGINE_Z), RX90, 12, dark),
-            add_cyl(col, "NozzleLip" + s, 0.215, 0.055, (X, -1.305, ENGINE_Z), RX90, 12, dark),
-            # Apache nacelles are not just round tubes: a raised cowl, an intake
-            # splitter and a heat-dark exhaust shroud give them a deliberate
-            # turbine silhouette from the normal third-person camera.
-            add_cube(col, "EngineCowl" + s, (0.26, 0.48, 0.105),
-                     (X, -0.50, ENGINE_Z + 0.225), m=dark),
-            add_cyl(col, "EngineVent" + s, 0.055, 0.055,
-                    (X, -0.48, ENGINE_Z + 0.335), verts=10, m=dark),
-            add_cube(col, "IntakeSplitter" + s, (0.038, 0.060, 0.165),
-                     (X, 0.125, ENGINE_Z), m=dark),
-            add_cyl(col, "ExhaustShroud" + s, 0.232, 0.115,
-                    (X, -1.36, ENGINE_Z), RX90, 12, dark),
-            # A broad dark wing-root fairing separates the stores station from
-            # the olive fuselage without introducing another renderer/material.
-            add_cube(col, "WingRootFairing" + s, (0.30, 0.62, 0.075),
-                     (sx * 0.78, -0.03, wing_z(0.78, 1.105)), m=dark),
+            # The nacelle end caps sit deep behind these open shells. The rim,
+            # tunnel and recessed backing shade correctly with a single material.
+            add_duct(col, "Intake" + s, X, ENGINE_Z,
+                     -0.115, 0.095, 0.246, 0.235, 0.035, dark),
+            add_duct(col, "Nozzle" + s, X, ENGINE_Z,
+                     -1.075, -1.445, 0.242, 0.205, 0.030, dark),
+            # A tapered saddle replaces the rectangular block on top of the can.
+            loft(col, "EngineCowl" + s, [
+                side_sec_y(sx, -0.12, ENGINE_X - 0.15, ENGINE_X + 0.15,
+                           ENGINE_Z + 0.17, ENGINE_Z + 0.24),
+                side_sec_y(sx, -0.48, ENGINE_X - 0.17, ENGINE_X + 0.17,
+                           ENGINE_Z + 0.17, ENGINE_Z + 0.31),
+                side_sec_y(sx, -0.99, ENGINE_X - 0.12, ENGINE_X + 0.12,
+                           ENGINE_Z + 0.16, ENGINE_Z + 0.21),
+            ], m=dark),
+            add_cube(col, "IntakeSplitter" + s, (0.032, 0.045, 0.422),
+                     (X, 0.065, ENGINE_Z), m=dark),
+            # Taper down into the wing skin; no floating plate above its surface.
+            loft(col, "WingRootFairing" + s, [
+                sec_x(sx * 0.43, 0.29, -0.42, wing_z(0.43, 1.05), 0.07),
+                sec_x(sx * 0.72, 0.23, -0.34, wing_z(0.72, 1.025), 0.05),
+                sec_x(sx * 0.98, 0.16, -0.26, wing_z(0.98, 1.005), 0.025),
+            ], m=dark),
             add_cube(col, "OuterStationPlate" + s, (0.25, 0.48, 0.055),
                      (sx * POD_ROCKET_X, -0.05, wing_z(POD_ROCKET_X, 1.025)), m=dark),
             add_cube(col, "PylonIn" + s, (0.16, 0.42, 0.28),
@@ -777,6 +808,14 @@ def build_rotors(col, M):
         parts.append(add_cube(col, "Grip%d" % i, (0.095, 0.22, 0.085),
                               (-0.26 * math.sin(a), 0.26 * math.cos(a), 0.0),
                               (0, 0, a), m=dark))
+        # Pitch links and broad root cuffs make each blade visibly driven.
+        parts.append(strut_between(col, "PitchLink%d" % i,
+                     (-0.18 * math.sin(a), 0.18 * math.cos(a), -0.18),
+                     (-0.34 * math.sin(a), 0.34 * math.cos(a), -0.025),
+                     0.032, dark))
+        parts.append(add_cube(col, "RootCuff%d" % i, (0.145, 0.16, 0.075),
+                              (-0.40 * math.sin(a), 0.40 * math.cos(a), 0),
+                              (0, 0, a), m=dark))
     # origin AT the hub - a rotor whose origin is off-centre wobbles, not spins,
     # and that is not visible in the viewport
     join_as("MainRotor", parts, origin=(0, 0, 0)).location = MAIN_ROTOR_CENTRE
@@ -818,17 +857,9 @@ def build_ordnance(col, M):
                                  for k in range(6)]
         # Tube mouths stand PROUD of the face as individual stubs (2026-08-03).
         #
-        # They cannot be holes: one renderer = one material means the pod is a single
-        # solid, so there is nothing to boolean against. A recessed muzzle collar was
-        # tried and is worse - add_cyl produces a CAPPED cylinder, so the collar just
-        # became a larger flat plate covering the mouths entirely. There is no ring
-        # primitive in this file.
-        #
-        # Protruding stubs get the read for free instead: the gaps between them shade
-        # as crevices, which is what makes the cluster legible. It also matches the
-        # real M261, whose tube ends do stand slightly out of the fairing. The old
-        # flush mouths were the failure - same colour, same plane, so they resolved as
-        # faint embossed hexagons on a brightly lit disc.
+        # Retain the proven protruding tube-end silhouette. The gaps between
+        # stubs stay readable at game distance; the engine duct changes do not
+        # alter these launch stations or their existing muzzle anchors.
         for (ox, oz) in mouths:
             pod.append(add_cyl(col, "Mouth", 0.052, 0.16,
                                (X + ox, 0.43, pod_z + oz), RX90, 6, rocket))
@@ -837,11 +868,22 @@ def build_ordnance(col, M):
         X = sx * POD_MISSILE_X
         rack_z = wing_z(POD_MISSILE_X, 0.70)
 
-        # The rail alone keeps the PodMissile{L,R} name, so the existing ChildLocator
-        # entry and item-display rules that reference it stay valid.
-        join_as("PodMissile" + s,
-                [add_cube(col, "Rail", (0.26, 0.46, 0.07), (X, -0.05, rack_z), m=missile)],
-                origin=(X, -0.05, rack_z))
+        # Permanent open ladder frame: every empty station still has a rail.
+        # Merge into the existing rack renderer; only the eight missiles disappear.
+        rack = [add_cube(col, "RackSaddle", (0.29, 0.38, 0.065),
+                         (X, -0.05, rack_z), m=missile)]
+        for y in (-0.25, 0.16):
+            # Central web connects both cross-members back to the wing pylon.
+            rack.append(add_cube(col, "RackWeb", (0.035, 0.045, 0.215),
+                                 (X, y, rack_z - 0.080), m=missile))
+            for oz in (-0.038, -0.148):
+                rack.append(add_cube(col, "RackCrossMember", (0.27, 0.055, 0.028),
+                                     (X, y, rack_z + oz), m=missile))
+        for ox in (-0.08, 0.08):
+            for oz in (-0.038, -0.148):
+                rack.append(add_cube(col, "LaunchRail", (0.035, 0.64, 0.025),
+                                     (X + ox, -0.045, rack_z + oz), m=missile))
+        join_as("PodMissile" + s, rack, origin=(X, -0.05, rack_z))
 
         # Each Hellfire is its own renderer so AH64PylonMissiles can hide them one at
         # a time as the special is spent. They were previously joined into the rack,

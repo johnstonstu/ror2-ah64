@@ -89,7 +89,7 @@ Ok "manifest.json, README.md, icon.png (256x256), CHANGELOG.md"
 # --- 3. compile --------------------------------------------------------------
 if (-not $SkipBuild) {
     Write-Host "`nbuilding..." -ForegroundColor Cyan
-    & dotnet build $Csproj -c Release -v minimal
+    & dotnet build $Csproj -c Release -v minimal /p:AH64DeployToProfiles=false
     if ($LASTEXITCODE -ne 0) { Fail "dotnet build failed" }
 }
 $dll = Join-Path $BuildDir 'plugins\AH64.dll'
@@ -130,7 +130,10 @@ Ok ("assetbundle ah64 ({0:N2} MB)" -f ((Get-Item $UnityBundle).Length / 1MB))
 # Thunderstore requires manifest/README/icon/plugins at the ZIP ROOT with no
 # enclosing directory, so stage an exact image of the zip and compress its
 # contents rather than the folder itself.
-if (Test-Path $StageDir) { Remove-Item $StageDir -Recurse -Force }
+if (Test-Path $StageDir) {
+    if ((Resolve-Path -LiteralPath $StageDir).Path -ne [IO.Path]::GetFullPath((Join-Path $RepoRoot 'dist\_stage'))) { Fail 'Unexpected staging path' }
+    Remove-Item -LiteralPath $StageDir -Recurse -Force
+}
 New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
 
 Copy-Item $Manifest $StageDir
@@ -178,7 +181,8 @@ foreach ($required in @('manifest.json', 'README.md', 'icon.png', 'CHANGELOG.md'
 # A backslash here means the archiver wrote non-conformant separators.
 if ($entries | Where-Object { $_ -like '*\*' }) { Fail "zip contains backslash path separators" }
 
-Remove-Item $StageDir -Recurse -Force
+if ((Resolve-Path -LiteralPath $StageDir).Path -ne [IO.Path]::GetFullPath((Join-Path $RepoRoot 'dist\_stage'))) { Fail 'Unexpected staging path' }
+Remove-Item -LiteralPath $StageDir -Recurse -Force
 
 Write-Host ("-" * 60)
 $zipMB = (Get-Item $zip).Length / 1MB

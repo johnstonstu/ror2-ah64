@@ -68,7 +68,7 @@ namespace AH64.Modules
         /// skin and it would. Building the parallel set here keeps the lobby honest and drops the three
         /// startup warnings.</para>
         /// </summary>
-        internal static void CreateDisplaySkinController(GameObject displayPrefab, SkinDef[] bodySkins)
+        internal static void CreateDisplaySkinController(GameObject displayPrefab, SkinDef[] bodySkins, Func<Material, Material> prepareMaterial = null)
         {
             if (!displayPrefab || bodySkins == null || bodySkins.Length == 0)
                 return;
@@ -89,9 +89,33 @@ namespace AH64.Modules
             for (int i = 0; i < bodySkins.Length; i++)
             {
                 SkinDef source = bodySkins[i];
+                var sourceMaterials = new Dictionary<string, Material>(StringComparer.Ordinal);
+                foreach (CharacterModel.RendererInfo info in source.skinDefParams.rendererInfos)
+                {
+                    if (info.renderer)
+                        sourceMaterials.Add(info.renderer.name, info.defaultMaterial);
+                }
+                var displayInfos = (CharacterModel.RendererInfo[])displayModel.baseRendererInfos.Clone();
+                var prepared = new Dictionary<Material, Material>();
+                for (int j = 0; j < displayInfos.Length; j++)
+                {
+                    Renderer renderer = displayInfos[j].renderer;
+                    if (!renderer || !sourceMaterials.TryGetValue(renderer.name, out Material material))
+                        throw new InvalidOperationException("Skin " + source.name + " has no display renderer mapping for " + (renderer ? renderer.name : "<null>"));
+                    if (material && prepareMaterial != null)
+                    {
+                        if (!prepared.TryGetValue(material, out Material lobbyMaterial))
+                        {
+                            lobbyMaterial = prepareMaterial(material);
+                            prepared.Add(material, lobbyMaterial);
+                        }
+                        material = lobbyMaterial;
+                    }
+                    displayInfos[j].defaultMaterial = material;
+                }
                 SkinDef displaySkin = CreateSkinDef(source.name,
                     source.icon,
-                    displayModel.baseRendererInfos,
+                    displayInfos,
                     displayPrefab,
                     source.unlockableDef);
 

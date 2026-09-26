@@ -6,6 +6,8 @@
     <RootNamespace>AH64</RootNamespace>
     <!-- Explicit DLL name — what shows up in the profile folder and BepInEx load log. -->
     <AssemblyName>AH64</AssemblyName>
+    <!-- Staging builds never install into a player profile unless explicitly requested. -->
+    <AH64DeployToProfiles Condition="'$(AH64DeployToProfiles)' == ''">false</AH64DeployToProfiles>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -54,14 +56,14 @@
         because MSBuild wildcards match files, not directories. Nothing is ever created: only
         folders the manager already made get written to.
       -->
-      <R2Install Include="$(AppData)\r2modmanPlus-local\RiskOfRain2\profiles\*\BepInEx\plugins\JohnstonStu-AH64\manifest.json" />
+      <R2Install Condition="'$(AH64DeployToProfiles)' == 'true'" Include="$(AppData)\r2modmanPlus-local\RiskOfRain2\profiles\*\BepInEx\plugins\JohnstonStu-AH64\manifest.json" />
     </ItemGroup>
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ProjectDir)..\Build\plugins" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="%(R2Install.RootDir)%(R2Install.Directory)"
           Condition="'@(R2Install)' != ''" />
     <Message Importance="high" Text="AH64: installed $(TargetFileName) to %(R2Install.RootDir)%(R2Install.Directory)"
              Condition="'@(R2Install)' != ''" />
-    <Message Importance="high" Text="AH64: no r2modman install of JohnstonStu-AH64 found - DLL copied to Build/plugins only. Install the package once via the manager to enable auto-deploy."
+    <Message Importance="high" Text="AH64: DLL staged in Build/plugins only. Profile deployment is opt-in with AH64DeployToProfiles=true and requires an existing installation."
              Condition="'@(R2Install)' == ''" />
   </Target>
 

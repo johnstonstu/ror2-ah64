@@ -170,7 +170,7 @@ public static class AH64Phase4Builder
 
         string pluginFolder = Environment.ExpandEnvironmentVariables(
             @"%APPDATA%\r2modmanPlus-local\RiskOfRain2\profiles\demo time new\BepInEx\plugins\JohnstonStu-AH64");
-        if (Directory.Exists(pluginFolder))
+        if (AH64BuildSafety.ProfileDeploymentRequested && Directory.Exists(pluginFolder))
         {
             string destFolder = Path.Combine(pluginFolder, "AssetBundles");
             Directory.CreateDirectory(destFolder);
@@ -179,7 +179,7 @@ public static class AH64Phase4Builder
         }
         else
         {
-            Debug.LogWarning("[AH64Phase4Builder] Profile plugin folder missing; bundle built but not installed.\n" + pluginFolder);
+            Debug.Log("[AH64Phase4Builder] Bundle staged locally; profile deployment skipped.");
         }
 
         var info = new FileInfo(builtFile);

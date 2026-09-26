@@ -1205,6 +1205,9 @@ public static class AH64HeExplosionBuilder
 
     private static void SyncBundleToProfile()
     {
+        if (!AH64BuildSafety.ProfileDeploymentRequested)
+            return;
+
         string projectRoot = Path.GetDirectoryName(Application.dataPath) ?? "";
         string built = Path.Combine(projectRoot, "AssetBundles", "ah64");
         string profile = Path.Combine(

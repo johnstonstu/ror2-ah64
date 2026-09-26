@@ -8,6 +8,23 @@ presents to players as a lobby rejection.
 
 ---
 
+## 1.1.0 (unreleased visual staging)
+
+This isolated checkpoint contains visual work only. The separate 1.1 audio and
+hover changes still need integration; this is not the final release candidate.
+
+- Added permanent two-level inboard missile racks, recessed engine openings,
+  tapered cowls/wing roots, and rotor hub detail while preserving attachment points.
+- Added selectable Desert and Arctic paint schemes with matching lobby previews.
+- Weapon heat follows the selected skin after asynchronous skin application.
+- Rotor wash now follows terrain on each client; blur/new wash respect cloak,
+  invisibility and death. These behaviors await in-game verification.
+- Builds stage locally by default; profile installation is explicitly opt-in.
+- Known follow-up: missile depletion still follows local special stock, including
+  Longbow reservations before firing; multiplayer presentation needs dedicated work.
+
+---
+
 ## 1.0.1
 
 Hotfix for two run-blocking bugs.

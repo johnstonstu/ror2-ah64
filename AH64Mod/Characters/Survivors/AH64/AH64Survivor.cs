@@ -680,41 +680,13 @@ namespace AH64.Survivors
         public override void InitializeSkins()
         {
             ModelSkinController skinController = prefabCharacterModel.gameObject.AddComponent<ModelSkinController>();
-            ChildLocator childLocator = prefabCharacterModel.GetComponent<ChildLocator>();
+            // Clone alternate paints only after the default shader polish is complete.
+            PolishAirframeMaterials(prefabCharacterModel, lobbyReadability: false);
+            skinController.skins = AH64Skins.Create(assetBundle, prefabCharacterModel);
 
-            CharacterModel.RendererInfo[] defaultRendererinfos = prefabCharacterModel.baseRendererInfos;
-
-            List<SkinDef> skins = new List<SkinDef>();
-
-            #region DefaultSkin
-            //this creates a SkinDef with all default fields
-            SkinDef defaultSkin = Skins.CreateSkinDef("DEFAULT_SKIN",
-                assetBundle.LoadAsset<Sprite>("texMainSkin"),
-                defaultRendererinfos,
-                prefabCharacterModel.gameObject);
-
-            //Single skin: default meshes from customRendererInfos. Add meshReplacements when a
-            //second skin needs alternate airframe meshes.
-            skins.Add(defaultSkin);
-            #endregion
-
-            //Mastery / alt skins: add another SkinDef here when art exists.
-            #region MasterySkin
-            #endregion
-
-            skinController.skins = skins.ToArray();
-
-            //the lobby preview is a separate prefab and needs its own controller, rooted at itself.
-            //displayPrefab is already built by this point - base.InitializeCharacter() runs
-            //InitializeDisplayPrefab() before this method is called.
-            //Clone + boost lobby mats before CreateDisplaySkinController snapshots renderer infos.
-            if (displayPrefab)
-            {
-                PolishAirframeMaterials(displayPrefab.GetComponent<CharacterModel>(), lobbyReadability: true);
-                if (!displayPrefab.GetComponent<AH64LobbyDisplayBoost>())
-                    displayPrefab.AddComponent<AH64LobbyDisplayBoost>();
-            }
-            Skins.CreateDisplaySkinController(displayPrefab, skinController.skins);
+            // Bake complete display-rooted overrides for each palette. Runtime lobby boosting used
+            // to overwrite every skin with olive and could lose its edits when CharacterModel updated.
+            Skins.CreateDisplaySkinController(displayPrefab, skinController.skins, AH64Skins.CreateLobbyMaterial);
         }
         #endregion skins
 
