@@ -8,6 +8,16 @@ presents to players as a lobby rejection.
 
 ---
 
+## 1.1.1
+
+Documentation only. No gameplay changes.
+
+### Changed
+
+- The README now shows a short looping in-game clip for every skill.
+
+---
+
 ## 1.1.0
 
 ### Added
