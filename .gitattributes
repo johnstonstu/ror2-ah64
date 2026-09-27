@@ -79,6 +79,7 @@ Build/plugins/AssetBundles/** binary
 # Art source and imported assets
 *.fbx   binary
 *.png   binary
+*.webp  binary
 *.tga   binary
 *.tif   binary
 *.psd   binary
