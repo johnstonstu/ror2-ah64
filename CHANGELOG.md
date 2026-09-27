@@ -8,6 +8,18 @@ presents to players as a lobby rejection.
 
 ---
 
+## 1.1.2
+
+Listing and documentation only. No gameplay changes.
+
+### Changed
+
+- New Thunderstore icon.
+- Updated Thunderstore description.
+- The README opens with a short intro line and a link to like the mod on Thunderstore.
+
+---
+
 ## 1.1.1
 
 Documentation only. No gameplay changes.
