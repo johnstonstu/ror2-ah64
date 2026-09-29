@@ -18,10 +18,6 @@ namespace AH64.Survivors.SkillStates
         public static float force = AH64StaticValues.hydraForce;
         public static float recoil = 0.6f;
 
-        //vanilla Wwise event - the AtG Missile Mk.1 launch, verified against SoundbanksInfo.xml. Light
-        //enough to fire on a hold-to-ripple cadence without turning into noise; the Hellfire gets the heavy one.
-        private const string fireSoundString = "Play_item_proc_missile_fire";
-
         private float duration;
         private int pylonIndex;
 
@@ -66,7 +62,8 @@ namespace AH64.Survivors.SkillStates
 
             if (AH64Assets.hydraMuzzleFlashEffect)
                 EffectManager.SimpleMuzzleFlash(AH64Assets.hydraMuzzleFlashEffect, gameObject, muzzleName, false);
-            Util.PlaySound(fireSoundString, gameObject);
+            //AtG Missile Mk.1 launch: light enough for a hold-to-ripple cadence; the Hellfire gets the heavy one.
+            Components.AH64LaunchSound.Play(gameObject);
 
             if (!isAuthority)
                 return;
