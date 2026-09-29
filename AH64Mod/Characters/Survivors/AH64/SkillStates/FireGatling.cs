@@ -96,7 +96,6 @@ namespace AH64.Survivors.SkillStates
 
             characterBody.AddSpreadBloom(spreadBloom);
             SpawnBarrelFlash(AH64Assets.chaingunMuzzleFlashEffect, muzzleOrigin, muzzleAim);
-            SpawnBarrelFlash(AH64Assets.chaingunShellEjectEffect, muzzleOrigin, muzzleAim);
             Util.PlaySound(fireSoundString, gameObject);
 
             if (chinTurret)

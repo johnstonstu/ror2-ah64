@@ -79,8 +79,6 @@ namespace AH64.Survivors.SkillStates
 
             characterBody.AddSpreadBloom(spreadBloom);
             SpawnBarrelFlash(AH64Assets.chaingunMuzzleFlashEffect, muzzleOrigin, muzzleAim);
-            //casing + smoke per round (Bandit2's rifle flash) so the belt feed reads at the breech
-            SpawnBarrelFlash(AH64Assets.chaingunShellEjectEffect, muzzleOrigin, muzzleAim);
             Util.PlaySound(fireSoundString, gameObject);
 
             if (chinTurret)

@@ -10,7 +10,11 @@ presents to players as a lobby rejection.
 
 ## 1.1.2
 
-Listing and documentation only. No gameplay changes.
+Listing and documentation, plus a primary muzzle-flash fix.
+
+### Fixed
+
+- The M230 no longer flashes purple under the aircraft. The extra effect was Bandit's muzzle flash, whose sprite and light are magenta; the barrel flash is Commando's warm muzzle flash. The XM301 and M789 used the same effect.
 
 ### Changed
 
