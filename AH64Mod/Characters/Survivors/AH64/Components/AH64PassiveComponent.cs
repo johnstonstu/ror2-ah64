@@ -11,8 +11,8 @@ namespace AH64.Survivors.Components
     ///
     /// <para>2. Owns the <b>Fire Control Radar</b> passive: periodically paints the strongest enemy in
     /// range (highest maxHealth; elite then nearest on ties), grants facing move speed and close-range
-    /// armor via the survivor stat hook, and amplifies damage we deal to the painted target. Scan
-    /// pulses emit from the <c>RadarDome</c> mesh on every retarget; the painted enemy gets a red
+    /// armor via the survivor stat hook, and amplifies damage we deal to the painted target. The
+    /// <c>RadarDome</c> mesh briefly brightens on every retarget; the painted enemy gets a red
     /// Huntress-style marker, a buff icon, a HUD "TARGET ACQUIRED" toast, and a ping VFX distinct
     /// from Longbow's Engi rings.</para>
     /// </summary>
@@ -37,7 +37,10 @@ namespace AH64.Survivors.Components
         private Renderer radarDomeRenderer;
         private MaterialPropertyBlock domeBlock;
         private Color domeEmColor = new Color(0.03f, 0.06f, 0.07f);
+        //Teal to match the FCR radome, not the threat-red used on the painted enemy.
+        private static readonly Color RadarScanGlowColor = new Color(0.30f, 0.80f, 1.00f);
         private float retargetStopwatch;
+        private float scanFlash;
         private bool lastFacing;
         private bool lastClose;
 
@@ -151,10 +154,15 @@ namespace AH64.Survivors.Components
                 : AH64StaticValues.radarDomeGlowIdle;
             //subtle breathe so the dome never looks static even between scans
             glow *= 0.85f + 0.15f * (0.5f + 0.5f * Mathf.Sin(Time.time * (painted ? 8f : 3f)));
+            scanFlash = Mathf.MoveTowards(scanFlash, 0f, Time.deltaTime / AH64StaticValues.radarScanFlashDuration);
+            //Smoothstep holds near the peak briefly, then eases out, so the scan reads as a soft swell.
+            float flash = scanFlash * scanFlash * (3f - 2f * scanFlash);
 
+            //The idle tint is near-black on purpose (grey dome, not a lamp), so a scan must blend
+            //towards its own colour and power; scaling the idle tint up stays invisible.
             radarDomeRenderer.GetPropertyBlock(domeBlock);
-            domeBlock.SetColor(EmColorId, domeEmColor * glow);
-            domeBlock.SetFloat(EmPowerId, glow);
+            domeBlock.SetColor(EmColorId, Color.Lerp(domeEmColor * glow, RadarScanGlowColor, flash));
+            domeBlock.SetFloat(EmPowerId, Mathf.Lerp(glow, AH64StaticValues.radarScanFlashPower, flash));
             radarDomeRenderer.SetPropertyBlock(domeBlock);
         }
 
@@ -214,7 +222,7 @@ namespace AH64.Survivors.Components
                 bestDistSq = distSq;
             }
 
-            //always pulse from the dome on a scan tick — even if nothing is found
+            //always flash the dome on a scan tick — even if nothing is found
             PlayScanPulse();
 
             if (!best)
@@ -359,37 +367,9 @@ namespace AH64.Survivors.Components
 
         private void PlayScanPulse()
         {
-            GameObject pulse = AH64Assets.RadarPulseEffect;
-            if (!pulse)
-                return;
-
-            Vector3 origin = radarDome
-                ? radarDome.position
-                : (body ? body.corePosition + Vector3.up * 1.5f : transform.position);
-
-            EffectData data = new EffectData
-            {
-                origin = origin,
-                scale = AH64StaticValues.radarPulseScale,
-                color = AH64Assets.RadarEffectColor,
-            };
-
-            //AH64RadarPulse has parentToReferencedTransform — attach so the ring rides with the airframe
-            //instead of freezing where the scan started.
-            if (radarDome)
-            {
-                ModelLocator modelLocator = GetComponent<ModelLocator>();
-                ChildLocator locator = modelLocator && modelLocator.modelTransform
-                    ? modelLocator.modelTransform.GetComponent<ChildLocator>()
-                    : null;
-                int domeIndex = locator ? locator.FindChildIndex("RadarDome") : -1;
-                if (domeIndex >= 0)
-                    data.SetChildLocatorTransformReference(gameObject, domeIndex);
-                else
-                    data.SetNetworkedObjectReference(radarDome.gameObject);
-            }
-
-            EffectManager.SpawnEffect(pulse, data, false);
+            //Playtest 2026-09-28: a world-space shockwave ring every retarget was too loud for a
+            //passive. The scan now reads only as a brief brightening of the radome itself.
+            scanFlash = 1f;
 
             //Faintest vanilla UI tick (~30ms). Scan runs every retarget — anything louder fatigues.
             Util.PlaySound("Play_UI_menuHover", gameObject);

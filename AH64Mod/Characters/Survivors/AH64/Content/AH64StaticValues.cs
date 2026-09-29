@@ -207,11 +207,12 @@ namespace AH64.Survivors
 
         #region passive - Fire Control Radar
         //Paints the single strongest enemy in a wide bubble (highest maxHealth; elite then nearest on
-        //ties). Scan pulse fires with every retarget so the dome reads as actively searching.
+        //ties). The radome brightens briefly on every retarget so it reads as actively searching.
         public const float radarSearchRadius = 90f;
         public const float radarRetargetInterval = 8f;
-        //Pulse scale is world units for the mast-dome scan ring (parented to RadarDome).
-        public const float radarPulseScale = 5.5f;
+        //Radome glow on each scan: peak emission power (the barrel heat glow tops out at 4) and fade time.
+        public const float radarScanFlashPower = 1.5f;
+        public const float radarScanFlashDuration = 1.1f;
         //Ping spawned on the painted target when lock is acquired / refreshed.
         public const float radarPaintPingScale = 1.6f;
         //Mast dome spin (deg/sec). Faster while a target is painted.

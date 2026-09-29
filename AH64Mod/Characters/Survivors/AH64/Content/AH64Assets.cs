@@ -49,10 +49,9 @@ namespace AH64.Survivors
         private static GameObject _longbowCrosshair;
         //Registered in CreateEffects — clones strip ShakeEmitter (camera + gamepad rumble) and
         //EffectComponent.soundName so the passive never thumps through the donor VFX.
-        public static GameObject radarPulseEffect;
         public static GameObject radarPaintPingEffect;
 
-        //Threat-red for radar pulse / paint-ping — deliberately not Engi's yellow lock rings.
+        //Threat-red for the radar paint-ping — deliberately not Engi's yellow lock rings.
         public static readonly Color32 RadarEffectColor = new Color32(255, 55, 40, 255);
 
         /// <summary>
@@ -162,23 +161,6 @@ namespace AH64.Survivors
         }
 
         /// <summary>
-        /// Expanding scan pulse from the mast dome. Prefer the Init-time clone (parents to the dome);
-        /// lazy fallbacks stay world-anchored if Init somehow missed.
-        /// </summary>
-        public static GameObject RadarPulseEffect
-        {
-            get
-            {
-                if (radarPulseEffect)
-                    return radarPulseEffect;
-
-                return LoadLegacy("Prefabs/Effects/ImpactEffects/BootShockwave")
-                    ?? LoadLegacy("Prefabs/Effects/OmniImpactVFX")
-                    ?? SmokePuffEffect;
-            }
-        }
-
-        /// <summary>
         /// Brief ping on the painted enemy when Fire Control Radar acquires them — deliberately
         /// not the Engi lock ring Longbow uses. Prefer the Init-time clone (no shake / no rumble).
         /// </summary>
@@ -189,8 +171,7 @@ namespace AH64.Survivors
                 if (radarPaintPingEffect)
                     return radarPaintPingEffect;
 
-                return LoadLegacy("Prefabs/Effects/OmniImpactVFX")
-                    ?? RadarPulseEffect;
+                return LoadLegacy("Prefabs/Effects/OmniImpactVFX");
             }
         }
 
@@ -379,7 +360,6 @@ namespace AH64.Survivors
             CreateGatlingSplashEffect();
             CreateCannonSplashEffect();
             CreateLongbowExplosionEffect();
-            radarPulseEffect = CreateRadarPulseEffect();
             radarPaintPingEffect = CreateRadarPaintPingEffect();
         }
 
@@ -511,37 +491,6 @@ namespace AH64.Survivors
             bool magenta = color.r > 0.45f && color.b > 0.45f && color.g < color.r * 0.75f && color.g < color.b;
             bool cool = color.b > color.r && color.b > color.g * 0.85f;
             return magenta || cool;
-        }
-
-        /// <summary>
-        /// Scan ring that parents to the referenced mast transform so it rides with the chopper.
-        /// BootShockwave carries shake + rumble and a stomp sound — strip those; we beep ourselves.
-        /// </summary>
-        private static GameObject CreateRadarPulseEffect()
-        {
-            GameObject vanilla = LoadLegacy("Prefabs/Effects/ImpactEffects/BootShockwave")
-                ?? LoadLegacy("Prefabs/Effects/TreebotShockwaveEffect")
-                ?? LoadLegacy("Prefabs/Effects/OmniImpactVFX")
-                ?? LoadLegacy("Prefabs/Effects/OmniExplosionVFX");
-            if (!vanilla)
-            {
-                Log.Error("AH64RadarPulse: no donor shockwave/impact VFX found.");
-                return null;
-            }
-
-            GameObject pulse = PrefabAPI.InstantiateClone(vanilla, "AH64RadarPulse", false);
-            StripEffectFeedback(pulse);
-
-            EffectComponent effect = pulse.GetComponent<EffectComponent>();
-            if (effect)
-            {
-                effect.parentToReferencedTransform = true;
-                effect.positionAtReferencedTransform = true;
-                effect.applyScale = true;
-            }
-
-            Content.CreateAndAddEffectDef(pulse);
-            return pulse;
         }
 
         /// <summary>
