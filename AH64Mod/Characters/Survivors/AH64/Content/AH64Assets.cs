@@ -47,7 +47,7 @@ namespace AH64.Survivors
         private static GameObject _longbowLockIndicatorPrefab;
         private static GameObject _radarPaintIndicatorPrefab;
         private static GameObject _longbowCrosshair;
-        //Registered in CreateEffects — clones strip ShakeEmitter (camera + gamepad rumble) and
+        //Registered in CreateEffects — the clone strips ShakeEmitter (camera + gamepad rumble) and
         //EffectComponent.soundName so the passive never thumps through the donor VFX.
         public static GameObject radarPaintPingEffect;
 

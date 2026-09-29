@@ -53,14 +53,23 @@ namespace AH64.Survivors.Components
 
         private static void LoadEventNames()
         {
-            eventNames = new Dictionary<uint, string>();
+            var names = new Dictionary<uint, string>();
             foreach (string own in new[] { "Play_AH64_Rotor", "Stop_AH64_Rotor" })
-                eventNames[AkSoundEngine.GetIDFromString(own)] = own;
+                names[AkSoundEngine.GetIDFromString(own)] = own;
             string info = System.IO.Path.Combine(Application.streamingAssetsPath,
                 "Audio", "GeneratedSoundBanks", "Windows", "SoundbanksInfo.xml");
-            if (!File.Exists(info)) return;
-            foreach (Match match in Regex.Matches(File.ReadAllText(info), "<Event Id=\"(\\d+)\" Name=\"([^\"]+)\""))
-                eventNames[uint.Parse(match.Groups[1].Value)] = match.Groups[2].Value;
+            try
+            {
+                if (File.Exists(info))
+                    foreach (Match match in Regex.Matches(File.ReadAllText(info), "<Event Id=\"(\\d+)\" Name=\"([^\"]+)\""))
+                        if (uint.TryParse(match.Groups[1].Value, out uint id))
+                            names[id] = match.Groups[2].Value;
+            }
+            catch (System.Exception exception)
+            {
+                Log.Warning($"ah64_audio_scan could not read vanilla event names: {exception.Message}");
+            }
+            eventNames = names;
         }
 
         private static string Path(Transform transform)

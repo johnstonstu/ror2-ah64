@@ -10,12 +10,16 @@ presents to players as a lobby rejection.
 
 ## 1.1.2
 
-Listing and documentation, plus a primary muzzle-flash fix.
+Missile launch audio fix, primary muzzle-flash fix, a quieter radar scan, and listing updates.
 
 ### Fixed
 
 - Firing Hydra rockets or Longbow no longer leaves a missile fly-by loop running on the aircraft. The launch sound starts a loop that normally ends with the missile, so every volley stacked another whine under the rotor for the rest of the run.
 - The M230 no longer flashes purple under the aircraft. The extra effect was Bandit's muzzle flash, whose sprite and light are magenta; the barrel flash is Commando's warm muzzle flash. The XM301 and M789 used the same effect.
+
+### Added
+
+- `ah64_audio_scan` console command. It lists every sound currently playing in the scene, with its name and distance, for audio bug reports.
 
 ### Changed
 
