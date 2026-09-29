@@ -15,10 +15,6 @@ namespace AH64.Survivors.SkillStates
     {
         public static float baseFireInterval = AH64StaticValues.longbowFireInterval;
 
-        //Use the same compact AtG launch cue as the Hydra pods. It has enough motor bite to sell an
-        //alternating six-missile rail ripple, but does not stack like Engineer's long seeker launch.
-        private const string fireSoundString = "Play_item_proc_missile_fire";
-
         public List<HurtBox> targets;
 
         /// <summary>
@@ -109,7 +105,9 @@ namespace AH64.Survivors.SkillStates
             if (AH64Assets.hydraMuzzleFlashEffect)
                 EffectManager.SimpleMuzzleFlash(AH64Assets.hydraMuzzleFlashEffect, gameObject, rail, true);
 
-            Util.PlaySound(fireSoundString, gameObject);
+            //Same compact AtG launch cue as the Hydra pods: enough motor bite for an alternating
+            //six-missile rail ripple without stacking like Engineer's long seeker launch.
+            Components.AH64LaunchSound.Play(gameObject);
 
             float damageCoefficient = AH64StaticValues.longbowDamageBase
                 + lockIndex * AH64StaticValues.longbowDamagePerLock;

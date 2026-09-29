@@ -8,6 +8,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-6ee1e1?style=for-the-badge" alt="MIT licence"></a>
 </p>
 
+<p align="center"><b>An AH-64 Apache attack helicopter survivor for Risk of Rain 2.</b></p>
+
+<p align="center">Enjoying it? Please <a href="https://thunderstore.io/package/JohnstonStu/AH64/">like AH64 on Thunderstore</a> so other players can find it.</p>
+
 > **Early access:** AH-64 is still being tuned. Bug reports, balance settings and run details help shape the next update.
 >
 > **[Report a bug](https://github.com/johnstonstu/ror2-ah64/issues/new?template=bug_report.yml)** · **[Share balance feedback](https://github.com/johnstonstu/ror2-ah64/issues/new?template=feedback.yml)** · **[Discussions](https://github.com/johnstonstu/ror2-ah64/discussions)**

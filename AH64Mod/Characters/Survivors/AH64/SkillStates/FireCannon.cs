@@ -97,7 +97,6 @@ namespace AH64.Survivors.SkillStates
             Vector3 visualOrigin = AH64Muzzles.Origin(childLocator, "MuzzleCannon", aimRay);
             characterBody.AddSpreadBloom(spreadBloom);
             SpawnBarrelFlash(AH64Assets.chaingunMuzzleFlashEffect, visualOrigin, muzzleAim);
-            SpawnBarrelFlash(AH64Assets.chaingunShellEjectEffect, visualOrigin, muzzleAim);
             Util.PlaySound(fireCrackSoundString, gameObject);
             Util.PlaySound(fireBodySoundString, gameObject);
 

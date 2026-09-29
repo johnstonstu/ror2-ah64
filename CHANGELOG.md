@@ -8,6 +8,29 @@ presents to players as a lobby rejection.
 
 ---
 
+## 1.1.2
+
+Missile launch audio fix, primary muzzle-flash fix, a quieter radar scan, and listing updates.
+
+### Fixed
+
+- Firing Hydra rockets or Longbow no longer leaves a missile fly-by loop running on the aircraft. The launch sound starts a loop that normally ends with the missile, so every volley stacked another whine under the rotor for the rest of the run.
+- The M230 no longer flashes purple under the aircraft. The extra effect was Bandit's muzzle flash, whose sprite and light are magenta; the barrel flash is Commando's warm muzzle flash. The XM301 and M789 used the same effect.
+
+### Added
+
+- `ah64_audio_scan` console command. It lists every sound currently playing in the scene, with its name and distance, for audio bug reports.
+
+### Changed
+
+- Fire Control Radar's scan is much quieter visually. The red shockwave ring around the mast every eight seconds is gone; the radar dome on the mast now glows soft teal for about a second on each scan. The target marker and acquire ping are unchanged.
+- New Thunderstore icon.
+- Updated Thunderstore description.
+- The README opens with a short intro line and a link to like the mod on Thunderstore.
+- New README clips for the M230, XM301 and M789 showing the corrected muzzle flash.
+
+---
+
 ## 1.1.1
 
 Documentation only. No gameplay changes.

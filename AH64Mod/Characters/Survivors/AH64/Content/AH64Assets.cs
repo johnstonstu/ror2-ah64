@@ -19,7 +19,6 @@ namespace AH64.Survivors
         public static GameObject chaingunTracerEffect;
         public static GameObject chaingunMuzzleFlashEffect;
         public static GameObject chaingunHitEffect;
-        public static GameObject chaingunShellEjectEffect;
 
         public static GameObject dashThrusterEffect;
         public static GameObject dashDustEffect;
@@ -48,12 +47,11 @@ namespace AH64.Survivors
         private static GameObject _longbowLockIndicatorPrefab;
         private static GameObject _radarPaintIndicatorPrefab;
         private static GameObject _longbowCrosshair;
-        //Registered in CreateEffects — clones strip ShakeEmitter (camera + gamepad rumble) and
+        //Registered in CreateEffects — the clone strips ShakeEmitter (camera + gamepad rumble) and
         //EffectComponent.soundName so the passive never thumps through the donor VFX.
-        public static GameObject radarPulseEffect;
         public static GameObject radarPaintPingEffect;
 
-        //Threat-red for radar pulse / paint-ping — deliberately not Engi's yellow lock rings.
+        //Threat-red for the radar paint-ping — deliberately not Engi's yellow lock rings.
         public static readonly Color32 RadarEffectColor = new Color32(255, 55, 40, 255);
 
         /// <summary>
@@ -163,23 +161,6 @@ namespace AH64.Survivors
         }
 
         /// <summary>
-        /// Expanding scan pulse from the mast dome. Prefer the Init-time clone (parents to the dome);
-        /// lazy fallbacks stay world-anchored if Init somehow missed.
-        /// </summary>
-        public static GameObject RadarPulseEffect
-        {
-            get
-            {
-                if (radarPulseEffect)
-                    return radarPulseEffect;
-
-                return LoadLegacy("Prefabs/Effects/ImpactEffects/BootShockwave")
-                    ?? LoadLegacy("Prefabs/Effects/OmniImpactVFX")
-                    ?? SmokePuffEffect;
-            }
-        }
-
-        /// <summary>
         /// Brief ping on the painted enemy when Fire Control Radar acquires them — deliberately
         /// not the Engi lock ring Longbow uses. Prefer the Init-time clone (no shake / no rumble).
         /// </summary>
@@ -190,8 +171,7 @@ namespace AH64.Survivors
                 if (radarPaintPingEffect)
                     return radarPaintPingEffect;
 
-                return LoadLegacy("Prefabs/Effects/OmniImpactVFX")
-                    ?? RadarPulseEffect;
+                return LoadLegacy("Prefabs/Effects/OmniImpactVFX");
             }
         }
 
@@ -380,7 +360,6 @@ namespace AH64.Survivors
             CreateGatlingSplashEffect();
             CreateCannonSplashEffect();
             CreateLongbowExplosionEffect();
-            radarPulseEffect = CreateRadarPulseEffect();
             radarPaintPingEffect = CreateRadarPaintPingEffect();
         }
 
@@ -399,12 +378,6 @@ namespace AH64.Survivors
                 "Prefabs/Effects/OmniImpactVFX");
 
             chaingunMuzzleFlashEffect = CreateChaingunMuzzleFlash();
-
-            //Never fall back to MuzzleflashBarrage — MUL-T purple reads as "wrong gun" on the M230.
-            //Bandit2 is casing + smoke; if it misses we just skip the eject flash.
-            chaingunShellEjectEffect = LoadVanilla(
-                "Prefabs/Effects/MuzzleFlashes/MuzzleflashBandit2",
-                "Assets/RoR2/Base/Characters/Bandit2/VFX/MuzzleflashBandit2.prefab");
 
             hydraMuzzleFlashEffect = LoadVanilla(SmokeRingPaths);
             //hydraExplosionEffect + chaingunSplashEffect: custom AH64*Explosion prefabs, after Hellfire loads.
@@ -427,16 +400,20 @@ namespace AH64.Survivors
         }
 
         /// <summary>
-        /// Warm orange/yellow rifle flashes only. <c>MuzzleflashBarrage</c> (MUL-T) is deliberately
-        /// excluded — it is purple and was the prior M230 regression.
+        /// Commando's muzzle flash only. Catalog address verified the same way as the smoke ring:
+        /// <c>RoR2/Base/Common/VFX/Muzzleflash1.prefab</c>. Its point light is pale yellow.
+        ///
+        /// <para><c>MuzzleflashFMJ</c> is not a fallback. Its light is blue (0.66, 0.75, 1) at
+        /// intensity 22. <c>MuzzleflashBandit2</c> is not a casing puff either: the HitFlash
+        /// sprite is magenta (1, 0.05, 0.74) and the point light is pink (1, 0.55, 0.97) with
+        /// range 10. Spawning that on the chin every round is what washed the belly purple.
+        /// <c>MuzzleflashBarrage</c> stays excluded for the same reason.</para>
         /// </summary>
         private static GameObject LoadWarmMuzzleFlash()
         {
             return LoadVanilla(
-                "Prefabs/Effects/MuzzleFlashes/Muzzleflash1",
-                "Assets/RoR2/Base/Common/VFX/MuzzleFlashes/Muzzleflash1.prefab",
-                "Prefabs/Effects/MuzzleFlashes/MuzzleflashFMJ",
-                "Assets/RoR2/Base/Characters/Commando/Skills/MuzzleflashFMJ.prefab");
+                "RoR2/Base/Common/VFX/Muzzleflash1.prefab",
+                "Prefabs/Effects/MuzzleFlashes/Muzzleflash1");
         }
 
         /// <summary>
@@ -452,11 +429,17 @@ namespace AH64.Survivors
             GameObject vanilla = LoadWarmMuzzleFlash();
             if (!vanilla)
             {
-                Log.Error("AH64ChaingunMuzzleFlash: no warm muzzle flash loaded (FMJ/Muzzleflash1). Primary will fire without a barrel flash.");
+                Log.Error("AH64ChaingunMuzzleFlash: Muzzleflash1 did not load. Primary will fire without a barrel flash.");
                 return null;
             }
 
             GameObject flash = PrefabAPI.InstantiateClone(vanilla, "AH64ChaingunMuzzleFlash", false);
+            //Own the light colour on the clone. Muzzleflash1's authored light is pale yellow;
+            //a warm orange reads as a gun flash against the olive belly and cannot go pink if
+            //the donor prefab is ever swapped. Particle sprites stay on the Hopoo ramp —
+            //white start colours are what that shader expects. Only a cool/magenta start
+            //colour is rewritten, which is the Bandit2 HitFlash failure mode.
+            WarmMuzzleFlashInstance(flash);
 
             ShakeEmitter shake = flash.AddComponent<ShakeEmitter>();
             shake.amplitudeTimeDecay = true;
@@ -474,35 +457,40 @@ namespace AH64.Survivors
             return flash;
         }
 
+        //White-hot core through orange. Applied only to the AH-64 clone, never the shared vanilla prefab.
+        private static readonly Color MuzzleFlashLight = new Color(1f, 0.62f, 0.18f, 1f);
+        private static readonly Color MuzzleFlashHot = new Color(1f, 0.78f, 0.28f, 1f);
+
         /// <summary>
-        /// Scan ring that parents to the referenced mast transform so it rides with the chopper.
-        /// BootShockwave carries shake + rumble and a stomp sound — strip those; we beep ourselves.
+        /// Force the clone's point light to a warm muzzle colour, and replace a start colour
+        /// that is itself magenta or blue. White start colours are left alone: Hopoo's flash
+        /// shader uses them as "no tint" over the authored ramp.
         /// </summary>
-        private static GameObject CreateRadarPulseEffect()
+        private static void WarmMuzzleFlashInstance(GameObject flash)
         {
-            GameObject vanilla = LoadLegacy("Prefabs/Effects/ImpactEffects/BootShockwave")
-                ?? LoadLegacy("Prefabs/Effects/TreebotShockwaveEffect")
-                ?? LoadLegacy("Prefabs/Effects/OmniImpactVFX")
-                ?? LoadLegacy("Prefabs/Effects/OmniExplosionVFX");
-            if (!vanilla)
+            if (!flash)
+                return;
+
+            foreach (Light light in flash.GetComponentsInChildren<Light>(true))
+                light.color = MuzzleFlashLight;
+
+            foreach (ParticleSystem ps in flash.GetComponentsInChildren<ParticleSystem>(true))
             {
-                Log.Error("AH64RadarPulse: no donor shockwave/impact VFX found.");
-                return null;
+                ParticleSystem.MainModule main = ps.main;
+                ParticleSystem.MinMaxGradient start = main.startColor;
+                if (start.mode == ParticleSystemGradientMode.Color && IsCoolOrMagenta(start.color))
+                    main.startColor = MuzzleFlashHot;
+                else if (start.mode == ParticleSystemGradientMode.TwoColors
+                    && (IsCoolOrMagenta(start.colorMin) || IsCoolOrMagenta(start.colorMax)))
+                    main.startColor = new ParticleSystem.MinMaxGradient(Color.white, MuzzleFlashHot);
             }
+        }
 
-            GameObject pulse = PrefabAPI.InstantiateClone(vanilla, "AH64RadarPulse", false);
-            StripEffectFeedback(pulse);
-
-            EffectComponent effect = pulse.GetComponent<EffectComponent>();
-            if (effect)
-            {
-                effect.parentToReferencedTransform = true;
-                effect.positionAtReferencedTransform = true;
-                effect.applyScale = true;
-            }
-
-            Content.CreateAndAddEffectDef(pulse);
-            return pulse;
+        private static bool IsCoolOrMagenta(Color color)
+        {
+            bool magenta = color.r > 0.45f && color.b > 0.45f && color.g < color.r * 0.75f && color.g < color.b;
+            bool cool = color.b > color.r && color.b > color.g * 0.85f;
+            return magenta || cool;
         }
 
         /// <summary>
