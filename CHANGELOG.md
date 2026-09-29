@@ -27,6 +27,7 @@ Missile launch audio fix, primary muzzle-flash fix, a quieter radar scan, and li
 - New Thunderstore icon.
 - Updated Thunderstore description.
 - The README opens with a short intro line and a link to like the mod on Thunderstore.
+- New README clips for the M230, XM301 and M789 showing the corrected muzzle flash.
 
 ---
 
