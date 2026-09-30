@@ -7,6 +7,48 @@ namespace AH64.Survivors.Components
     {
         private bool providingHoverGranters;
         private bool equipmentFlightActive;
+        private bool crashing;
+
+        /// <summary>
+        /// Hands the vertical axis to the death crash. Authority only, from <c>AH64Death</c>. Flight stays
+        /// on so <see cref="ApplyCrash"/> can script the fall instead of dropping the wreck like a stone.
+        /// </summary>
+        public void BeginCrash()
+        {
+            crashing = true;
+            externalLaunchActive = false;
+            IsAscending = false;
+            IsDescending = false;
+            if (motor)
+                motor.disableAirControlUntilCollision = false;
+        }
+
+        /// <summary>
+        /// One tick of the crash descent: an accelerating fall while the horizontal speed bleeds off.
+        /// Falls back to vanilla gravity when there is no move speed to express the fall through.
+        /// </summary>
+        public void ApplyCrash(float age)
+        {
+            if (!motor || !body)
+                return;
+
+            float walkSpeed = body.moveSpeed;
+            if (walkSpeed <= 0.01f)
+            {
+                UseVanillaPhysics(AH64StaticValues.hoverAirControl);
+                return;
+            }
+
+            ConfigureMotor();
+            float fallSpeed = Mathf.Min(
+                AH64StaticValues.crashFallSpeedStart + AH64StaticValues.crashFallAccel * age,
+                AH64StaticValues.crashFallSpeedMax);
+            Vector3 drift = motor.velocity;
+            drift.y = 0f;
+            Vector3 direction = drift * (AH64StaticValues.crashHorizontalCarry / walkSpeed);
+            direction.y = -fallSpeed / walkSpeed;
+            motor.moveDirection = direction;
+        }
 
         //JetpackController and CharacterBody also own counted granters. Never replace their structs
         //or zero the shared counts: remove only the one contribution installed by this component.
@@ -30,7 +72,9 @@ namespace AH64.Survivors.Components
         {
             float previousVerticalSpeed = self.velocity.y;
             orig(self, ref forceInfo);
-            if (self != motor || !self.hasEffectiveAuthority
+            //A crashing aircraft keeps its scripted descent: the killing blow's push still lands on the
+            //velocity, but must not hand the wreck to vanilla gravity mid-spin.
+            if (self != motor || crashing || !self.hasEffectiveAuthority
                 || Mathf.Approximately(previousVerticalSpeed, self.velocity.y))
                 return;
 
@@ -67,7 +111,7 @@ namespace AH64.Survivors.Components
             {
                 if (equipmentFlightActive)
                 {
-                    TargetHeight = AH64StaticValues.hoverHeight;
+                    ResetAltitudeToRest();
                     timeWithoutGround = 0f;
                     motor.disableAirControlUntilCollision = false;
                 }
@@ -85,7 +129,7 @@ namespace AH64.Survivors.Components
                 externalLaunchActive = false;
             }
             timeWithoutGround = 0f;
-            TargetHeight = AH64StaticValues.hoverHeight;
+            TargetHeight = GetRestHeight();
             ConfigureMotor();
             motor.disableAirControlUntilCollision = false;
             lastDisableAirControl = false;

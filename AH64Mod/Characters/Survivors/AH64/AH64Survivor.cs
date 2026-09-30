@@ -153,6 +153,8 @@ namespace AH64.Survivors
             prefabCharacterModel.gameObject.AddComponent<AH64PrimaryWeaponVisuals>();
             displayPrefab.AddComponent<AH64PrimaryWeaponVisuals>();
             displayPrefab.AddComponent<AH64LobbyWeaponPreview>();
+            displayPrefab.AddComponent<AH64RotorSpin>();
+            displayPrefab.AddComponent<AH64LobbyRotorAudio>();
 
             AdditionalBodySetup();
 
@@ -161,10 +163,8 @@ namespace AH64.Survivors
 
         private void AdditionalBodySetup()
         {
-            //No hitbox group any more. It existed solely for Piston Punch, and was built from the
-            //placeholder bundle's "SwordHitbox" child - which won't exist on the helicopter model either.
-            //A future melee state would need to set BaseMeleeAttack.hitboxGroupName explicitly; the
-            //default is still "SwordGroup", which has never existed here, and it fails silently.
+            //No hitbox group: the kit has no melee. The template's BaseMeleeAttack (default hitbox group
+            //"SwordGroup", which never existed on this model) was removed in 1.2 along with its examples.
 
             //marks this body as ours so the stat hook below only buffs AH64s, and owns the
             //Plasma Reactive Armor charge
@@ -173,10 +173,19 @@ namespace AH64.Survivors
             Interactor interactor = bodyPrefab.GetComponent<Interactor>();
             if (interactor)
                 interactor.maxInteractionDistance = AH64StaticValues.interactionDistance;
+            //Crash instead of Commando's ragdoll death, which left the aircraft hanging in the air.
+            CharacterDeathBehavior deathBehavior = bodyPrefab.GetComponent<CharacterDeathBehavior>();
+            if (deathBehavior)
+                deathBehavior.deathState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.AH64Death));
             //the chopper never touches the ground: this switches CharacterMotor into flight + anti-gravity
             //and holds a fixed altitude above terrain. Driven from AH64Main, not from its own FixedUpdate.
             bodyPrefab.AddComponent<AH64HoverController>();
-            //presentation: rotors, chin turret, flight lean/wash, engine audio, gun heat glow
+            AH64HoverController.InstallItemHooks();
+            AH64AirtimeGauge.Install();
+            bodyPrefab.AddComponent<AH64PickupReach>();
+            //Luminous Shot: one stack per Hydra ripple, not per rocket
+            bodyPrefab.AddComponent<AH64LuminousRipple>();
+            //presentation: rotors, chin turret, flight lean/wash, engine audio, reload smoke
             bodyPrefab.AddComponent<AH64RotorSpin>();
             bodyPrefab.AddComponent<AH64ChinTurret>();
             //Harmless while the M230 is equipped — it finds ChinGatling, sees no fire
@@ -239,8 +248,8 @@ namespace AH64.Survivors
                     if (mat.HasProperty("_Color")) mat.SetColor("_Color", tint);
                     SetLobbyFillEmission(mat, tint, 0.70f);
                 }
-                mat.SetFloat("_Smoothness", lobbyReadability ? 0.38f : 0.25f);
-                mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.30f : 0.12f);
+                mat.SetFloat("_Smoothness", lobbyReadability ? 0.38f : 0.30f);
+                mat.SetFloat("_SpecularStrength", lobbyReadability ? 0.30f : 0.16f);
                 mat.SetFloat("_SpecularExponent", 3f);
             }
             else if (name.Contains("matAH64Markings"))
@@ -372,7 +381,7 @@ namespace AH64.Survivors
         {
             Skills.CreateGenericSkillWithSkillFamily(bodyPrefab, SkillSlot.Primary);
 
-            SkillDef chaingunSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            AH64MagazineSkillDef chaingunSkillDef = Skills.CreateSkillDef<AH64MagazineSkillDef>(new SkillDefInfo
             {
                 skillName = "AH64Chaingun",
                 skillNameToken = AH64_PREFIX + "PRIMARY_CHAINGUN_NAME",
@@ -384,12 +393,13 @@ namespace AH64.Survivors
                 activationStateMachineName = "Weapon",
                 interruptPriority = EntityStates.InterruptPriority.Any,
 
-                //the ammo drum. rechargeStock == baseMaxStock means a recharge tick hands back the WHOLE
-                //drum rather than a trickle, and resetCooldownTimerOnUse restarts that timer on every
-                //shot — so the reload only ever completes once you stop firing (or run dry), and always
-                //fills you back to full. That is what makes this read as a reload instead of a cooldown.
+                //the ammo drum. AH64MagazineSkillDef turns a recharge tick into the WHOLE drum rather
+                //than a trickle, and resetCooldownTimerOnUse restarts that timer on every shot — so the
+                //reload only ever completes once you stop firing (or run dry), and always fills you back
+                //to full. That is what makes this read as a reload instead of a cooldown.
+                //rechargeStock must stay 1: see AH64MagazineSkillDef for the Eclipse Lite reason.
                 baseMaxStock = AH64StaticValues.chaingunMagazineSize,
-                rechargeStock = AH64StaticValues.chaingunMagazineSize,
+                rechargeStock = 1,
                 baseRechargeInterval = AH64PlaytestConfig.ChaingunReload,
 
                 requiredStock = 1,
@@ -410,8 +420,9 @@ namespace AH64.Survivors
             });
             chaingunSkillDef.attackSpeedBuffsRestockSpeed = true;
             chaingunSkillDef.attackSpeedBuffsRestockSpeed_Multiplier = AH64StaticValues.primaryReloadAttackSpeedMultiplier;
+            chaingunSkillDef.barrierRestocks = AH64StaticValues.primaryReloadBarrierRestocks;
 
-            SkillDef gatlingSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            AH64MagazineSkillDef gatlingSkillDef = Skills.CreateSkillDef<AH64MagazineSkillDef>(new SkillDefInfo
             {
                 skillName = "AH64Gatling",
                 skillNameToken = AH64_PREFIX + "PRIMARY_GATLING_NAME",
@@ -426,7 +437,7 @@ namespace AH64.Survivors
                 //Twice the drum of the M230 and a slower refill — same "whole drum at once"
                 //reload shape, because a trickle would fight the spool ramp.
                 baseMaxStock = AH64StaticValues.gatlingMagazineSize,
-                rechargeStock = AH64StaticValues.gatlingMagazineSize,
+                rechargeStock = 1,
                 baseRechargeInterval = AH64PlaytestConfig.GatlingReload,
 
                 requiredStock = 1,
@@ -445,12 +456,13 @@ namespace AH64.Survivors
             });
             gatlingSkillDef.attackSpeedBuffsRestockSpeed = true;
             gatlingSkillDef.attackSpeedBuffsRestockSpeed_Multiplier = AH64StaticValues.primaryReloadAttackSpeedMultiplier;
+            gatlingSkillDef.barrierRestocks = AH64StaticValues.primaryReloadBarrierRestocks;
 
             //Published before the variant is added so AH64GatlingSpin can identify the
             //equipped primary without holding a reference to this class.
             AH64Assets.gatlingSkillDef = gatlingSkillDef;
 
-            SkillDef cannonSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            AH64MagazineSkillDef cannonSkillDef = Skills.CreateSkillDef<AH64MagazineSkillDef>(new SkillDefInfo
             {
                 skillName = "AH64Cannon",
                 skillNameToken = AH64_PREFIX + "PRIMARY_CANNON_NAME",
@@ -464,7 +476,7 @@ namespace AH64.Survivors
 
                 //Only 8 shells, and the same whole-drum reload shape as the other two.
                 baseMaxStock = AH64StaticValues.cannonMagazineSize,
-                rechargeStock = AH64StaticValues.cannonMagazineSize,
+                rechargeStock = 1,
                 baseRechargeInterval = AH64PlaytestConfig.CannonReload,
 
                 requiredStock = 1,
@@ -483,6 +495,7 @@ namespace AH64.Survivors
             });
             cannonSkillDef.attackSpeedBuffsRestockSpeed = true;
             cannonSkillDef.attackSpeedBuffsRestockSpeed_Multiplier = AH64StaticValues.primaryReloadAttackSpeedMultiplier;
+            cannonSkillDef.barrierRestocks = AH64StaticValues.primaryReloadBarrierRestocks;
 
             AH64Assets.cannonSkillDef = cannonSkillDef;
             Skills.AddPrimarySkills(bodyPrefab, chaingunSkillDef, gatlingSkillDef, cannonSkillDef);
@@ -507,7 +520,7 @@ namespace AH64.Survivors
         /// </summary>
         private SkillDef BuildRocketPodsSkillDef()
         {
-            return Skills.CreateSkillDef(new SkillDefInfo
+            AH64MagazineSkillDef rocketPods = Skills.CreateSkillDef<AH64MagazineSkillDef>(new SkillDefInfo
             {
                 skillName = "AH64RocketPods",
                 skillNameToken = AH64_PREFIX + "SECONDARY_ROCKETPODS_NAME",
@@ -520,8 +533,9 @@ namespace AH64.Survivors
 
                 //pod magazine. Same reload shape as the M230: full restock on a single recharge tick,
                 //timer restarting on every rocket so the reload only finishes once you stop firing or run dry.
+                //The full restock includes Backup Magazine rockets, which a fixed rechargeStock of 6 missed.
                 baseMaxStock = AH64StaticValues.hydraRocketCount,
-                rechargeStock = AH64StaticValues.hydraRocketCount,
+                rechargeStock = 1,
                 baseRechargeInterval = AH64StaticValues.hydraReloadDuration,
 
                 requiredStock = 1,
@@ -540,6 +554,9 @@ namespace AH64.Survivors
                 cancelSprintingOnActivation = false,
                 forceSprintDuringState = false,
             });
+            //every rocket is an activation; AH64LuminousRipple grants one Luminous Shot stack per ripple instead
+            rocketPods.autoHandleLuminousShot = false;
+            return rocketPods;
         }
 
         /// <summary>
@@ -644,8 +661,9 @@ namespace AH64.Survivors
 
                 resetCooldownTimerOnUse = false,
                 fullRestockOnAssign = true,
-                //refunds dead locks via AddOneStock; clamp so a recharge tick + refund can't overflow.
-                dontAllowPastMaxStocks = true,
+                //Must stay false: GenericSkill.RecalculateMaxStock drops bonusStockFromBody when it is
+                //true, so Lysate Cell added no missiles. Refund overflow is clamped in PaintLongbow.RefundStock.
+                dontAllowPastMaxStocks = false,
 
                 isCombatSkill = true,
                 //false so holding special keeps PaintLongbow alive for continuous locking
@@ -691,7 +709,7 @@ namespace AH64.Survivors
             // Bake complete display-rooted overrides for each palette. Runtime lobby boosting used
             // to overwrite every skin with olive and could lose its edits when CharacterModel updated.
             Skins.CreateDisplaySkinController(displayPrefab, skinController.skins, AH64Skins.CreateLobbyMaterial);
-            Log.Debug("AH64 visual staging: registered Default, Desert and Arctic body/display skins.");
+            Log.Debug("AH64 visual staging: registered Default, Desert Tan, Arctic, Army Green and Night Stalker (mastery) body/display skins.");
         }
         #endregion skins
 

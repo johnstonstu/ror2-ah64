@@ -1,5 +1,6 @@
 using System;
 using RoR2;
+using RoR2.Skills;
 using RoR2.SurvivorMannequins;
 using UnityEngine;
 
@@ -8,10 +9,17 @@ namespace AH64.Survivors.Components
     /// <summary>Uses the mannequin's owner, including remote users; never the local profile.</summary>
     public sealed class AH64LobbyWeaponPreview : MonoBehaviour
     {
+        //Railgunner's weapon swap, verified in the game's SoundbanksInfo.xml: a mechanical clunk as the
+        //chin gun changes over, so a loadout change is heard as well as seen.
+        private const string SwapSound = "Play_railgunner_R_gun_swap";
+
         private SurvivorMannequinSlotController slot;
         private NetworkUser owner;
         private AH64PrimaryWeaponVisuals visuals;
         private readonly Loadout loadout = new Loadout();
+        //Only a change on the same owner's mannequin is a swap; the first primary shown is not.
+        private SkillDef shownPrimary;
+        private bool hasShownPrimary;
 
         private void OnEnable()
         {
@@ -37,6 +45,8 @@ namespace AH64.Survivors.Components
             var currentSlot = GetComponentInParent<SurvivorMannequinSlotController>();
             NetworkUser currentOwner = currentSlot ? currentSlot.networkUser : null;
             if (!force && slot == currentSlot && owner == currentOwner) return;
+            if (owner != currentOwner)
+                hasShownPrimary = false;
             slot = currentSlot;
             owner = currentOwner;
             ApplyLoadout();
@@ -75,7 +85,12 @@ namespace AH64.Survivors.Components
                 visuals.Select(null);
                 return;
             }
-            visuals.Select(family.variants[variant].skillDef);
+            SkillDef primary = family.variants[variant].skillDef;
+            if (hasShownPrimary && primary != shownPrimary)
+                Util.PlaySound(SwapSound, gameObject);
+            shownPrimary = primary;
+            hasShownPrimary = true;
+            visuals.Select(primary);
         }
     }
 }

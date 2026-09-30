@@ -1,6 +1,7 @@
 using EntityStates;
 using RoR2;
 using RoR2.Projectile;
+using UnityEngine;
 
 namespace AH64.Survivors.SkillStates
 {
@@ -30,6 +31,9 @@ namespace AH64.Survivors.SkillStates
         //the rail this particular launch chose, resolved once in OnEnter so the flash and the spawn
         //position can't disagree
         private string railMuzzle;
+
+        //the main missile as launched, copied for the Pocket I.C.B.M. extras
+        private FireProjectileInfo launchedInfo;
 
         //vanilla Wwise event — Engineer's seeker missile launch, verified against SoundbanksInfo.xml.
         //Deliberately heavier than the Hydra pods' AtG launch, so one Hellfire never sounds like one more
@@ -72,6 +76,39 @@ namespace AH64.Survivors.SkillStates
             //broken without being obvious why. No crosshair convergence needed to go with it: the rail is
             //0.78u off centre and the warhead's blast radius is 12u, so the offset is inside the splash.
             fireProjectileInfo.position = AH64Muzzles.Origin(GetModelChildLocator(), railMuzzle, GetAimRay());
+
+            //Pocket I.C.B.M. extras go out in FireProjectile below. No MissileUtils damage scaling on top:
+            //three full Hellfires already triple the payload, and with the multiplier it played far too strong.
+            launchedInfo = fireProjectileInfo;
+        }
+
+        public override void FireProjectile()
+        {
+            //Runs on every client (the base only spawns the projectile on the authority), so remote
+            //aircraft kick too. The launching rail's side lifts.
+            Components.AH64FlightVisuals.Kick(gameObject, AH64StaticValues.kickHellfirePitch,
+                (railMuzzle == AH64Muzzles.MissileL ? 1f : -1f) * AH64StaticValues.kickHellfireRoll);
+
+            base.FireProjectile();
+
+            if (!isAuthority || MoreMissileCount() <= 0 || !launchedInfo.projectilePrefab)
+                return;
+
+            //See AH64StaticValues.hellfireIcbmFanAngle for why this is not vanilla's ±45°.
+            for (int side = -1; side <= 1; side += 2)
+            {
+                FireProjectileInfo extra = launchedInfo;
+                extra.rotation = Quaternion.AngleAxis(side * AH64StaticValues.hellfireIcbmFanAngle, Vector3.up)
+                    * launchedInfo.rotation;
+                ProjectileManager.instance.FireProjectile(extra);
+            }
+        }
+
+        private int MoreMissileCount()
+        {
+            return characterBody && characterBody.inventory
+                ? characterBody.inventory.GetItemCountEffective(DLC1Content.Items.MoreMissile)
+                : 0;
         }
 
         public override InterruptPriority GetMinimumInterruptPriority()

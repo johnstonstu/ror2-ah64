@@ -100,3 +100,6 @@ Art/Wwise/**/Wwise_IDs.h
 
 # Machine-specific MCP configuration; use .mcp.example.json as the starting point.
 /.mcp.json
+
+# Python bytecode from the Art/ and tools/ scripts
+__pycache__/

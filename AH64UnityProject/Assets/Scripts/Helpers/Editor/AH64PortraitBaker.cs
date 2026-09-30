@@ -21,17 +21,25 @@ public static class AH64PortraitBaker
     private const int RenderSize = 1024;
     private const int ImportSize = 256;
 
-    // Mild zoom for the CSS tile (was 0.12 full-airframe pad). Keep airframe in frame.
+    // Front three-quarter "bust" of the gunship, like the vanilla survivor portraits: the tile is
+    // 256 px and sits in dark UI, so the whole airframe at that size read as a small murky smudge.
+    // Frame the cockpit, nose sensor, chin gun and stub wing, and let the rotor and tail run off.
     private const float Azimuth = 34f;
-    private const float Elevation = 16f;
-    private const float CameraDistance = 8.5f;
+    private const float Elevation = 18f;
+    private const float CameraDistance = 12f;
 
-    private const float FramePadding = 0.02f;
+    // Half-height of the view as a fraction of the airframe's largest extent.
+    private const float FrameFraction = 0.28f;
+    // The frame centres on this renderer, shifted so the rotor hub and the chin gun both stay in shot.
+    private const string FocusChild = "Canopy";
+    private const float FocusDrop = -0.55f;
 
     // Olive drab clear colour so edge AA blends into the hull rather than into black/cream.
     private static readonly Color ArmorColor = new Color(0.22f, 0.28f, 0.18f);
     private static readonly Color RimColor = new Color(0.55f, 0.75f, 0.55f);
-    private const int RimWidthPixels = 8;
+    private const int RimWidthPixels = 4;
+    // Faint: the back light now carries the silhouette. The old 0.55 read as a flat green halo.
+    private const float RimAlpha = 0.22f;
 
     [MenuItem("AH64/Bake Character Portrait")]
     public static void Bake()
@@ -132,7 +140,7 @@ public static class AH64PortraitBaker
         public static void ApplyPortraitAmbient()
         {
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.12f, 0.14f, 0.12f);
+            RenderSettings.ambientLight = new Color(0.26f, 0.28f, 0.27f);
             RenderSettings.ambientIntensity = 1f;
         }
 
@@ -150,8 +158,16 @@ public static class AH64PortraitBaker
         for (int i = 1; i < visible.Count; i++) bounds.Encapsulate(visible[i].bounds);
 
         Vector3 focus = bounds.center;
-        float frameSize = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z) * (0.5f + FramePadding);
-        frameSize = Mathf.Max(frameSize, 1.5f);
+        foreach (Renderer r in visible)
+        {
+            if (r.name == FocusChild)
+            {
+                focus = r.bounds.center + Vector3.down * FocusDrop;
+                break;
+            }
+        }
+        float frameSize = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z) * FrameFraction;
+        frameSize = Mathf.Max(frameSize, 1.0f);
 
         GameObject camGo = new GameObject("PortraitCamera");
         camGo.transform.SetParent(rig.transform, false);
@@ -172,9 +188,11 @@ public static class AH64PortraitBaker
 
     private static void BuildLights(GameObject rig)
     {
-        AddLight(rig, new Vector3(35f, 205f, 0f), 0.85f, Color.white);
-        AddLight(rig, new Vector3(15f, 60f, 0f), 0.28f, new Color(0.70f, 0.85f, 1f));
-        AddLight(rig, new Vector3(-10f, 20f, 0f), 0.35f, new Color(1f, 0.95f, 0.80f));
+        // Key from above the camera's shoulder, cool fill from the other side, and a strong back
+        // light so the hull edges separate from the dark UI tile without a drawn outline.
+        AddLight(rig, new Vector3(38f, 200f, 0f), 1.1f, new Color(1f, 0.97f, 0.90f));
+        AddLight(rig, new Vector3(12f, 110f, 0f), 0.45f, new Color(0.70f, 0.82f, 1f));
+        AddLight(rig, new Vector3(20f, 25f, 0f), 0.90f, new Color(0.95f, 0.98f, 1f));
     }
 
     private static void AddLight(GameObject rig, Vector3 euler, float intensity, Color color)
@@ -263,7 +281,7 @@ public static class AH64PortraitBaker
             Color body = new Color(src[i].r / 255f, src[i].g / 255f, src[i].b / 255f, 1f);
 
             Color rgb = Color.Lerp(RimColor, body, a);
-            outPx[i] = new Color(rgb.r, rgb.g, rgb.b, Mathf.Clamp01(a + rim * 0.55f));
+            outPx[i] = new Color(rgb.r, rgb.g, rgb.b, Mathf.Clamp01(a + rim * RimAlpha));
         }
 
         Texture2D result = new Texture2D(size, size, TextureFormat.RGBA32, false);

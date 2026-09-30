@@ -30,7 +30,6 @@ namespace AH64.Survivors.SkillStates
         private Dictionary<HurtBox, LongbowLockIndicator> indicators;
         private Indicator stickyTargetIndicator;
         private BullseyeSearch search;
-        private CrosshairUtils.OverrideRequest crosshairOverrideRequest;
 
         private float lockStopwatch;
         private float paintStopwatch;
@@ -58,8 +57,8 @@ namespace AH64.Survivors.SkillStates
             Util.PlaySound(openSoundString, gameObject);
             Util.PlaySound(loopSoundString, gameObject);
 
-            if (AH64Assets.LongbowCrosshair)
-                crosshairOverrideRequest = CrosshairUtils.RequestOverrideForBody(characterBody, AH64Assets.LongbowCrosshair, CrosshairUtils.OverridePriority.Skill);
+            //No crosshair override: painting runs alongside the gun and pods, and swapping in Engineer's
+            //paint reticle hid the crosshair you were still aiming them with (playtest 2026-09-29).
         }
 
         public override void FixedUpdate()
@@ -94,8 +93,6 @@ namespace AH64.Survivors.SkillStates
 
             if (stickyTargetIndicator != null)
                 stickyTargetIndicator.active = false;
-
-            crosshairOverrideRequest?.Dispose();
 
             Util.PlaySound(closeSoundString, gameObject);
             Util.PlaySound(stopLoopSoundString, gameObject);
@@ -225,8 +222,22 @@ namespace AH64.Survivors.SkillStates
                     }
                 }
 
-                activatorSkillSlot?.AddOneStock();
+                RefundStock(activatorSkillSlot);
             }
+        }
+
+        /// <summary>
+        /// Hands back one reserved missile. The recharge keeps running while locks are held, so
+        /// refunds can land on a rack that has already refilled; clamp so they never exceed the max.
+        /// </summary>
+        internal static void RefundStock(GenericSkill launcher)
+        {
+            if (!launcher)
+                return;
+
+            launcher.AddOneStock();
+            if (launcher.stock > launcher.maxStock)
+                launcher.stock = launcher.maxStock;
         }
 
         private void Salvo()
@@ -247,7 +258,7 @@ namespace AH64.Survivors.SkillStates
                 return;
 
             for (int i = 0; i < targets.Count; i++)
-                activatorSkillSlot.AddOneStock();
+                RefundStock(activatorSkillSlot);
 
             targets.Clear();
         }

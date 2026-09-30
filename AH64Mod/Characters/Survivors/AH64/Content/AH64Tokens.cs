@@ -16,6 +16,25 @@ namespace AH64.Survivors
             ////refer to guide on how to build and distribute your mod with the proper folders
         }
 
+        /// <summary>
+        /// Altitude controls for the character description, from the player's config: the descend
+        /// binding is configurable, and classic controls have no airtime limit.
+        /// </summary>
+        private static string AltitudeHint()
+        {
+            if (AH64PlaytestConfig.ClassicAltitude)
+                return "Hold jump to climb; let go to settle back down, or pull back to settle faster.";
+
+            var key = AH64PlaytestConfig.DescendKey.MainKey;
+            string keyboard = key == UnityEngine.KeyCode.None ? "" : key + " on keyboard";
+            string controller = AH64PlaytestConfig.ControllerBDescends ? "B on controller" : "";
+            string bindings = controller.Length > 0 && keyboard.Length > 0 ? controller + ", " + keyboard
+                : controller + keyboard;
+            string descend = bindings.Length > 0 ? "descend (" + bindings + ")" : "descend";
+            return "Hold jump to climb and " + descend + " to drop; let go of both to hold your height. "
+                + "Time above resting height is limited, and extra jumps extend it.";
+        }
+
         public static void AddTokens()
         {
             string prefix = AH64Survivor.AH64_PREFIX;
@@ -23,7 +42,7 @@ namespace AH64.Survivors
             string desc = "The AH-64 is a gunship that never lands, trading footspeed for altitude and a full weapons load.<color=#CCD3E0>" + Environment.NewLine + Environment.NewLine
              + "< ! > The M230 carries a fixed drum and reloads all at once — tap it at range to keep the burst tight, and hose the whole drum up close where the spread doesn't matter. The reload runs whether you emptied it or not, so top up before you commit." + Environment.NewLine + Environment.NewLine
              + "< ! > The rocket pods ripple over most of a second, so hold your aim through the salvo. They run on their own cooldown and stay available mid-reload." + Environment.NewLine + Environment.NewLine
-             + "< ! > Evasive Roll is a climbing forward-diagonal barrel roll — stick snaps forward, left, or right with i-frames on the way through. Hold jump for altitude; hold move-down/back to dump height faster." + Environment.NewLine + Environment.NewLine
+             + "< ! > Evasive Roll is a climbing forward-diagonal barrel roll — stick snaps forward, left, or right with i-frames on the way through. " + AltitudeHint() + Environment.NewLine + Environment.NewLine
              + "< ! > Fire Control Radar paints the strongest nearby threat. Hold Longbow to paint locks while you keep firing the gun and Hydra; release to launch. Hellfire stays as a loadout variant." + Environment.NewLine + Environment.NewLine;
 
             string outro = "..and so it left, airframe scorched, directives intact.";
@@ -47,8 +66,10 @@ namespace AH64.Survivors
             Language.Add(prefix + "OUTRO_FAILURE", outroFailure);
 
             #region Skins
-            Language.Add(prefix + "DESERT_SKIN_NAME", "Desert");
+            Language.Add(prefix + "DESERT_SKIN_NAME", "Desert Tan");
             Language.Add(prefix + "ARCTIC_SKIN_NAME", "Arctic");
+            Language.Add(prefix + "ARMY_SKIN_NAME", "Army Green");
+            Language.Add(prefix + "NIGHT_SKIN_NAME", "Night Stalker");
             #endregion
 
             #region Passive
@@ -95,7 +116,8 @@ namespace AH64.Survivors
             Language.Add(prefix + "SPECIAL_LONGBOW_NAME", "AGM-114L Longbow");
             Language.Add(prefix + "SPECIAL_LONGBOW_DESCRIPTION",
                 $"{Tokens.UtilityText("Hold")} to paint enemies under the reticle, then {Tokens.UtilityText("release to launch")} up to {Tokens.UtilityText($"{AH64StaticValues.longbowMaxLocks} guided missiles")} from alternating inboard rails. " +
-                $"Primary and secondary stay available while painting. Later locks hit harder ({Tokens.DamageValueText(AH64StaticValues.longbowDamageBase)}–{Tokens.DamageValueText(AH64StaticValues.longbowDamageBase + (AH64StaticValues.longbowMaxLocks - 1) * AH64StaticValues.longbowDamagePerLock)}).");
+                $"Primary and secondary stay available while painting. Later locks hit harder ({Tokens.DamageValueText(AH64StaticValues.longbowDamageBase)}–{Tokens.DamageValueText(AH64StaticValues.longbowDamageBase + (AH64StaticValues.longbowMaxLocks - 1) * AH64StaticValues.longbowDamagePerLock)}). " +
+                $"Each {Tokens.UtilityText("Lysate Cell")} adds one missile to the rack.");
             #endregion
 
             #region Achievements

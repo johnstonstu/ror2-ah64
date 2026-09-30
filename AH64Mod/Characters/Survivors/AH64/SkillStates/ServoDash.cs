@@ -34,6 +34,7 @@ namespace AH64.Survivors.SkillStates
         private Vector3 forwardDirection;
         private Vector3 previousPosition;
         private float flareTimer;
+        private float climbHeight;
         // -1 left, +1 right — always non-zero; drives the procedural barrel roll
         private float rollSign;
 
@@ -48,6 +49,11 @@ namespace AH64.Survivors.SkillStates
 
             CaptureEntrySpeed();
             RecalculateDashSpeed();
+
+            AH64HoverController hover = GetComponent<AH64HoverController>();
+            climbHeight = hover
+                ? hover.LimitUtilityClimb(AH64PlaytestConfig.DashClimbHeight)
+                : AH64PlaytestConfig.DashClimbHeight;
 
             if (characterMotor)
             {
@@ -72,9 +78,8 @@ namespace AH64.Survivors.SkillStates
             if (flightVisuals)
                 flightVisuals.PlayBarrelRoll(rollSign, AH64StaticValues.dashDuration);
 
-            AH64HoverController hover = GetComponent<AH64HoverController>();
             if (hover)
-                hover.BumpTargetHeight(AH64PlaytestConfig.DashClimbHeight);
+                hover.BumpTargetHeight(climbHeight);
 
             if (NetworkServer.active)
             {
@@ -142,12 +147,12 @@ namespace AH64.Survivors.SkillStates
         }
 
         /// <summary>
-        /// Half-sine climb: y = H * sin(π/2 * t) so the hop ends elevated by <c>dashClimbHeight</c>.
+        /// Half-sine climb: y = H * sin(π/2 * t) so the hop ends elevated by <c>climbHeight</c>.
         /// </summary>
-        private static float ClimbVelocityAt(float age)
+        private float ClimbVelocityAt(float age)
         {
             float t = Mathf.Clamp01(age / duration);
-            return AH64PlaytestConfig.DashClimbHeight
+            return climbHeight
                 * (Mathf.PI * 0.5f / duration)
                 * Mathf.Cos(Mathf.PI * 0.5f * t);
         }

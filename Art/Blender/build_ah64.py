@@ -129,6 +129,25 @@ CANOPY = [
     (-0.25, 0.42, 1.47, 1.55),  # fairs back under the hull skin
 ]
 
+# The Apache canopy is flat panels whose sides lean inward to a narrower roof.
+# Vertical sides read as a glass box. No frame hoops: body-coloured ones were
+# tried in 1.2 and read as ribs across the glass at survivor-camera distance.
+CANOPY_ROOF_FRACTION = 0.74
+
+# M-TADS/PNVS. The drum forms the nose tip with sensor ears either side, as on the
+# real aircraft. The sensor used to sit behind the chin turret, where the gun hid
+# it. Drum bottom stays above the barrel's full up-pitch sweep (-30 deg at y 2.18).
+TADS_CENTRE = (0.0, 2.05, 0.84)
+TADS_R = 0.13
+TADS_H = 0.20
+TADS_EAR_X = 0.155
+TADS_EAR = (0.07, 0.17, 0.15)
+PNVS_CENTRE = (0.0, 2.00, 1.01)
+
+# Countermeasure pods on the stub-wing tips, so the wing doesn't end in a bare slab.
+WINGTIP_POD_R = 0.055
+WINGTIP_POD_LEN = 0.46
+
 MAST_HOUSING = [
     (0.00, 0.23, 1.50, 1.86),
     (-0.40, 0.26, 1.44, 1.92),
@@ -211,20 +230,25 @@ def wing_z(x, z):
     return z - WING_ANHEDRAL * abs(x)
 
 # Blade sections: (span, chord_offset_x, half_chord, half_thickness).
-# The swept, thinned tip is what stops blades reading as flat sticks.
+# The swept, thinned tip is what stops blades reading as flat sticks. The sweep
+# starts further inboard and ends narrower than it used to (2026-09-29): the old
+# tip was accurate but too subtle to register at survivor-camera distance.
 MAIN_BLADE = [
     (0.34, 0.00, 0.060, 0.032),
     (0.62, 0.00, 0.130, 0.034),
-    (2.30, 0.00, 0.130, 0.030),
-    (2.72, -0.04, 0.118, 0.024),
-    (3.00, -0.12, 0.078, 0.015),
+    (2.24, 0.00, 0.128, 0.030),
+    (2.62, -0.05, 0.112, 0.024),
+    (2.86, -0.13, 0.078, 0.017),
+    (3.00, -0.19, 0.040, 0.011),
 ]
 TAIL_BLADE = [
     (0.10, 0.00, 0.035, 0.022),
     (0.18, 0.00, 0.062, 0.022),
-    (0.48, 0.00, 0.058, 0.018),
-    (0.56, -0.02, 0.035, 0.012),
+    (0.46, 0.00, 0.056, 0.018),
+    (0.56, -0.03, 0.030, 0.011),
 ]
+# Apache's scissor tail rotor: two two-blade rotors crossed at 55 degrees, not 90.
+TAIL_BLADE_ANGLES = (0.0, 180.0, 55.0, 235.0)
 
 MAIN_ROTOR_CENTRE = (0.0, 0.0, 2.15)
 # Longbow FCR radome — a shallow mast-mounted lenticular dome, not a ball. These
@@ -255,10 +279,13 @@ ENGINE_X = 0.67
 ENGINE_Y = -0.60
 ENGINE_Z = 1.45
 
-TURRET_Y = 1.70
-TURRET_PIVOT_Z = 0.66      # yaw pivot; hull underside here is ~0.66
-HOUSING_Z = 0.52           # turret ball centre height
-HOUSING_DEPTH = 0.40
+# Set back from the TADS and hung lower, as on the real aircraft, where the gun
+# sits under the gunner's station rather than at the nose tip. The lower pitch
+# pivot is what keeps the barrel's up-pitch sweep under the TADS drum.
+TURRET_Y = 1.55
+TURRET_PIVOT_Z = 0.64      # yaw pivot; hull underside here is ~0.63
+HOUSING_Z = 0.42           # turret ball centre height
+HOUSING_DEPTH = 0.46
 # Pitch pivot sits just forward of the ball so the long barrel reads as articulated.
 PITCH_Y = TURRET_Y + 0.20
 PITCH_Z = HOUSING_Z
@@ -471,8 +498,8 @@ def add_duct(col, name, x, z, y_back, y_front, radius_back, radius_front, wall, 
     return o
 
 
-def add_cone(col, name, r, d, loc=(0, 0, 0), rot=(0, 0, 0), verts=8, m=None):
-    bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r, radius2=0.0,
+def add_cone(col, name, r, d, loc=(0, 0, 0), rot=(0, 0, 0), verts=8, m=None, r2=0.0):
+    bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r, radius2=r2,
                                     depth=d, location=(0, 0, 0))
     o = bpy.context.active_object
     o.name = name
@@ -526,14 +553,15 @@ def join_as(name, objs, origin=None):
 
 
 def loft(col, name, rings, m=None):
-    """Bridge a run of 4-point cross-sections. Every tapered part uses this - a
+    """Bridge a run of equal-sized cross-sections. Every tapered part uses this - a
     swept fin or a tapering boom is not expressible as a scaled cube."""
     me = bpy.data.meshes.new(name)
     bm = bmesh.new()
     vr = [[bm.verts.new(p) for p in r] for r in rings]
+    n = len(vr[0])
     for a, b in zip(vr, vr[1:]):
-        for j in range(4):
-            k = (j + 1) % 4
+        for j in range(n):
+            k = (j + 1) % n
             bm.faces.new((a[j], a[k], b[k], b[j]))
     bm.faces.new(vr[0])
     bm.faces.new(tuple(reversed(vr[-1])))
@@ -549,6 +577,11 @@ def loft(col, name, rings, m=None):
 
 def sec_y(y, hw, z0, z1):
     return [(-hw, y, z0), (hw, y, z0), (hw, y, z1), (-hw, y, z1)]
+
+
+def canopy_sec_y(y, hw, z0, z1):
+    roof = hw * CANOPY_ROOF_FRACTION
+    return [(-hw, y, z0), (hw, y, z0), (roof, y, z1), (-roof, y, z1)]
 
 
 def side_sec_y(sx, y, x_inner, x_outer, z0, z1):
@@ -570,10 +603,13 @@ def sec_x(x, y_lead, y_trail, zc, hz):
 
 
 def blade_rings(sections):
+    """Six-point section with bevelled edges. A rectangular section read as a
+    flat plank; the bevels catch a highlight along both edges."""
     out = []
     for (y, xc, ch, th) in sections:
-        out.append([(xc - ch, y, -th), (xc + ch, y, -th),
-                    (xc + ch, y, th), (xc - ch, y, th)])
+        e = ch * 0.72
+        out.append([(xc - ch, y, 0.0), (xc - e, y, -th), (xc + e, y, -th),
+                    (xc + ch, y, 0.0), (xc + e, y, th), (xc - e, y, th)])
     return out
 
 
@@ -632,36 +668,18 @@ def build_airframe(col, M):
 
     # Glass, so it cannot share a renderer with the hull however static it is.
     # Merging it into Airframe renders the canopy as opaque olive.
-    loft(col, "Canopy", [sec_y(*s) for s in CANOPY], m=glass)
+    loft(col, "Canopy", [canopy_sec_y(*s) for s in CANOPY], m=glass)
 
-    # The cockpit needs a strong Apache read even at survivor-camera distance.
-    # These frames are folded into AirframeDark below, rather than becoming
-    # separate renderers, so the existing RoR2 renderer contract stays intact.
-    # Declutter pass 2026-08-03: the canopy was carrying two full-length side rails
-    # and two bow frames. At survivor-camera distance that reads as black strips
-    # laid across the glass rather than as structure, and it was the single busiest
-    # area on the aircraft.
-    #
-    # Down to ONE divider, on the step between the gunner's front seat and the
-    # pilot's raised rear seat. That is both the cleanest read and the honest one:
-    # the tandem step is the Apache's most recognisable profile cue, so the one
-    # frame worth keeping is the one that marks it. Side rails are gone entirely -
-    # the canopy silhouette already has hard facet edges doing that job.
+    # M-TADS drum and ears at the nose tip, PNVS turret on the nose deck. Their
+    # lenses are the NoseOptics renderer (build_optics).
+    _, ty, tz = TADS_CENTRE
     trim = [
-        add_cube(col, "CanopySeatDivider", (0.395 * 2.0, 0.042, 0.045),
-                 (0.0, 0.52, 1.67), m=dark),
+        add_cyl(col, "TadsDrum", TADS_R, TADS_H, TADS_CENTRE, verts=14, m=dark),
+        add_cyl(col, "PnvsTurret", 0.062, 0.075, PNVS_CENTRE, verts=12, m=dark),
     ]
-
-    # Faceted M-TADS/PNVS-inspired nose sensor.  The low-profile optical ball
-    # and guard read as an Apache cue without adding a new texture/render role.
-    trim += [
-        add_sphere(col, "NoseSensorBall", 0.155, (0.0, 1.68, 0.74),
-                   segments=10, rings=6, m=dark),
-        add_cyl(col, "NoseSensorGuard", 0.185, 0.085, (0.0, 1.80, 0.74),
-                RX90, 10, dark),
-        add_cube(col, "NoseSensorMount", (0.20, 0.16, 0.13),
-                 (0.0, 1.54, 0.77), m=dark),
-    ]
+    for sx in (-1, 1):
+        trim.append(add_cube(col, "TadsEar" + ("L" if sx < 0 else "R"), TADS_EAR,
+                             (sx * TADS_EAR_X, ty + 0.02, tz), m=dark))
 
     # Angular side sponsons give the otherwise clean fuselage its characteristic
     # Apache shoulder line and provide a stronger visual root for the stub wings.
@@ -753,6 +771,16 @@ def build_airframe(col, M):
                     (sx * POD_ROCKET_X, -0.05, wing_z(POD_ROCKET_X, 0.55)),
                     RX90, 14, dark),
         ]
+        # Centred on the tip chord and overlapping the tip so it stays attached.
+        tip_y = (WING[-1][1] + WING[-1][2]) / 2.0
+        tip_z = wing_z(WING_HALF_SPAN, WING_ROOT_Z)
+        trim += [
+            add_cyl(col, "WingtipPod" + s, WINGTIP_POD_R, WINGTIP_POD_LEN,
+                    (sx * (WING_HALF_SPAN + 0.02), tip_y, tip_z), RX90, 10, dark),
+            add_sphere(col, "WingtipPodNose" + s, WINGTIP_POD_R,
+                       (sx * (WING_HALF_SPAN + 0.02), tip_y + WINGTIP_POD_LEN / 2.0, tip_z),
+                       segments=10, rings=6, m=dark),
+        ]
     # Short axle stub from fin face to tail-rotor hub so the hub doesn't float in air.
     # Static dark trim (does not spin with TailRotor).
     trim.append(add_cyl(col, "TailRotorAxle", 0.048, 0.14,
@@ -804,9 +832,9 @@ def build_rotors(col, M):
     join_as("MainRotor", parts, origin=(0, 0, 0)).location = MAIN_ROTOR_CENTRE
 
     tparts = [add_cyl(col, "TRHub", 0.09, 0.13, (0, 0, 0), verts=10, m=dark)]
-    for i in range(4):
+    for i, angle in enumerate(TAIL_BLADE_ANGLES):
         b = loft(col, "TRBlade%d" % i, blade_rings(TAIL_BLADE), m=dark)
-        b.rotation_euler = (0, 0, math.radians(i * 90))
+        b.rotation_euler = (0, 0, math.radians(angle))
         tparts.append(b)
     tr = join_as("TailRotor", tparts, origin=(0, 0, 0))
     tr.rotation_euler = RY90            # laid on its side; still spins about local Z
@@ -882,8 +910,11 @@ def build_ordnance(col, M):
             join_as("Missile%s%d" % (s, i), [
                 add_cyl(col, "MslBody", 0.048, 0.62,
                         (X + ox, -0.02, rack_z + oz), RX90, 8, missile),
-                add_cone(col, "MslNose", 0.048, 0.13,
-                         (X + ox, 0.355, rack_z + oz), RXN90, 8, missile),
+                # Short taper to a rounded seeker dome; a sharp cone read as a spike.
+                add_cone(col, "MslNose", 0.048, 0.07,
+                         (X + ox, 0.325, rack_z + oz), RXN90, 8, missile, r2=0.033),
+                add_sphere(col, "MslSeeker", 0.033, (X + ox, 0.36, rack_z + oz),
+                           segments=8, rings=4, m=missile),
             ], origin=(X + ox, -0.02, rack_z + oz))
 
 
@@ -926,10 +957,14 @@ def build_optics(col, M):
     while the surrounding protective structure remains part of AirframeDark.
     """
     optics = M["matAH64Optics"]
-    parts = [
-        add_cyl(col, "TadsLens", 0.115, 0.032, (0.0, 1.915, 0.80), RX90, 14, optics),
-        add_cyl(col, "PnvsLens", 0.082, 0.032, (0.0, 1.948, 0.61), RX90, 12, optics),
-    ]
+    _, ty, tz = TADS_CENTRE
+    ear_front = ty + 0.02 + TADS_EAR[1] / 2.0
+    px, py, pz = PNVS_CENTRE
+    # Lenses only on the ears: a third window on the drum read as a cartoon face.
+    parts = [add_cyl(col, "PnvsLens", 0.030, 0.024, (px, py + 0.060, pz), RX90, 10, optics)]
+    for sx in (-1, 1):
+        parts.append(add_cyl(col, "TadsLens", 0.036, 0.024,
+                             (sx * TADS_EAR_X, ear_front, tz), RX90, 12, optics))
     return join_as("NoseOptics", parts, origin=(0, 0, 0))
 
 
@@ -1255,6 +1290,15 @@ def validate():
             problems.append("%s floats below the wing at x=%.2f: top %.3f < underside %.3f"
                             % (label, station_x, pylon_top_z, wing_lower))
 
+    # The chin barrel pitches up to 30 deg (AH64StaticValues.chinTurretMinPitch) and
+    # passes under the TADS drum. 0.05 covers the barrel's own radius.
+    tads_front = TADS_CENTRE[1] + TADS_R
+    barrel_top = PITCH_Z + math.tan(math.radians(30)) * (tads_front - PITCH_Y) + 0.05
+    tads_bottom = TADS_CENTRE[2] - TADS_H / 2
+    if tads_bottom < barrel_top:
+        problems.append("TADS drum bottom %.3f is inside the barrel's up-pitch sweep %.3f"
+                        % (tads_bottom, barrel_top))
+
     if problems:
         raise RuntimeError("AH-64 build validation failed:\n  " + "\n  ".join(problems))
     return True
@@ -1322,9 +1366,18 @@ def check_single_material(col):
 
 # ------------------------------------------------------------------ MAIN ----
 
+def remove_startup_cube():
+    """Headless runs start from Blender's factory scene, whose default Cube was
+    being saved into AH64.blend. It never exported, but it cluttered the file."""
+    cube = bpy.data.objects.get("Cube")
+    if cube and cube.name not in bpy.data.collections[COLLECTION].objects:
+        bpy.data.objects.remove(cube, do_unlink=True)
+
+
 def build():
     validate()
     col = get_collection()
+    remove_startup_cube()
     M = ensure_materials()
     clear(col)
     dark_static = build_airframe(col, M)

@@ -59,7 +59,7 @@ namespace AH64.Survivors.SkillStates
 
                     if (!target || !target.healthComponent || !target.healthComponent.alive)
                     {
-                        launcher?.AddOneStock();
+                        PaintLongbow.RefundStock(launcher);
                         continue;
                     }
 
@@ -77,7 +77,7 @@ namespace AH64.Survivors.SkillStates
             if (isAuthority && targets != null)
             {
                 for (int i = fireIndex; i < targets.Count; i++)
-                    launcher?.AddOneStock();
+                    PaintLongbow.RefundStock(launcher);
             }
 
             base.OnExit();
@@ -88,7 +88,7 @@ namespace AH64.Survivors.SkillStates
             if (!AH64Assets.LongbowProjectile)
             {
                 //asset miss — don't eat the stock for a shot that never left the rail
-                launcher?.AddOneStock();
+                PaintLongbow.RefundStock(launcher);
                 Log.Error("FireLongbow: LongbowProjectile is null; refunding stock.");
                 return;
             }
@@ -108,6 +108,8 @@ namespace AH64.Survivors.SkillStates
             //Same compact AtG launch cue as the Hydra pods: enough motor bite for an alternating
             //six-missile rail ripple without stacking like Engineer's long seeker launch.
             Components.AH64LaunchSound.Play(gameObject);
+            Components.AH64FlightVisuals.Kick(gameObject, AH64StaticValues.kickLongbowPitch,
+                (lockIndex % 2 == 0 ? 1f : -1f) * AH64StaticValues.kickLongbowRoll);
 
             float damageCoefficient = AH64StaticValues.longbowDamageBase
                 + lockIndex * AH64StaticValues.longbowDamagePerLock;

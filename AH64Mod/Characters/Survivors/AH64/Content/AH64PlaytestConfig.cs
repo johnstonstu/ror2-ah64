@@ -18,6 +18,11 @@ namespace AH64.Survivors
         private static ConfigEntry<float> baseMoveSpeed;
         private static ConfigEntry<float> acceleration;
         private static ConfigEntry<float> radarFacingSpeedBonus;
+        private static ConfigEntry<float> airtime;
+        private static ConfigEntry<float> airtimePerExtraJump;
+        private static ConfigEntry<bool> classicAltitude;
+        private static ConfigEntry<bool> controllerBDescends;
+        private static ConfigEntry<KeyboardShortcut> descendKey;
 
         private static ConfigEntry<float> chaingunDamage;
         private static ConfigEntry<float> chaingunMaxSpread;
@@ -60,6 +65,11 @@ namespace AH64.Survivors
         internal static float BaseMoveSpeed => baseMoveSpeed.Value;
         internal static float Acceleration => acceleration.Value;
         internal static float RadarFacingSpeedBonus => radarFacingSpeedBonus.Value;
+        internal static float Airtime => airtime.Value;
+        internal static float AirtimePerExtraJump => airtimePerExtraJump.Value;
+        internal static bool ClassicAltitude => classicAltitude.Value;
+        internal static bool ControllerBDescends => controllerBDescends.Value;
+        internal static KeyboardShortcut DescendKey => descendKey.Value;
         internal static float ChaingunDamage => chaingunDamage.Value;
         internal static float ChaingunMaxSpread => chaingunMaxSpread.Value;
         internal static float ChaingunBloom => chaingunBloom.Value;
@@ -102,6 +112,18 @@ namespace AH64.Survivors
                 "How quickly the helicopter starts, stops, and reverses while hovering.");
             radarFacingSpeedBonus = Bind(config, Movement, "Radar facing speed bonus", 0.15f, 0f, 0.35f,
                 "Extra movement multiplier while facing the painted target (0.15 = +15%).");
+            airtime = Bind(config, Movement, "Airtime seconds", AH64StaticValues.airtimeBase, 1f, 60f,
+                "How long you can stay above resting height before settling back. Refills at resting height.");
+            airtimePerExtraJump = Bind(config, Movement, "Airtime per extra jump", AH64StaticValues.airtimePerExtraJump, 0f, 10f,
+                "Extra airtime seconds for each extra jump from items such as Hopoo Feather.");
+            classicAltitude = config.Bind(Movement, "Classic altitude controls", false,
+                "The 1.1 controls: hold jump to climb, release to settle back to resting height, pull back to "
+                + "settle faster. No airtime limit. Off: jump climbs, descend drops, releasing both holds height.");
+            controllerBDescends = config.Bind(Movement, "Controller B descends", true,
+                "Hold B (Circle on PlayStation) to descend. Turn off if you have rebound B to something else.");
+            //Keyboard-only; not shown in Risk of Options, which is wired for sliders and checkboxes here.
+            descendKey = config.Bind(Movement, "Descend key", new KeyboardShortcut(UnityEngine.KeyCode.C),
+                "Hold to descend on keyboard. Jump climbs; releasing both holds your height.");
 
             chaingunDamage = Bind(config, Chaingun, "Direct damage coefficient",
                 AH64StaticValues.chaingunDamageCoefficient, 0.30f, 1.00f,
@@ -198,7 +220,7 @@ namespace AH64.Survivors
                 "Approximate tonal target mapped to Wwise low-pass. Lower removes hiss; 20000 adds no filtering.");
 
             var entries = new ConfigEntryBase[] {
-                baseMoveSpeed, acceleration, radarFacingSpeedBonus,
+                baseMoveSpeed, acceleration, radarFacingSpeedBonus, classicAltitude, airtime, airtimePerExtraJump, controllerBDescends,
                 chaingunDamage, chaingunMaxSpread, chaingunBloom, chaingunReload, chaingunSplashDamage, chaingunSplashRadius, chaingunSplashVfxScale,
                 gatlingDamage, gatlingSpooledDuration, gatlingMaxSpread, gatlingBloom, gatlingReload,
                 gatlingSplashDamage, gatlingSplashRadius, gatlingSplashVfxScale,

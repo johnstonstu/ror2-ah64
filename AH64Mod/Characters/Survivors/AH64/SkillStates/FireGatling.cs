@@ -101,6 +101,8 @@ namespace AH64.Survivors.SkillStates
             if (chinTurret)
                 chinTurret.NotifyFired();
 
+            Components.AH64FlightVisuals.Kick(gameObject, AH64StaticValues.kickGatlingPitch, 0f);
+
             if (!isAuthority)
                 return;
 

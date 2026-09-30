@@ -49,6 +49,11 @@ namespace RoR2
         public void Applied(int index) => onSkinApplied?.Invoke(index);
     }
     public class SurvivorDef : UnityEngine.Object { public UnityEngine.GameObject bodyPrefab; }
+    public static class Util
+    {
+        public static readonly List<string> plays = new List<string>();
+        public static uint PlaySound(string soundString, UnityEngine.GameObject gameObject) { plays.Add(soundString); return 0; }
+    }
     public static class BodyCatalog
     {
         public static UnityEngine.GameObject prefab;

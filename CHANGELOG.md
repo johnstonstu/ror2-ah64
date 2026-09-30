@@ -8,6 +8,70 @@ presents to players as a lobby rejection.
 
 ---
 
+## 1.2.0
+
+Altitude controls rework with airtime, an item compatibility pass, Army Green paint and a model polish pass.
+
+### Fixed
+
+- A held altitude no longer sinks while flying forward. Your chosen height and the altitude ceiling were both measured from the ground below, so rising terrain lowered the height for good and falling terrain dragged you down with it. Climb, release, and the aircraft now holds that altitude until you descend or airtime runs out.
+- Lysate Cell adds a missile to the Longbow rack per stack. It previously only shortened the recharge, so the Hellfire, which does gain a charge, pulled ahead once you had a couple of cells ([#13](https://github.com/johnstonstu/ror2-ah64/issues/13)). Extra missiles continue the Longbow damage ramp: 7.3, 7.85 and so on.
+- Hydra pods reload to their full size with Backup Magazine. A reload used to add back only six rockets, so a larger pod needed several reloads to fill.
+- Eclipse Lite no longer overpays on reloads. It counted every round in the drum as a separate cooldown, so a single M230 reload was worth about half your maximum health in barrier. A full primary reload now counts as four cooldowns (a partial top-up counts for its share, at least one), and a Hydra reload as one.
+- Longbow missiles count as special-skill damage, like the Hellfire, for items that care which skill dealt the hit.
+- Wax Quail works. Tapping the collective while sprinting gives the forward boost, with a 1.5 second cooldown.
+- Bustling Fungus works. A hovering body never stood perfectly still, because the altitude hold bobs it slightly, so the healing zone never appeared. Only horizontal movement counts now.
+- H3AD-5T v2 works. Hold interact while above resting height to slam; the slam detonates when you reach resting height, with damage scaling from how high you started. Interacting at resting height, such as opening a chest, no longer starts a slam.
+- Pressing the collective counts as a jump for items and mods that react to jumping, once per climb.
+- Luminous Shot gains one stack per Hydra ripple instead of one per rocket, so a single ripple no longer fills it.
+
+### Changed
+
+- Altitude controls reworked for controllers. Hold jump to climb and hold descend to drop: B on a controller, which the game leaves unbound, or C on keyboard. Releasing both holds your height. Pulling the stick back no longer loses altitude, so you can strafe backwards at height.
+- The resting hover holds level instead of tracing the ground. Rising ground lifts it; over dips and downhill it eases down gently, so small bumps no longer make it bob. Flying off an edge gives a slow sink while airtime lasts, then it drops to hover height. Classic altitude controls keep the 1.1 ground-following hover.
+- The aircraft hovers slightly higher: resting height 3.75 above the ground (was 3), and the collective climbs up to 12 above that (was 10).
+- Items on the ground are collected when you hover over them at resting height, as if you touched them. Previously the pickup only registered while the hover dipped close enough.
+- A **Classic altitude controls** option in the mod settings restores the 1.1 controls: release jump to settle back to resting height, pull back to settle faster, and no airtime limit.
+- Time above resting height is limited to 20 seconds of airtime, which refills in about 2 seconds once you are back at resting height. Each extra jump (Hopoo Feather and similar) adds 2.5 seconds of airtime and 3 units of climb height, and no longer raises the resting height, so chests and ground items stay in reach however many you carry. Airtime and airtime per extra jump are configurable. How fast airtime runs down depends on how you fly: holding station over one spot, turning and fighting, costs very little (about 100 seconds from a full tank), while pushing the stick, flying fast, straying from where you climbed and climbing each spend it faster (about 16 seconds flat out). Each kill pauses the drain for 0.75 seconds, at most once every 1.5 seconds, so clearing a crowd stretches your airtime without freezing it.
+- The altitude ceiling is measured from the ground where you last rested, and utilities no longer add height on top of a climb. Climbing onto ledges far above the arena by chaining the collective with Evasive Roll or Smoke Backflip no longer works.
+- Painting Longbow targets no longer replaces the crosshair.
+- Pocket I.C.B.M. affects the Hellfire: two extra missiles fanned out at 25° either side of the aim point. Further stacks add nothing, since three Hellfires already triple the payload.
+- Desert is now Desert Tan, a realistic Army desert CARC with a matte finish and black low-visibility markings. It keeps its place in the skin list, so saved loadouts are unaffected.
+- Desert Tan and Arctic keep the airframe's panel lines, rivets, vents and weathering. Both used to render as flat, featureless paint.
+- Skin icons are vanilla-style colour swatches of each paint scheme (body, mechanical, markings and canopy glass). The Mastery icon remains a rendered portrait.
+- The gun housing under the cockpit no longer glows red as the magazine empties. The reload smoke puff and sounds are unchanged.
+- Model polish:
+  - Scissor tail rotor.
+  - Swept, bevelled main rotor blade tips.
+  - Faceted canopy glass whose sides lean in to a narrower roof, as on the Apache.
+  - Rounded Hellfire seeker noses.
+  - A visible TADS/PNVS sensor turret at the nose tip. The old sensor sat behind the chin gun.
+  - The chin gun sits further back and lower, under the gunner's station, with a gap behind the nose sensor.
+  - Countermeasure pods on the stub-wing tips.
+- The aircraft dips its nose as it speeds up and flares nose-up when it brakes, and leans further forward while sprinting, easing in and out of the sprint.
+- Army Green is lighter, with mechanical parts at the default skin's brightness, and the matte finishes keep enough sheen to show the airframe's shape under stage lighting.
+- Dark mechanical parts on every skin catch slightly more highlight.
+- The rotor sound follows the blades: silent inside the drop pod, rising in pitch as they spool up, and winding down with them on death instead of cutting off.
+- The chain gun's reload puffs smoke from the barrel. It used to spawn a small explosion flash.
+- New character portrait, rendered from the 1.2 airframe and framed on the cockpit and chin gun so it reads in the small select-screen and scoreboard tiles.
+- The Mastery achievement icon shows the Night Stalker paint it now unlocks.
+
+### Added
+
+- A small white airtime tick just under the crosshair. It appears when you climb above resting height, shrinks toward the centre as airtime drains, warms to amber when low and red when empty, and fades out once it has refilled.
+- Army Green paint scheme, in US Army CARC aircraft green with a matte finish and black low-visibility markings.
+- Rotors spool up as the aircraft leaves the drop pod, run slightly faster under the collective and hard manoeuvres, and wind down when it dies.
+- Rotors start up and turn slowly in character select when you pick the AH-64, over a quiet engine idle.
+- A subtle drift in pitch and roll while hovering in place, so a stationary aircraft no longer looks frozen.
+- The aircraft crashes when it dies. The tail lets go and it spins, noses down, trails smoke and explodes on impact. It used to hang in the air and vanish.
+- The engines trail smoke below 35% health, more often as health falls.
+- Weapons kick the airframe: a nose-up jolt from each M789 shell, a light shudder from the chain guns, and a lift on the firing side for rockets and missiles.
+- The aircraft banks into turns when flying forward, and heavy hits jolt the airframe.
+- Night Stalker paint scheme, semi-gloss black with dull red markings, unlocked by the AH-64 Mastery achievement (beat the game or obliterate on Monsoon). The achievement previously unlocked nothing.
+- Changing primary in character select plays a weapon-swap clunk as the chin gun changes over.
+
+---
+
 ## 1.1.2
 
 Missile launch audio fix, primary muzzle-flash fix, a quieter radar scan, and listing updates.

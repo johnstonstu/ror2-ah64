@@ -18,9 +18,10 @@ internal static class FeedbackChecks
         config.SaveOnConfigSet = false;
         AH64PlaytestConfig.Init(config);
         var entries = AH64RiskOfOptions.Entries;
-        Require(entries.Length == 30, "Every existing slider/toggle must reach both UI and export.");
-        Require(entries.Distinct().Count() == 30, "Duplicate bindings in UI/export.");
-        Require(entries.Count(e => e.SettingType == typeof(float)) == 29, "Expected all 29 release sliders.");
+        //1.2 added Classic altitude controls, Airtime seconds, Airtime per extra jump and Controller B descends.
+        Require(entries.Length == 34, "Every existing slider/toggle must reach both UI and export.");
+        Require(entries.Distinct().Count() == 34, "Duplicate bindings in UI/export.");
+        Require(entries.Count(e => e.SettingType == typeof(float)) == 31, "Expected all 31 release sliders.");
         Require(entries.Count(AH64BalanceReport.RequiresRestart) == 6, "Expected six prefab/SkillDef settings requiring restart.");
         Require(entries.Select(AH64BalanceReport.Category).Distinct().Count() == 7, "Expected seven settings categories.");
         Require(entries.Where(e => AH64BalanceReport.Category(e) == "Audio")
@@ -65,7 +66,7 @@ internal static class FeedbackChecks
         Require(report.Contains("Feels good!\nTry this setup.") && report.Contains("test-version"), "Missing comments/version.");
         Require(!legacyAudio.Any(setting => report.Contains(setting.Key + " = ")), "Hidden audio controls leaked into report.");
         Require(!report.Contains("DO_NOT_EXPORT"), "Unrelated config leaked into report.");
-        Require(report.Split('\n').Count(line => line.Contains(" = ")) == 30, "Report must contain each control exactly once.");
+        Require(report.Split('\n').Count(line => line.Contains(" = ")) == 34, "Report must contain each control exactly once.");
         speed.Value = (float)startup[speed.Definition];
         report = AH64BalanceReport.Build("test", entries, startup, "");
         Require(!report.Contains("[restart pending;") && report.Contains("(none)"), "Reset/startup values or empty comments handled incorrectly.");
@@ -94,7 +95,7 @@ internal static class FeedbackChecks
         Require(openFailed && Log.ErrorCount == 1, "Browser failure must be logged and rethrown.");
         Require(UnityEngine.GUIUtility.systemCopyBuffer.Contains(new string('漢', 1200)), "Browser failure lost the copied report.");
         System.IO.File.Delete(config.ConfigFilePath);
-        Console.WriteLine("PASS: all 30 release controls, legacy audio preservation, seven categories, restart state, precision, comments, export isolation, prefill/clipboard fallback, and browser failure handling.");
+        Console.WriteLine("PASS: all 34 release controls, legacy audio preservation, seven categories, restart state, precision, comments, export isolation, prefill/clipboard fallback, and browser failure handling.");
     }
 }
 

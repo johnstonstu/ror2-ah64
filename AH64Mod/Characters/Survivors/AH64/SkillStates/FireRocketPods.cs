@@ -64,6 +64,9 @@ namespace AH64.Survivors.SkillStates
                 EffectManager.SimpleMuzzleFlash(AH64Assets.hydraMuzzleFlashEffect, gameObject, muzzleName, false);
             //AtG Missile Mk.1 launch: light enough for a hold-to-ripple cadence; the Hellfire gets the heavy one.
             Components.AH64LaunchSound.Play(gameObject);
+            //each pod kicks its own side up
+            Components.AH64FlightVisuals.Kick(gameObject, AH64StaticValues.kickHydraPitch,
+                (index % 2 == 0 ? 1f : -1f) * AH64StaticValues.kickHydraRoll);
 
             if (!isAuthority)
                 return;

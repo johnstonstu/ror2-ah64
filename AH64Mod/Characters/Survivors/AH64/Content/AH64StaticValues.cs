@@ -16,7 +16,8 @@ namespace AH64.Survivors
         //you, so there is no way to park above an arena and out-range the encounter.
 
         //resting altitude, from the chopper's feet to the ground directly below it
-        public const float hoverHeight = 3f;
+        //Raised from 3 in 1.2. Ground items are still collected through AH64PickupReach.
+        public const float hoverHeight = 3.75f;
 
         //How hard an altitude error is corrected, in units/sec of climb per unit of error (P term).
         //Paired with hoverDamping — P alone overshoots or feels sluggish; PD is the standard hover
@@ -79,14 +80,54 @@ namespace AH64.Survivors
         //horizontal velocity at full acceleration and drop the chopper short of the target.
         public const float externalLaunchAirControl = 0.25f;
 
-        //Collective: hold jump to climb toward a jump-count-scaled ceiling; release to settle back to
-        //hoverHeight. Hold rawMoveDown to dump altitude faster. Vanilla jump is suppressed —
-        //a hovering body never grounds, so jumpCount would never reset; maxJumpCount raises the ceiling.
+        //Collective: hold jump to climb toward a jump-count-scaled ceiling, hold descend (B on a gamepad,
+        //a config key on keyboard — AH64DescendInput) to come down, release both to hold the current
+        //height. Vanilla jump is suppressed — a hovering body never grounds, so jumpCount would never
+        //reset; maxJumpCount raises the ceiling and the airtime instead.
         //
-        //Base ceiling rise above hoverHeight (1 jump). Each extra jump (Hopoo Feather, etc.) adds
+        //Hold-to-settle (the 1.1 scheme) kept the right thumb on jump for the whole climb, which on a
+        //gamepad means off the aim stick (playtest 2026-09-29). Holding height on release frees it.
+        //
+        //Base ceiling rise above the resting height (1 jump). Each extra jump (Hopoo Feather, etc.) adds
         //collectiveRisePerExtraJump.
-        public const float collectiveMaxRise = 10f;
-        public const float collectiveRisePerExtraJump = 4f;
+        public const float collectiveMaxRise = 12f;
+        public const float collectiveRisePerExtraJump = 3f;
+
+        //Airtime: seconds you may spend above the resting height before the collective settles you back
+        //on its own. Replaces "release to settle" as the thing keeping the chopper near the ground, which
+        //the encounter balance depends on (see AGENTS: low hover with temporary altitude). Defaults for
+        //the player-facing config in AH64PlaytestConfig.
+        //Long on purpose: altitude is an "eventually you come down" limit, not a short hop budget.
+        public const float airtimeBase = 20f;
+        //Kept small: the base tank and kill pauses already carry most of the flight time.
+        public const float airtimePerExtraJump = 2.5f;
+        //Seconds of airtime regained per second spent at resting height: a full 20 s refills in 2 s,
+        //so touching back down is a quick pit stop rather than a wait.
+        public const float airtimeRefillRate = 10f;
+        //Airtime seconds spent per second above resting height, summed from how the pilot is flying.
+        //Holding station (turning and fighting over one spot) costs only the base: 100 s from a full tank.
+        //Small repositioning near the start point lands around 0.35-0.5 (40-55 s). Flying off at cruise
+        //pays stick + speed at once and the stray term within a couple of seconds: capped at 1.25, 16 s.
+        public const float airtimeDrainBase = 0.2f;
+        //full stick; input under the deadzone (stick drift) is free
+        public const float airtimeDrainStick = 0.25f;
+        public const float airtimeStickDeadzone = 0.15f;
+        //per base cruise speed of horizontal travel
+        public const float airtimeDrainSpeed = 0.35f;
+        //full once this far (horizontal) from where the pilot left resting height
+        public const float airtimeDrainStray = 0.4f;
+        public const float airtimeStationRadius = 20f;
+        //while holding the collective to climb
+        public const float airtimeDrainClimb = 0.35f;
+        public const float airtimeDrainMax = 1.25f;
+        //After running dry, climbing unlocks again once this much has refilled, so an empty tank can't
+        //stutter up and down a fraction of a unit at a time. 0.2 s of refill at the rate above.
+        public const float airtimeMinToClimb = 2f;
+        //A kill pauses the drain this long. The pause can re-trigger only once the cooldown (measured
+        //from the previous trigger) has passed, so a crowd being mown down halves the drain at most
+        //instead of freezing it.
+        public const float airtimeKillPause = 0.75f;
+        public const float airtimeKillPauseCooldown = 1.5f;
         //How fast the target altitude rises while jump is held / sinks on release.
         public const float collectiveClimbRate = 14f;
         public const float collectiveSettleRate = 7f;
@@ -95,6 +136,15 @@ namespace AH64.Survivors
         //the collective while pinned under a ceiling can't bank altitude that fires you skyward once clear.
         //Wider than the old 2.5 during climb so PD can actually accelerate; settle uses the same value.
         public const float collectiveLead = 5f;
+        //The resting hover holds level and eases down over lower ground at this rate, so it rides
+        //over bumps and dips instead of tracing them. Matches a 25% grade at base speed; steeper
+        //ground or an edge leaves it high enough to spend airtime.
+        public const float restSinkRate = 2.5f;
+
+        //Climbs are capped at the world height of the ground where the climb started plus the ceiling,
+        //not just the ground currently below. Otherwise hugging a cliff face kept raising the ceiling
+        //(and the utilities' height bump with it), so the chopper could stair-step up anything in mid-air
+        //(playtest 2026-09-29). Landing at resting height on a ledge re-anchors, like a vanilla jump.
 
         //Nose attitude cues (degrees) driven by climb intent — negative = nose up in model lean Euler.
         public const float collectiveAscentNosePitch = -16f;
@@ -121,9 +171,13 @@ namespace AH64.Survivors
         public const float hoverAirControl = 1f;
 
         //Interactor.maxInteractionDistance is both the aim-ray length and the overlap sphere around
-        //aimOrigin. Commando's cloned 1u never reaches a chest from hoverHeight — the feet sit at 3u
+        //aimOrigin. Commando's cloned 1u never reaches a chest from hoverHeight — the feet sit at 3.75u
         //and aimOrigin is another ~2.5u above that. 12u covers resting hover and a little collective.
         public const float interactionDistance = 12f;
+        //Walk-over pickups need the body collider inside the item's trigger, which a hover never is.
+        //Items this far below the feet, plus the resting height, are collected as if touched.
+        public const float pickupReachMargin = 0.75f;
+        public const float pickupReachInterval = 0.1f;
         #endregion
 
         #region presentation - flight lean / rotor wash
@@ -142,6 +196,16 @@ namespace AH64.Survivors
         public const float leanRollPerInput = 16f;
         //higher = snappier; playtest ~5–10. Slightly softer so PD climb + lean don't fight visually.
         public const float leanSmoothing = 7f;
+        //Sprint holds this much extra nose-down, blended in over ~0.35 s and out over ~0.5 s.
+        public const float sprintExtraPitch = 5f;
+        public const float sprintLeanInRate = 2.8f;
+        public const float sprintLeanOutRate = 2f;
+        //Surge dip / braking flare: degrees per u/s between live and lagged forward speed. A full stop
+        //from cruise flares about 7 degrees nose-up for roughly half a second.
+        public const float surgeLagSeconds = 0.3f;
+        public const float surgePitchPerSpeed = 0.7f;
+        public const float surgeMaxPitch = 4f;
+        public const float flareMaxPitch = 7f;
 
         //Dust kicked under the rotor disc when hugging the ground. Hovering rotors still move air, so
         //idle wash runs at a restrained cadence and blends up to the moving cadence with flight effort.
@@ -194,6 +258,32 @@ namespace AH64.Survivors
         public const float rotorBlurMaxAlpha = 0.17f;
         public const float rotorBlurSmoothing = 5f;
 
+        //Rotor RPM presentation (AH64RotorSpin). Rotors start stopped inside the drop pod and spool up
+        //on exit; a dead aircraft winds down while its body lingers (GenericCharacterDeath keeps it
+        //1-4 s). Collective and hard manoeuvres run slightly fast — enough to notice, not to strobe.
+        public const float rotorSpoolUpSeconds = 1.7f;
+        public const float rotorSpinDownSeconds = 2.6f;
+        public const float rotorEffortRpmBoost = 0.12f;
+        //Character select idles at ground RPM: readable blade motion without wagon-wheel strobing.
+        public const float rotorLobbyIdleFraction = 0.35f;
+        //Seconds for a full spool in character select, so reaching idle takes about 1.4 s: an engine
+        //start when you pick the AH-64, not a snap.
+        public const float rotorLobbySpoolUpSeconds = 4f;
+        //The rotor sound follows the blades: silent in the drop pod, pitching up as they spool, and
+        //winding down with them on death. Pitch at a standstill, as a multiple of flight pitch.
+        public const float rotorAudioSpoolPitchFloor = 0.7f;
+        //Character-select idle (AH64LobbyRotorAudio), relative to the flight rotor volume, before the
+        //spool scales it. At the lobby idle spool (eased 0.28) this is about 40% of the hover volume.
+        public const float rotorLobbyAudioGain = 1.5f;
+
+        //Idle hover drift so a stationary aircraft doesn't look frozen. Fades out above
+        //idleSwayMaxSpeed, where flight lean takes over. Periods are incommensurate so it never loops visibly.
+        public const float idleSwayRollDegrees = 1.3f;
+        public const float idleSwayPitchDegrees = 0.8f;
+        public const float idleSwayRollPeriod = 4.3f;
+        public const float idleSwayPitchPeriod = 6.1f;
+        public const float idleSwayMaxSpeed = 4f;
+
         //Chin turret procedural aim (see AH64ChinTurret). Yaw limits match Prefabs.SetupAimAnimator
         //(±80°) so the gun cone matches what RoR2's aim clips assume; pitch is the real M230 envelope.
         public const float chinTurretTurnSpeed = 200f;
@@ -205,12 +295,66 @@ namespace AH64.Survivors
         public const float chinTurretKickRecoverPerSecond = 0.55f;
         #endregion
 
+        #region presentation - crash, damage smoke, recoil kick, turn bank
+        //Death is a crash rather than a vanish: the tail lets go, the airframe spins up and noses down,
+        //trails smoke and explodes on impact (AH64Death). Flight stays on during the fall so the descent
+        //is scripted. A plain gravity drop from resting height took under half a second and never read
+        //as a crash. Starting from a standstill, the tail spins up before the drop takes hold: impact
+        //comes about a second after dying at resting height (the ground check fires ~2.9 units down).
+        public const float crashFallSpeedStart = 0f;
+        public const float crashFallAccel = 5.5f;
+        public const float crashFallSpeedMax = 26f;
+        //share of horizontal speed kept as the target each tick, so the wreck drifts on and slows
+        public const float crashHorizontalCarry = 0.85f;
+        //no impact before this: a body destroyed sooner can drop its last network messages
+        public const float crashMinDuration = 0.5f;
+        //explodes in the air after this, e.g. over a pit
+        public const float crashMaxDuration = 4f;
+        //yaw rate ramps from start to max (degrees per second) over the ramp
+        public const float crashSpinStart = 120f;
+        public const float crashSpinMax = 620f;
+        public const float crashSpinRampSeconds = 0.9f;
+        public const float crashNoseDownDegrees = 24f;
+        public const float crashWobbleDegrees = 9f;
+        public const float crashSmokeInterval = 0.06f;
+
+        //Below this share of health the engines trail smoke, thicker and more often as health falls.
+        public const float damageSmokeHealthFraction = 0.35f;
+        public const float damageSmokeIntervalMax = 0.45f;
+        public const float damageSmokeIntervalMin = 0.14f;
+
+        //Airframe kick when a weapon fires, in degrees: nose-up pitch and roll away from the firing side.
+        //Springs back at kickRecovery per second. Presentation only, on every client running the state.
+        public const float kickRecovery = 9f;
+        public const float kickMax = 6f;
+        public const float kickCannonPitch = 2.4f;
+        public const float kickChaingunPitch = 0.25f;
+        public const float kickGatlingPitch = 0.14f;
+        public const float kickHydraPitch = 0.35f;
+        public const float kickHydraRoll = 0.6f;
+        public const float kickHellfirePitch = 1.4f;
+        public const float kickHellfireRoll = 1.6f;
+        public const float kickLongbowPitch = 0.8f;
+        public const float kickLongbowRoll = 1.1f;
+        //Hit jolt: a hit taking at least this share of health plus shield knocks the airframe, reaching
+        //the full kickMax at hitJoltFullShare.
+        public const float hitJoltMinShare = 0.06f;
+        public const float hitJoltFullShare = 0.3f;
+
+        //Coordinated turn: bank into a yaw while moving forward, as a helicopter does, instead of pivoting
+        //flat. Degrees of roll per degree-per-second of yaw, scaled up to full at turnBankFullSpeed.
+        public const float turnBankPerYawRate = 0.05f;
+        public const float turnBankMax = 12f;
+        public const float turnBankFullSpeed = 8f;
+        public const float turnRateSmoothing = 6f;
+        #endregion
+
         #region passive - Fire Control Radar
         //Paints the single strongest enemy in a wide bubble (highest maxHealth; elite then nearest on
         //ties). The radome brightens briefly on every retarget so it reads as actively searching.
         public const float radarSearchRadius = 90f;
         public const float radarRetargetInterval = 8f;
-        //Radome glow on each scan: peak emission power (the barrel heat glow tops out at 4) and fade time.
+        //Radome glow on each scan: peak emission power and fade time.
         public const float radarScanFlashPower = 1.5f;
         public const float radarScanFlashDuration = 1.1f;
         //Ping spawned on the painted target when lock is acquired / refreshed.
@@ -240,6 +384,10 @@ namespace AH64.Survivors
         //full pass-through would make attack speed strictly better than dedicated cooldown reduction for
         //these skills, which isn't the balance intent.
         public const float primaryReloadAttackSpeedMultiplier = 0.35f;
+        //Eclipse Lite pays barrier per cooldown. A primary reload only comes round after you stop
+        //firing, so at one restock it paid out a fraction of what a cooldown survivor gets. Playtested
+        //too weak on the XM301; counting a reload as four cooldowns brings it in line.
+        public const int primaryReloadBarrierRestocks = 4;
 
         #region primary - M230 chain gun
         //HITSCAN, not a projectile. The old wrist blaster fired a real travelling bolt because a laser
@@ -528,6 +676,26 @@ namespace AH64.Survivors
         //Must be set explicitly on the projectile: CreateFlatFlyingRocket clones Commando's grenade,
         //whose procCoefficient is not 1.0 and would otherwise be inherited silently.
         public const float hellfireProcCoefficient = 1f;
+        //Pocket I.C.B.M. adds two missiles, as it does for Engineer's harpoons. Those home, so vanilla
+        //throws them out at ±45°; a dumb-fire Hellfire would send them into the scenery. A narrow fan
+        //stacked all three blasts on one target and played far too strong, so ±25° spreads them into
+        //separate impacts: area coverage, not triple damage on the aim point.
+        public const float hellfireIcbmFanAngle = 25f;
+        #endregion
+
+        #region item interactions
+        //The hover never grounds and AH64Main swallows the vanilla jump, so jump- and landing-based items
+        //see a body that is permanently airborne and never jumps. Within this band above hoverHeight the
+        //chopper counts as "on the ground" for them: H3AD-5T v2 cannot arm a slam (E at a chest would
+        //otherwise start one), a slam detonates on reaching it, and the jump event re-arms.
+        public const float restAltitudeBand = 1f;
+        //Wax Quail fires on a collective tap while sprinting. A grounded survivor gets one per landing;
+        //the hover never lands, so a cooldown stands in (playtest 2026-09-29 preferred this to once per climb).
+        public const float waxQuailCooldown = 1.5f;
+        //Luminous Shot gains a stack per secondary activation, and every Hydra rocket is one. Rockets
+        //closer together than this (or than 2.5 fire intervals at the current attack speed) count as
+        //one ripple and one stack. Generous so network jitter on the server can't split a ripple.
+        public const float luminousRippleGap = 0.5f;
         #endregion
 
         #region special - AGM-114L Longbow
@@ -536,6 +704,8 @@ namespace AH64.Survivors
         //Hybrid scale: more locks = more missiles, and later locks in the salvo hit harder.
         //  damage = longbowDamageBase + lockIndex * longbowDamagePerLock  (lockIndex 0..max-1)
         //  → 4.0, 4.55, 5.1, 5.65, 6.2, 6.75 at a full rack of 6 (+12% slight buff, 2026-08-04)
+        //Lysate Cell adds a missile per stack on top of this, and the ramp keeps going for them
+        //(7.3, 7.85, ...) — deliberate, so the cell pays off in burst the way it does for Hellfire.
         public const int longbowMaxLocks = 6;
         public const float longbowDamageBase = 4.0f;
         public const float longbowDamagePerLock = 0.55f;
