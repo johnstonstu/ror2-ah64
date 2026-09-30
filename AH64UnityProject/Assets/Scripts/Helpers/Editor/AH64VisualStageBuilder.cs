@@ -29,6 +29,9 @@ public static class AH64VisualStageBuilder
             Matrix4x4 tailTip = baseline["TailTip"];
             tailTip.SetColumn(3, new Vector4(0f, 1.16f, -3.75f, 1f));
             baseline["TailTip"] = tailTip;
+            // The 1.2 turret move shifts the whole gun. Muzzle is held to its pose on the
+            // barrel instead of on the model; the weapon geometry checks cover the bores.
+            baseline.Remove("Muzzle");
             string error = AH64Phase4Builder.RefreshPrefabsFromFbx();
             if (error != null) throw new InvalidOperationException(error);
             VerifyPrefab(AssetDatabase.LoadAssetAtPath<GameObject>(BundleRoot + "mdlAH64.prefab"), baseline);
@@ -51,6 +54,12 @@ public static class AH64VisualStageBuilder
             foreach (string iconName in new[] { "texAH64PrimaryIcon", "texAH64GatlingIcon", "texAH64CannonIcon" })
                 if (!bundle.LoadAsset<Sprite>(iconName))
                     throw new InvalidOperationException("Missing primary sprite: " + iconName);
+            // AH64Skins throws at load without these, which would drop the survivor entirely.
+            foreach (string iconName in new[] { "texMainSkin", "texAH64SkinDesert", "texAH64SkinArctic", "texAH64SkinArmy" })
+                if (!bundle.LoadAsset<Sprite>(iconName))
+                    throw new InvalidOperationException("Missing skin sprite: " + iconName);
+            if (!bundle.LoadAsset<Texture2D>("texAH64BodyPanelAtlasNeutral"))
+                throw new InvalidOperationException("Missing neutral panel atlas for alternate paints.");
             var duplicateNames = bundle.GetAllAssetNames().GroupBy(p => Path.GetFileNameWithoutExtension(p).ToLowerInvariant())
                 .Where(g => g.Count() > 1).Select(g => g.Key).ToArray();
             if (duplicateNames.Length > 0)
@@ -81,6 +90,8 @@ public static class AH64VisualStageBuilder
             if (!child) throw new InvalidOperationException("Missing anchor " + name);
             result.Add(name, prefab.transform.worldToLocalMatrix * child.localToWorldMatrix);
         }
+        Transform barrel = FindChild(locator, "ChinBarrel");
+        result.Add("Muzzle@ChinBarrel", barrel.worldToLocalMatrix * FindChild(locator, "Muzzle").localToWorldMatrix);
         return result;
     }
 

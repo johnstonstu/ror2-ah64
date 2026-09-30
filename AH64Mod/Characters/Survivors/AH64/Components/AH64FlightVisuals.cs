@@ -48,6 +48,79 @@ namespace AH64.Survivors.Components
         private float backflipTimer;
         private float backflipDuration;
         private Quaternion leanLocal = Quaternion.identity;
+        //per-aircraft offset so several AH-64s hovering together don't sway in lockstep
+        private float swayPhase;
+        //sprint lean eases in and out instead of following the near-instant speed change
+        private float sprintWeight;
+        //lagging copy of forward speed; the gap to live speed is the surge / flare cue
+        private float laggedForwardSpeed;
+        //weapon recoil kick, layered on the lean at the model only so it never feeds back into it
+        private float kickPitch;
+        private float kickRoll;
+        //death crash (AH64Death): tail spin and nose-down, overriding every other attitude
+        private bool crashing;
+        private float crashAge;
+        private float crashYaw;
+        private float crashSpinSign = 1f;
+        //coordinated-turn bank
+        private Vector3 lastFacing;
+        private float yawRate;
+        //engine smoke below damageSmokeHealthFraction, alternating nacelles
+        private ChildLocator childLocator;
+        private float damageSmokeTimer;
+        private bool damageSmokeLeft;
+        //hit jolt: health plus shield last frame, -1 until first sampled
+        private float lastCombinedHealth = -1f;
+
+        /// <summary>
+        /// Nose-up pitch and roll kick from a weapon firing, in degrees. Presentation only; call it on every
+        /// client that runs the firing state so remote aircraft kick too.
+        /// </summary>
+        public static void Kick(GameObject bodyObject, float pitchUp, float roll)
+        {
+            AH64FlightVisuals visuals = bodyObject ? bodyObject.GetComponent<AH64FlightVisuals>() : null;
+            if (visuals)
+                visuals.AddKick(pitchUp, roll);
+        }
+
+        public void AddKick(float pitchUp, float roll)
+        {
+            if (crashing)
+                return;
+
+            kickPitch = Mathf.Clamp(kickPitch + pitchUp, -AH64StaticValues.kickMax, AH64StaticValues.kickMax);
+            kickRoll = Mathf.Clamp(kickRoll + roll, -AH64StaticValues.kickMax, AH64StaticValues.kickMax);
+        }
+
+        /// <summary>Tail-rotor-loss spin for the death crash. <paramref name="spinSign"/> picks the direction.</summary>
+        public void PlayCrash(float spinSign)
+        {
+            EnsureModelRefs();
+
+            crashing = true;
+            crashAge = 0f;
+            crashYaw = 0f;
+            crashSpinSign = spinSign >= 0f ? 1f : -1f;
+            barrelRollTimer = 0f;
+            backflipTimer = 0f;
+            kickPitch = kickRoll = 0f;
+        }
+
+        /// <summary>
+        /// Where engine smoke leaves the airframe: high on the fuselage at a wing root, behind the mast.
+        /// Falls back to the body when the model is missing.
+        /// </summary>
+        public Vector3 GetEngineSmokeOrigin(bool left)
+        {
+            Transform chest = childLocator ? childLocator.FindChild("Chest") : null;
+            Transform wing = childLocator ? childLocator.FindChild(left ? "WingL" : "WingR") : null;
+            Vector3 up = model ? model.up : Vector3.up;
+            if (chest && wing)
+                return Vector3.Lerp(chest.position, wing.position, 0.35f) + up * 0.9f;
+            if (chest)
+                return chest.position + up * 0.9f;
+            return transform.position + Vector3.up;
+        }
 
         /// <summary>
         /// Full ~360° barrel roll for Evasive Roll. <paramref name="rollSign"/> is ±1 (left / right).
@@ -84,6 +157,7 @@ namespace AH64.Survivors.Components
             hover = GetComponent<AH64HoverController>();
             inputBank = GetComponent<InputBankTest>();
             body = GetComponent<CharacterBody>();
+            swayPhase = Random.Range(0f, 30f);
 
             EnsureModelRefs();
             if (!model)
@@ -93,6 +167,7 @@ namespace AH64.Survivors.Components
             modelLocator.autoUpdateModelTransform = false;
 
             ChildLocator locator = model.GetComponent<ChildLocator>();
+            childLocator = locator;
             if (locator)
             {
                 blurMain = BindBlurDisc(locator, "RotorBlurMain");
@@ -142,7 +217,9 @@ namespace AH64.Survivors.Components
             if (!model || !motor)
                 return;
 
-            if (backflipTimer > 0f)
+            if (crashing)
+                leanLocal = EvaluateCrashLean();
+            else if (backflipTimer > 0f)
                 leanLocal = EvaluateBackflipLean();
             else if (barrelRollTimer > 0f)
                 leanLocal = EvaluateBarrelRollLean();
@@ -154,10 +231,95 @@ namespace AH64.Survivors.Components
                 ? modelBase.rotation
                 : YawBasisFallback();
             Vector3 position = modelBase ? modelBase.position : transform.position;
-            model.SetPositionAndRotation(position, yaw * leanLocal);
+
+            float kickDecay = 1f - Mathf.Exp(-AH64StaticValues.kickRecovery * Time.deltaTime);
+            kickPitch = Mathf.Lerp(kickPitch, 0f, kickDecay);
+            kickRoll = Mathf.Lerp(kickRoll, 0f, kickDecay);
+            //Positive Euler X is nose down, so a nose-up kick is negative.
+            Quaternion kick = Quaternion.Euler(-kickPitch, 0f, kickRoll);
+            model.SetPositionAndRotation(position, yaw * leanLocal * kick);
 
             TryRotorWash();
             UpdateRotorBlur(motor.velocity);
+            UpdateDamageSmoke();
+            UpdateHitJolt();
+        }
+
+        /// <summary>
+        /// A heavy hit knocks the airframe: a kick scaled by the share of health lost in one frame. Reads
+        /// synced health, so remote aircraft jolt too. Chip damage and regeneration never trigger it.
+        /// </summary>
+        private void UpdateHitJolt()
+        {
+            HealthComponent health = body ? body.healthComponent : null;
+            if (!health || !health.alive || crashing)
+            {
+                lastCombinedHealth = -1f;
+                return;
+            }
+
+            float combined = health.combinedHealth;
+            float lost = lastCombinedHealth - combined;
+            lastCombinedHealth = combined;
+            if (lost <= 0f || health.fullCombinedHealth <= 0f)
+                return;
+
+            float share = lost / health.fullCombinedHealth;
+            if (share < AH64StaticValues.hitJoltMinShare)
+                return;
+
+            float strength = Mathf.Clamp01(share / AH64StaticValues.hitJoltFullShare) * AH64StaticValues.kickMax;
+            float roll = Random.value < 0.5f ? -1f : 1f;
+            AddKick(strength * Random.Range(-0.4f, 0.6f), roll * strength);
+        }
+
+        private Quaternion EvaluateCrashLean()
+        {
+            float dt = Time.deltaTime;
+            crashAge += dt;
+            float ramp = Mathf.Clamp01(crashAge / AH64StaticValues.crashSpinRampSeconds);
+            float spin = Mathf.Lerp(AH64StaticValues.crashSpinStart, AH64StaticValues.crashSpinMax, ramp * ramp);
+            crashYaw = Mathf.Repeat(crashYaw + crashSpinSign * spin * dt, 360f);
+
+            float pitch = AH64StaticValues.crashNoseDownDegrees * Mathf.SmoothStep(0f, 1f, ramp)
+                + Mathf.Sin(crashAge * 11f) * AH64StaticValues.crashWobbleDegrees * 0.4f;
+            float roll = Mathf.Sin(crashAge * 7.3f) * AH64StaticValues.crashWobbleDegrees * crashSpinSign;
+            //Euler applies yaw outermost, so the tilted airframe spins about the vertical like a real
+            //tail-rotor failure rather than tumbling.
+            return Quaternion.Euler(pitch, crashYaw, roll);
+        }
+
+        private void UpdateDamageSmoke()
+        {
+            if (crashing || !body || !body.healthComponent || !body.healthComponent.alive)
+                return;
+
+            float fraction = body.healthComponent.combinedHealthFraction;
+            if (fraction >= AH64StaticValues.damageSmokeHealthFraction)
+            {
+                damageSmokeTimer = 0f;
+                return;
+            }
+
+            damageSmokeTimer -= Time.deltaTime;
+            if (damageSmokeTimer > 0f)
+                return;
+
+            float severity = 1f - fraction / AH64StaticValues.damageSmokeHealthFraction;
+            damageSmokeTimer = Mathf.Lerp(AH64StaticValues.damageSmokeIntervalMax,
+                AH64StaticValues.damageSmokeIntervalMin, severity);
+
+            GameObject smoke = AH64Assets.hydraMuzzleFlashEffect;
+            if (!smoke || !CanShowFlightEffects())
+                return;
+
+            damageSmokeLeft = !damageSmokeLeft;
+            //Local only: every client runs this for every aircraft from its own synced health.
+            EffectManager.SpawnEffect(smoke, new EffectData
+            {
+                origin = GetEngineSmokeOrigin(damageSmokeLeft),
+                rotation = Util.QuaternionSafeLookRotation(Vector3.up),
+            }, false);
         }
 
         private Quaternion YawBasisFallback()
@@ -208,6 +370,18 @@ namespace AH64.Survivors.Components
                 facing = transform.forward;
             facing.Normalize();
 
+            float frameDt = Time.deltaTime;
+            float frameTurn = lastFacing.sqrMagnitude > 0.5f
+                ? Vector3.SignedAngle(lastFacing, facing, Vector3.up)
+                : 0f;
+            //A jump this large is a stale heading from before a roll or backflip, not a turn.
+            if (frameDt > 0f && Mathf.Abs(frameTurn) < 45f)
+            {
+                yawRate = Mathf.Lerp(yawRate, frameTurn / frameDt,
+                    1f - Mathf.Exp(-AH64StaticValues.turnRateSmoothing * frameDt));
+            }
+            lastFacing = facing;
+
             Vector3 right = Vector3.Cross(Vector3.up, facing).normalized;
             Vector3 vel = motor.velocity;
             float forwardSpeed = Vector3.Dot(vel, facing);
@@ -247,21 +421,62 @@ namespace AH64.Survivors.Components
                     pitch += -w * AH64StaticValues.collectiveDescentNosePitch;
             }
 
+            pitch += EvaluateSpeedChangePitch(forwardSpeed);
+
             pitch = Mathf.Clamp(pitch,
                 AH64StaticValues.collectiveAscentNosePitch - 2f,
                 AH64StaticValues.leanMaxPitch + AH64StaticValues.collectiveDescentNosePitch);
 
+            //Bank into the turn when flying forward: turning right (positive yaw) drops the right side,
+            //which is negative roll, the same sign as strafing right.
+            float turnBank = Mathf.Clamp(-yawRate * AH64StaticValues.turnBankPerYawRate,
+                -AH64StaticValues.turnBankMax, AH64StaticValues.turnBankMax)
+                * Mathf.Clamp01(forwardSpeed / AH64StaticValues.turnBankFullSpeed);
+
             float roll = Mathf.Clamp(
                 velBlend * (-strafeSpeed * AH64StaticValues.leanRollPerSpeed)
-                + inputBlend * (-inputStrafe * AH64StaticValues.leanRollPerInput),
+                + inputBlend * (-inputStrafe * AH64StaticValues.leanRollPerInput)
+                + turnBank,
                 -AH64StaticValues.leanMaxRoll,
                 AH64StaticValues.leanMaxRoll);
+
+            float horizontalSpeed = new Vector2(forwardSpeed, strafeSpeed).magnitude;
+            float stillness = 1f - Mathf.Clamp01(horizontalSpeed / AH64StaticValues.idleSwayMaxSpeed);
+            if (stillness > 0f)
+            {
+                float t = Time.time + swayPhase;
+                roll += stillness * AH64StaticValues.idleSwayRollDegrees
+                    * Mathf.Sin(t * (2f * Mathf.PI / AH64StaticValues.idleSwayRollPeriod));
+                pitch += stillness * AH64StaticValues.idleSwayPitchDegrees
+                    * Mathf.Sin(t * (2f * Mathf.PI / AH64StaticValues.idleSwayPitchPeriod));
+            }
 
             Quaternion target = Quaternion.Euler(pitch, 0f, roll);
             return Quaternion.Slerp(
                 leanLocal,
                 target,
                 1f - Mathf.Exp(-AH64StaticValues.leanSmoothing * Time.deltaTime));
+        }
+
+        /// <summary>
+        /// Acceleration reaches cruise or sprint speed within a frame or two, so speed-driven lean alone
+        /// never shows the change. A real helicopter dips its nose to surge and flares nose-up to brake;
+        /// sprinting holds a deeper nose-down attitude that blends in and out.
+        /// </summary>
+        private float EvaluateSpeedChangePitch(float forwardSpeed)
+        {
+            float dt = Time.deltaTime;
+            bool sprinting = body && body.isSprinting && forwardSpeed > 1f;
+            float rate = sprinting ? AH64StaticValues.sprintLeanInRate : AH64StaticValues.sprintLeanOutRate;
+            sprintWeight = Mathf.MoveTowards(sprintWeight, sprinting ? 1f : 0f, rate * dt);
+
+            laggedForwardSpeed = Mathf.Lerp(laggedForwardSpeed, forwardSpeed,
+                1f - Mathf.Exp(-dt / AH64StaticValues.surgeLagSeconds));
+            float surge = Mathf.Clamp((forwardSpeed - laggedForwardSpeed) * AH64StaticValues.surgePitchPerSpeed,
+                -AH64StaticValues.flareMaxPitch, AH64StaticValues.surgeMaxPitch);
+
+            float eased = sprintWeight * sprintWeight * (3f - 2f * sprintWeight);
+            return eased * AH64StaticValues.sprintExtraPitch + surge;
         }
 
         private void UpdateRotorBlur(Vector3 velocity)

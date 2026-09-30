@@ -9,6 +9,9 @@ namespace AH64.Survivors
             //the custom main "Body" state - it owns the hover. Registered like any other EntityState.
             Modules.Content.AddEntityState(typeof(AH64Main));
 
+            //the crash. Networked on the Body machine like the main state, so it must be registered too.
+            Modules.Content.AddEntityState(typeof(AH64Death));
+
             //All three primary variants must be registered, not just the default. An unregistered
             //state still runs locally but has no EntityStateIndex, so the network serializer logs
             //"Sending state that resolves to invalid ..." and it never replicates to other clients.

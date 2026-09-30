@@ -11,8 +11,15 @@ namespace AH64.Survivors
         // Fire Control Radar paint mark — red threat icon on the painted enemy's buff bar
         public static BuffDef radarPaintedBuff;
 
+        // airtime drain pause after a kill; a buff because kills are server-side and airtime is
+        // authority-side, and timed buffs already replicate to the owning client
+        public static BuffDef killAirtimeBuff;
+
         public static void Init(AssetBundle assetBundle)
         {
+            killAirtimeBuff = Modules.Content.CreateAndAddBuff("AH64KillAirtime", null, Color.white, false, false);
+            killAirtimeBuff.isHidden = true;
+
             platingBuff = Modules.Content.CreateAndAddBuff("AH64PlatingBuff",
                 LegacyResourcesAPI.Load<BuffDef>("BuffDefs/HiddenInvincibility").iconSprite,
                 Color.white,

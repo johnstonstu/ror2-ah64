@@ -10,6 +10,7 @@ namespace AH64.Survivors.Components
         private CharacterMotor motor;
         private CharacterBody body;
         private AH64HoverController hoverController;
+        private AH64RotorSpin rotorSpin;
         private GameObject emitter;
         private uint playingId;
         private int startAttempts;
@@ -28,6 +29,7 @@ namespace AH64.Survivors.Components
             motor = GetComponent<CharacterMotor>();
             body = GetComponent<CharacterBody>();
             hoverController = GetComponent<AH64HoverController>();
+            rotorSpin = GetComponent<AH64RotorSpin>();
             audioStateMachines = GetComponents<EntityStateMachine>();
         }
 
@@ -43,7 +45,9 @@ namespace AH64.Survivors.Components
         private void Update()
         {
             if (Application.isBatchMode) return;
-            if (body && body.healthComponent && !body.healthComponent.alive)
+            //A dead aircraft keeps its loop only while the blades wind down, then stops for good.
+            bool dead = body && body.healthComponent && !body.healthComponent.alive;
+            if (dead && (playingId == 0 || SpoolLevel() <= 0.02f))
             {
                 StopRotor();
                 return;
@@ -56,7 +60,8 @@ namespace AH64.Survivors.Components
                 emitter.AddComponent<AkGameObj>();
             }
             UpdateMix();
-            EnsurePlaying();
+            if (!dead)
+                EnsurePlaying();
             //Collective feedback now comes from this rotor's pitch response. The previous
             //Captain drone quick-move one-shot layered another engine sound over every press.
         }
@@ -81,13 +86,16 @@ namespace AH64.Survivors.Components
                 ResponseTime(load, loadTarget), Mathf.Infinity, Time.deltaTime);
             float pitchDepth = Mathf.Min(AH64PlaytestConfig.RotorLoadPitch
                 * AH64StaticValues.rotorDirectionalPitchScale, 0.12f);
+            float spoolLevel = SpoolLevel();
             //Stay within the authored Wwise pitch RTPC range (-700..600 cents).
-            pitch = Mathf.Clamp(AH64PlaytestConfig.RotorPitch + pitchDepth * directionalLoad,
+            pitch = Mathf.Clamp((AH64PlaytestConfig.RotorPitch + pitchDepth * directionalLoad)
+                    * Mathf.Lerp(AH64StaticValues.rotorAudioSpoolPitchFloor, 1f, spoolLevel),
                 Mathf.Pow(2f, -700f / 1200f), Mathf.Pow(2f, 600f / 1200f));
             bool local = IsLocalPilot();
             gain = Mathf.Clamp01(AH64PlaytestConfig.RotorHoverVolume
                 * AH64StaticValues.rotorMixTrim
-                * Mathf.Pow(10f, AH64PlaytestConfig.RotorLoadGain * load / 20f));
+                * Mathf.Pow(10f, AH64PlaytestConfig.RotorLoadGain * load / 20f)
+                * spoolLevel);
             if (!local) gain *= DistanceGain();
             CheckResult(AkSoundEngine.SetGameObjectOutputBusVolume(
                 AkSoundEngine.GetAkGameObjectID(emitter), ulong.MaxValue, gain), "gain");
@@ -99,6 +107,12 @@ namespace AH64.Survivors.Components
                 / Mathf.Log(20000f / 600f) * 60f, 0f, 60f);
             lowpass = Mathf.Max(0f, lowpass - AH64StaticValues.rotorManeuverToneOpening * maneuverResponse);
             CheckResult(AkSoundEngine.SetRTPCValue("AH64_RotorLowpass", lowpass, emitter), "tone");
+        }
+
+        /// <summary>The blades' eased spool, or full speed if there is no rotor component to follow.</summary>
+        private float SpoolLevel()
+        {
+            return rotorSpin ? rotorSpin.Spool : 1f;
         }
 
         private float GetDirectionalLoad()
@@ -120,7 +134,7 @@ namespace AH64.Survivors.Components
             //Anticipate collective input before velocity builds. Descent remains a lower pitch,
             //not another positive speed boost; opposite strafe directions carry equal rotor load.
             float collective = inputBank && inputBank.jump.down ? 1f
-                : inputBank && inputBank.rawMoveDown.down ? -1f : 0f;
+                : hoverController && hoverController.IsDescending ? -1f : 0f;
             float climb = Mathf.Clamp(verticalSpeed * 0.65f + collective * 0.35f, -1f, 1f);
             //Soft saturation retains a difference between forward and forward+strafe.
             //Smooth the absolute strafe term around zero to avoid an edge during circles.

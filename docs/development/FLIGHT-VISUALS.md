@@ -8,6 +8,30 @@ Blur and new wash emissions stop for dead, cloaked or hidden bodies. Existing du
 expires normally. CharacterModel visibility and cloak state are checked explicitly
 because blur renderers are outside its material-management array.
 
+## Attitude layers (1.2)
+
+`AH64FlightVisuals` owns the model transform: yaw from ModelBase, then one of the
+crash, backflip, barrel-roll or flight lean, then the weapon/hit kick. The kick is
+applied at the model only and never fed back into the lean smoothing.
+
+- Flight lean: velocity and stick lean, collective pitch, surge dip and braking
+  flare, sprint lean, idle sway, and a coordinated-turn bank from the smoothed
+  yaw rate (ignored across a heading jump of 45 degrees or more, e.g. after a roll).
+- Kick: `Kick(bodyObject, pitchUp, roll)` from the firing states. Everything but the
+  Longbow calls it outside the authority check, so remote aircraft kick too; the
+  Longbow fires from an authority-only method and kicks only for its pilot.
+  Heavy hits kick from synced health, on every client.
+- Crash: `AH64Death` calls `PlayCrash` on every client. The spin sign comes from
+  the body's netId, so all clients agree without syncing anything. The authority
+  scripts the fall through `AH64HoverController.ApplyCrash`; the server destroys
+  the body on impact, and every client explodes the wreck in `OnExit`.
+- Engine smoke (below `damageSmokeHealthFraction`) and the crash trail use the
+  Hydra smoke ring. `SmokePuffEffect` is an explosion flash, not smoke.
+
+Rotor sound follows `AH64RotorSpin.Spool`: silent in the drop pod, pitching up
+with the spool, and winding down on death. A pod arrival (stage 1, first five
+seconds) starts from a stop; every other spawn starts at flight RPM.
+
 ## Known missile presentation limitations
 
 - Longbow consumes stock when locks are reserved, before missiles launch. Rack

@@ -1,9 +1,9 @@
 {
     "name": "AH64",
     "author": "JohnstonStu",
-    "version_number": "1.1.2",
+    "version_number": "1.2.0",
     "website_url": "https://github.com/johnstonstu/ror2-ah64",
-    "description": "AH-64 Apache helicopter survivor mod. A flying attack helicopter gunship that hovers and never lands: M230 chain gun, Hydra rockets, Hellfire and Longbow missiles, evasive rolls. 3 primaries, Olive/Desert/Arctic skins. Playable chopper character.",
+    "description": "AH-64 Apache helicopter survivor mod. A flying attack helicopter gunship that hovers and never lands: M230 chain gun, Hydra rockets, Hellfire and Longbow missiles, evasive rolls. 3 primaries, 4 paint schemes. Playable chopper character.",
     "dependencies": [
         "bbepis-BepInExPack-5.4.1905",
         "RiskofThunder-R2API_Core-5.0.3",

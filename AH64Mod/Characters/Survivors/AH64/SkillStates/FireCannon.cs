@@ -118,6 +118,8 @@ namespace AH64.Survivors.SkillStates
             if (shake)
                 shake.amplitudeTimeDecay = true;
 
+            Components.AH64FlightVisuals.Kick(gameObject, AH64StaticValues.kickCannonPitch, 0f);
+
             if (!isAuthority)
                 return;
 

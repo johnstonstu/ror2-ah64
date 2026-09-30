@@ -26,19 +26,25 @@ namespace AH64.Survivors.SkillStates
                 return;
 
             bool jumpHeld = inputBank && inputBank.jump.down;
-            //Keep sprint available for horizontal travel. rawMoveDown is RoR2's existing bound
-            //downward-movement input and works for controller/alternate bindings without coupling
-            //altitude loss to the sprint speed modifier.
-            bool descendHeld = inputBank && inputBank.rawMoveDown.down;
+            //Descend is its own button (controller B, which RoR2 leaves unbound, or a keyboard key) so
+            //pulling the stick back strafes backwards instead of dropping altitude.
+            //Classic controls keep 1.1's pull-back-to-descend.
+            bool descendHeld = AH64PlaytestConfig.ClassicAltitude
+                ? inputBank && inputBank.rawMoveDown.down
+                : AH64DescendInput.IsHeld(characterBody);
             hoverController.ApplyHover(jumpHeld, descendHeld, Time.fixedDeltaTime);
         }
 
         /// <summary>
         /// Jump is the collective, not a vanilla jump — read as a held key in <see cref="HandleMovements"/>.
-        /// Extra jump count from items raises the collective ceiling instead.
+        /// Extra jump count from items raises the collective ceiling instead. The press itself still
+        /// stands in for a jump for items (Wax Quail, onJump listeners) — see AH64HoverController.Items.
         /// </summary>
         public override void ProcessJump()
         {
+            if (jumpInputReceived && hoverController)
+                hoverController.OnCollectiveTapped();
+
             jumpInputReceived = false;
         }
     }

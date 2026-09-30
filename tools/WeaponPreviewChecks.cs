@@ -75,9 +75,19 @@ static class WeaponPreviewChecks
         var modelA = Model(slotA, true); var modelB = Model(slotB, true);
         Visible(modelA, 1); Visible(modelB, 2);
 
+        // Lobby swap sound: silent for the first primary shown and for a repeated selection,
+        // one clunk per real change, and only on the mannequin whose owner changed.
+        Check(Util.plays.Count == 0, "Showing the first primary played the swap sound");
+        a.Change(2);
+        Check(Util.plays.Count == 0, "Re-selecting the same primary played the swap sound");
+        a.Change(1);
+        Check(Util.plays.Count == 1 && Util.plays[0] == "Play_railgunner_R_gun_swap", "Changing primary did not play one swap sound");
+        a.Change(2);
+        Check(Util.plays.Count == 2, "Changing back did not play the swap sound");
+
         // Immediate events, repeated toggles, and asynchronously completed skin callbacks.
         for (int repeat = 0; repeat < 5; repeat++)
-            for (int skin = 0; skin < 3; skin++)
+            for (int skin = 0; skin < 5; skin++)
                 for (uint variant = 0; variant < 3; variant++)
                 {
                     a.Change(variant);
@@ -99,7 +109,9 @@ static class WeaponPreviewChecks
         modelA.parent = slotB; modelB.parent = slotA;
         slotA.GetComponent<SurvivorMannequinSlotController>().networkUser = b;
         slotB.GetComponent<SurvivorMannequinSlotController>().networkUser = a;
+        int soundsBeforeSwap = Util.plays.Count;
         Call(modelA.GetComponent<AH64LobbyWeaponPreview>(), "LateUpdate");
+        Check(Util.plays.Count == soundsBeforeSwap, "A mannequin changing owner played the swap sound");
         a.Change(1); Visible(modelA, 0); Visible(modelB, 2);
         // Reuse a slot for a different owner, then remove the owner.
         slotB.GetComponent<SurvivorMannequinSlotController>().networkUser = b;
@@ -122,6 +134,6 @@ static class WeaponPreviewChecks
         skill.skillDef = m230;
         Call(bodyModel.GetComponent<AH64PrimaryWeaponVisuals>(), "LateUpdate"); Visible(bodyModel, 0);
         Check(modelA.components.All(c => c is AH64LobbyWeaponPreview || c is AH64PrimaryWeaponVisuals || c is ChildLocator || c is ModelSkinController), "Unexpected lobby component");
-        Console.WriteLine("PASS: " + assertions + " assertions; 9 primary/skin callback combinations, 5 repetitions, owner isolation/swap/reuse, immediate events, late skin completion, cloak flags, disable/re-enable, body skill changes. Game APIs are doubles; live gameplay remains a playtest.");
+        Console.WriteLine("PASS: " + assertions + " assertions; 15 primary/skin callback combinations, 5 repetitions, owner isolation/swap/reuse, lobby swap sound, immediate events, late skin completion, cloak flags, disable/re-enable, body skill changes. Game APIs are doubles; live gameplay remains a playtest.");
     }
 }

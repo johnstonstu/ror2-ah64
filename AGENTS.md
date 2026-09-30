@@ -326,6 +326,20 @@ in this file.
 - **A character with a renamed prefab and no matching bundle loads invisible**,
   with one easily-missed log line. If the survivor is missing from character
   select or shows up as nothing, suspect the bundle before the code.
+- **A vanilla effect path that doesn't exist fails silently to its fallback.**
+  Verified 2026-09-30 against `StreamingAssets/aa/catalog.json`: there is no
+  `ExplosionLunarGolem` or `ExplosionFirework` prefab, so `SmokePuffEffect` has always
+  been `OmniExplosionVFX` (a flash, not smoke) and the dash flare falls through to
+  its later choices. Grep the catalog for the prefab name before trusting a path.
+  Real smoke in use: `MuzzleflashSmokeRing` (`hydraMuzzleFlashEffect`).
+- **The Body state machine's death state is ours** (`AH64Death`). The cloned
+  Commando death expects a ragdoll this airframe doesn't have, so the aircraft hung
+  in mid-air until the body timed out. `AH64Death` follows vanilla
+  `Drone.DeathState`: the server destroys the body on impact and every client
+  plays the explosion from `OnExit`.
+- **The tools/ check harnesses count settings.** Adding a config entry means
+  updating the totals in `tools/FeedbackChecks.cs`; adding a skin means the loop in
+  `tools/WeaponPreviewChecks.cs`. Run both before packaging (RELEASING.md step 4).
 
 ## The framework under `Modules/`
 
@@ -384,6 +398,12 @@ and `dist/` are all gitignored and regenerable. Nothing copies Unity's bundle
 into `Build/plugins/` except `pack.ps1` — so **the bundle in a release only
 updates if you rebuild it in Unity first.** `pack.ps1` refuses to package a
 bundle older than the newest Unity asset.
+
+Unity work can run headless with the project path pinned, e.g.
+`Unity.exe -batchmode -quit -projectPath <repo>\AH64UnityProject -executeMethod
+AH64BundleBuilder.RunFromCommandLine -logFile <log>`. `AH64PortraitBaker.RunFromCommandLine`
+bakes the character portrait the same way. Neither deploys to a profile unless
+asked. Make sure no editor already has the project open.
 
 Releasing is manual and deliberate: run `pack.ps1`, install the resulting zip
 into a **fresh** r2modman profile, and test there. Testing in `demo time` proves

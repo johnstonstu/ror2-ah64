@@ -46,7 +46,6 @@ namespace AH64.Survivors
         private static GameObject _longbowProjectile;
         private static GameObject _longbowLockIndicatorPrefab;
         private static GameObject _radarPaintIndicatorPrefab;
-        private static GameObject _longbowCrosshair;
         //Registered in CreateEffects — the clone strips ShakeEmitter (camera + gamepad rumble) and
         //EffectComponent.soundName so the passive never thumps through the donor VFX.
         public static GameObject radarPaintPingEffect;
@@ -55,8 +54,11 @@ namespace AH64.Survivors
         public static readonly Color32 RadarEffectColor = new Color32(255, 55, 40, 255);
 
         /// <summary>
-        /// The lunar golem's blast smoke — a registered vanilla effect, so it can go straight through
-        /// EffectManager. Used by the chain gun's reload.
+        /// Despite the name, this is <c>OmniExplosionVFX</c>, a stylised explosion flash. There is no
+        /// <c>ExplosionLunarGolem</c> prefab in the game's addressables catalog (checked 2026-09-30), so the
+        /// first path always misses and the fallback is what ships. Smoke Backflip and Evasive Roll's
+        /// thrusters also use it, and that flash is the look they shipped with. Real smoke is <see cref="hydraMuzzleFlashEffect"/>
+        /// (<c>MuzzleflashSmokeRing</c>).
         /// </summary>
         public static GameObject SmokePuffEffect
         {
@@ -141,22 +143,6 @@ namespace AH64.Survivors
                 }
 
                 return _radarPaintIndicatorPrefab;
-            }
-        }
-
-        /// <summary>Reticle shown while the radar is painting, so the slot swap is visible at a glance.</summary>
-        public static GameObject LongbowCrosshair
-        {
-            get
-            {
-                if (!_longbowCrosshair)
-                {
-                    _longbowCrosshair = EntityStates.Engi.EngiMissilePainter.Paint.crosshairOverridePrefab;
-                    if (!_longbowCrosshair)
-                        _longbowCrosshair = LoadLegacy("Prefabs/Crosshair/EngiPaintCrosshair");
-                }
-
-                return _longbowCrosshair;
             }
         }
 
@@ -958,6 +944,14 @@ namespace AH64.Survivors
                 controller.ghostPrefab = hellfireController.ghostPrefab;
             if (controller)
                 controller.startSound = string.Empty;
+
+            //MissileUtils.FireMissile takes no damage type, so the special tag the Hellfire gets from
+            //damageTypeOverride has to live on the prefab. Only the source changes; flags stay Engi's.
+            ProjectileDamage projectileDamage = _longbowProjectile
+                ? _longbowProjectile.GetComponent<ProjectileDamage>()
+                : null;
+            if (projectileDamage)
+                projectileDamage.damageType.damageSource = DamageSource.Special;
 
             //EngiHarpoon's stock impact is a quiet seeker pop — invisible/inaudible from hover cam.
             //DestroyImmediate: deferred Destroy left Engi's ProjectileImpactExplosion alive on the

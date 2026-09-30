@@ -26,6 +26,7 @@ namespace AH64.Survivors.SkillStates
         private Vector3 rearwardDirection;
         private Vector3 previousPosition;
         private float smokeTimer;
+        private float climbHeight;
 
         public override void OnEnter()
         {
@@ -36,6 +37,11 @@ namespace AH64.Survivors.SkillStates
 
             CaptureEntrySpeed();
             RecalculateDashSpeed();
+
+            AH64HoverController hover = GetComponent<AH64HoverController>();
+            climbHeight = hover
+                ? hover.LimitUtilityClimb(AH64StaticValues.backflipClimbHeight)
+                : AH64StaticValues.backflipClimbHeight;
 
             if (characterMotor)
             {
@@ -56,9 +62,8 @@ namespace AH64.Survivors.SkillStates
             if (flightVisuals)
                 flightVisuals.PlayBackflip(AH64StaticValues.backflipDuration);
 
-            AH64HoverController hover = GetComponent<AH64HoverController>();
             if (hover)
-                hover.BumpTargetHeight(AH64StaticValues.backflipClimbHeight);
+                hover.BumpTargetHeight(climbHeight);
 
             if (NetworkServer.active)
             {
@@ -95,10 +100,10 @@ namespace AH64.Survivors.SkillStates
             exitSpeed = Mathf.Lerp(entrySpeed, peakSpeed, AH64StaticValues.backflipExitCarry);
         }
 
-        private static float ClimbVelocityAt(float age)
+        private float ClimbVelocityAt(float age)
         {
             float t = Mathf.Clamp01(age / duration);
-            return AH64StaticValues.backflipClimbHeight
+            return climbHeight
                 * (Mathf.PI * 0.5f / duration)
                 * Mathf.Cos(Mathf.PI * 0.5f * t);
         }
