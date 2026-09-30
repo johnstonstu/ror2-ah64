@@ -10,7 +10,7 @@ presents to players as a lobby rejection.
 
 ## 1.2.0
 
-Altitude controls rework with airtime, an item compatibility pass, Army Green paint and a model polish pass.
+Altitude controls rework with airtime, an item compatibility pass, a crash on death, Army Green and Night Stalker paint, and a model polish pass.
 
 ### Fixed
 
@@ -39,7 +39,7 @@ Altitude controls rework with airtime, an item compatibility pass, Army Green pa
 - Desert is now Desert Tan, a realistic Army desert CARC with a matte finish and black low-visibility markings. It keeps its place in the skin list, so saved loadouts are unaffected.
 - Desert Tan and Arctic keep the airframe's panel lines, rivets, vents and weathering. Both used to render as flat, featureless paint.
 - Skin icons are vanilla-style colour swatches of each paint scheme (body, mechanical, markings and canopy glass). The Mastery icon remains a rendered portrait.
-- The gun housing under the cockpit no longer glows red as the magazine empties. The reload smoke puff and sounds are unchanged.
+- The gun housing under the cockpit no longer glows red as the magazine empties. The reload sounds are unchanged.
 - Model polish:
   - Scissor tail rotor.
   - Swept, bevelled main rotor blade tips.
