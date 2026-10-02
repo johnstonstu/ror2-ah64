@@ -627,7 +627,7 @@ namespace AH64.Survivors
         }
 
         /// <summary>
-        /// M230 HE tip — custom <c>AH64HeExplosion</c> (orange/yellow blob burst). Silent at 11 rps.
+        /// M230 HE tip — custom <c>AH64HeExplosion</c> (orange/yellow blob burst). Silent at 10 rps.
         /// </summary>
         private static void CreateChaingunSplashEffect()
         {
@@ -1120,6 +1120,11 @@ namespace AH64.Survivors
             //activation, so leaving this at the clone's value would quietly change how every on-hit item
             //behaves around the secondary
             controller.procCoefficient = AH64StaticValues.hydraProcCoefficient;
+
+            //Server-side distance ramp. Added in code so the projectile prefab, which is cloned at
+            //runtime, does not need a Unity asset rebuild.
+            if (!hydraRocketProjectilePrefab.GetComponent<Components.AH64HydraRangeRamp>())
+                hydraRocketProjectilePrefab.AddComponent<Components.AH64HydraRangeRamp>();
         }
         #endregion projectiles
     }

@@ -35,14 +35,19 @@ namespace AH64.Survivors
                 + "Time above resting height is limited, and extra jumps extend it.";
         }
 
+        private static string PrimaryRangeClause()
+        {
+            return $"Both deal {Tokens.UtilityText($"{AH64StaticValues.primaryCloseRangeDamageScale * 100f:0}%")} within {Tokens.UtilityText($"{AH64StaticValues.primaryCloseRange:0}m")}, rising to full damage at {Tokens.UtilityText($"{AH64StaticValues.primaryFullRange:0}m")}.";
+        }
+
         public static void AddTokens()
         {
             string prefix = AH64Survivor.AH64_PREFIX;
 
             string desc = "The AH-64 is a gunship that never lands, trading footspeed for altitude and a full weapons load.<color=#CCD3E0>" + Environment.NewLine + Environment.NewLine
-             + "< ! > The M230 carries a fixed drum and reloads all at once — tap it at range to keep the burst tight, and hose the whole drum up close where the spread doesn't matter. The reload runs whether you emptied it or not, so top up before you commit." + Environment.NewLine + Environment.NewLine
-             + "< ! > The rocket pods ripple over most of a second, so hold your aim through the salvo. They run on their own cooldown and stay available mid-reload." + Environment.NewLine + Environment.NewLine
-             + "< ! > Evasive Roll is a climbing forward-diagonal barrel roll — stick snaps forward, left, or right with i-frames on the way through. " + AltitudeHint() + Environment.NewLine + Environment.NewLine
+             + "< ! > The M230 carries a fixed drum and reloads all at once — it hits harder past 30m, and only at 75% within 10m. Tap at range to keep the burst tight. The reload runs whether you emptied it or not, so top up before you commit." + Environment.NewLine + Environment.NewLine
+             + "< ! > The rocket pods ripple over most of a second, so hold your aim through the salvo. Rockets deal 75% damage within 8m of flight and full damage from 25m. They run on their own cooldown and stay available mid-reload." + Environment.NewLine + Environment.NewLine
+             + "< ! > Evasive Roll is a climbing forward-diagonal barrel roll — stick snaps forward, left, or right with i-frames on the way through and armor for the length of the roll. " + AltitudeHint() + Environment.NewLine + Environment.NewLine
              + "< ! > Fire Control Radar paints the strongest nearby threat. Hold Longbow to paint locks while you keep firing the gun and Hydra; release to launch. Hellfire stays as a loadout variant." + Environment.NewLine + Environment.NewLine;
 
             string outro = "..and so it left, airframe scorched, directives intact.";
@@ -85,22 +90,22 @@ namespace AH64.Survivors
 
             #region Primary
             Language.Add(prefix + "PRIMARY_CHAINGUN_NAME", "M230 Chain Gun");
-            Language.Add(prefix + "PRIMARY_CHAINGUN_DESCRIPTION", Tokens.agilePrefix + $"Fire the chin turret for {Tokens.DamageValueText(AH64StaticValues.chaingunDamageCoefficient)} per round, with a small HE blast for {Tokens.DamageValueText(AH64StaticValues.chaingunSplashDamageCoefficient)}. Holds {Tokens.UtilityText($"{AH64StaticValues.chaingunMagazineSize} rounds")}, then reloads over {Tokens.UtilityText($"{AH64StaticValues.chaingunReloadDuration}s")}. Accuracy degrades while held.");
+            Language.Add(prefix + "PRIMARY_CHAINGUN_DESCRIPTION", Tokens.agilePrefix + $"Fire the chin turret for {Tokens.DamageValueText(AH64StaticValues.chaingunDamageCoefficient)} per round, with a small HE blast for {Tokens.DamageValueText(AH64StaticValues.chaingunSplashDamageCoefficient)}. {PrimaryRangeClause()} Holds {Tokens.UtilityText($"{AH64StaticValues.chaingunMagazineSize} rounds")}, then reloads over {Tokens.UtilityText($"{AH64StaticValues.chaingunReloadDuration}s")}. Accuracy degrades while held.");
             Language.Add(prefix + "PRIMARY_GATLING_NAME", "XM301 Rotary Cannon");
-            Language.Add(prefix + "PRIMARY_GATLING_DESCRIPTION", Tokens.agilePrefix + $"Spin up a six-barrel rotary cannon for {Tokens.DamageValueText(AH64StaticValues.gatlingDamageCoefficient)} per round, with a light blast for {Tokens.DamageValueText(AH64StaticValues.gatlingSplashDamageCoefficient)}. {Tokens.UtilityText("Rate of fire climbs as the barrels spool up")}. Holds {Tokens.UtilityText($"{AH64StaticValues.gatlingMagazineSize} rounds")}, then reloads over {Tokens.UtilityText($"{AH64StaticValues.gatlingReloadDuration}s")}. Less accurate than the M230.");
+            Language.Add(prefix + "PRIMARY_GATLING_DESCRIPTION", Tokens.agilePrefix + $"Spin up a six-barrel rotary cannon for {Tokens.DamageValueText(AH64StaticValues.gatlingDamageCoefficient)} per round, with a light blast for {Tokens.DamageValueText(AH64StaticValues.gatlingSplashDamageCoefficient)}. {PrimaryRangeClause()} {Tokens.UtilityText("Rate of fire climbs as the barrels spool up")}. Holds {Tokens.UtilityText($"{AH64StaticValues.gatlingMagazineSize} rounds")}, then reloads over {Tokens.UtilityText($"{AH64StaticValues.gatlingReloadDuration}s")}. Less accurate than the M230.");
             Language.Add(prefix + "PRIMARY_CANNON_NAME", "M789 Heavy Cannon");
             Language.Add(prefix + "PRIMARY_CANNON_DESCRIPTION", Tokens.agilePrefix + $"Fire slow, heavy shells for {Tokens.DamageValueText(AH64StaticValues.cannonDamageCoefficient)} each, with a {Tokens.UtilityText("large")} blast for {Tokens.DamageValueText(AH64StaticValues.cannonSplashDamageCoefficient)}. Holds {Tokens.UtilityText($"{AH64StaticValues.cannonMagazineSize} shells")}, then reloads over {Tokens.UtilityText($"{AH64StaticValues.cannonReloadDuration}s")}. Highly accurate, but every shot counts.");
             #endregion
 
             #region Secondary
             Language.Add(prefix + "SECONDARY_ROCKETPODS_NAME", "Hydra-70 Pods");
-            Language.Add(prefix + "SECONDARY_ROCKETPODS_DESCRIPTION", Tokens.agilePrefix + $"Ripple-fire unguided rockets from the wing pylons for {Tokens.DamageValueText(AH64StaticValues.hydraDamageCoefficient)} each. Holds {Tokens.UtilityText($"{AH64StaticValues.hydraRocketCount} rockets")}, then reloads over {Tokens.UtilityText($"{AH64StaticValues.hydraReloadDuration}s")}. Each {Tokens.UtilityText("Backup Magazine")} adds one rocket to the pods.");
+            Language.Add(prefix + "SECONDARY_ROCKETPODS_DESCRIPTION", Tokens.agilePrefix + $"Ripple-fire unguided rockets from the wing pylons for {Tokens.DamageValueText(AH64StaticValues.hydraDamageCoefficient)} each. Damage is {Tokens.UtilityText($"{AH64StaticValues.hydraCloseRangeDamageScale * 100f:0}%")} within {Tokens.UtilityText($"{AH64StaticValues.hydraCloseRange:0}m")} of flight and full at {Tokens.UtilityText($"{AH64StaticValues.hydraFullRange:0}m")}. Holds {Tokens.UtilityText($"{AH64StaticValues.hydraRocketCount} rockets")}, then reloads over {Tokens.UtilityText($"{AH64StaticValues.hydraReloadDuration}s")}. Each {Tokens.UtilityText("Backup Magazine")} adds one rocket and {Tokens.UtilityText($"{AH64StaticValues.hydraReloadPerExtraRocket:0.#}s")} to the reload.");
             #endregion
 
             #region Utility
             Language.Add(prefix + "UTILITY_DASH_NAME", "Evasive Roll");
             Language.Add(prefix + "UTILITY_DASH_DESCRIPTION",
-                $"Barrel-roll {Tokens.UtilityText("forward, left, or right")} on a climbing diagonal from your move input, bracing the plating for {Tokens.UtilityText($"{AH64StaticValues.dashArmorBonus} armor")}. " +
+                $"Barrel-roll {Tokens.UtilityText("forward, left, or right")} on a climbing diagonal from your move input, bracing the plating for {Tokens.UtilityText($"{AH64StaticValues.dashArmorBonus} armor")} for {Tokens.UtilityText($"{AH64StaticValues.dashDuration * AH64StaticValues.dashArmorDurationCoefficient:0.##}s")}. " +
                 $"{Tokens.UtilityText("You cannot be hit during the first half of the roll.")} Hold jump afterward for altitude — the roll only hops.");
 
             Language.Add(prefix + "UTILITY_BACKFLIP_NAME", "Smoke Backflip");
@@ -116,7 +121,7 @@ namespace AH64.Survivors
             Language.Add(prefix + "SPECIAL_LONGBOW_NAME", "AGM-114L Longbow");
             Language.Add(prefix + "SPECIAL_LONGBOW_DESCRIPTION",
                 $"{Tokens.UtilityText("Hold")} to paint enemies under the reticle, then {Tokens.UtilityText("release to launch")} up to {Tokens.UtilityText($"{AH64StaticValues.longbowMaxLocks} guided missiles")} from alternating inboard rails. " +
-                $"Primary and secondary stay available while painting. Later locks hit harder ({Tokens.DamageValueText(AH64StaticValues.longbowDamageBase)}–{Tokens.DamageValueText(AH64StaticValues.longbowDamageBase + (AH64StaticValues.longbowMaxLocks - 1) * AH64StaticValues.longbowDamagePerLock)}). " +
+                $"Primary and secondary stay available while painting. Later locks hit harder ({Tokens.DamageValueText(AH64StaticValues.LongbowDamageCoefficient(0))}–{Tokens.DamageValueText(AH64StaticValues.LongbowDamageCoefficient(AH64StaticValues.longbowMaxLocks - 1))}), and further missiles stay at the top of that range. " +
                 $"Each {Tokens.UtilityText("Lysate Cell")} adds one missile to the rack.");
             #endregion
 

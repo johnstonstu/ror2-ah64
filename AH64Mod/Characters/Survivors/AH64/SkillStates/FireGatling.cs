@@ -44,7 +44,6 @@ namespace AH64.Survivors.SkillStates
         private float duration;
         private AH64ChinTurret chinTurret;
         private AH64GatlingSpin gatlingSpin;
-        private float splashDamage;
 
         public override void OnEnter()
         {
@@ -52,7 +51,6 @@ namespace AH64.Survivors.SkillStates
             characterBody.SetAimTimer(2f);
             chinTurret = GetComponent<AH64ChinTurret>();
             gatlingSpin = GetComponent<AH64GatlingSpin>();
-            splashDamage = splashDamageCoefficient * damageStat;
 
             //Tell the spool this round happened BEFORE reading the fraction, so a cold
             //start still registers as firing and begins winding up immediately.
@@ -112,6 +110,8 @@ namespace AH64.Survivors.SkillStates
 
             bool crit = RollCrit();
 
+            //Full-range coefficient. GatlingHitCallback applies the same 10m–30m ramp as the M230
+            //before the hit lands.
             new BulletAttack
             {
                 bulletCount = 1,
@@ -162,10 +162,14 @@ namespace AH64.Survivors.SkillStates
         /// <summary>
         /// Direct hit, then a small blast. Splash proc is hard zero for the same reason as the
         /// M230's — at this cadence any non-zero splash proc would dominate the item economy,
-        /// and the gatling fires faster still.
+        /// and the gatling fires faster still. Both take the M230's close-range damage ramp.
         /// </summary>
         private bool GatlingHitCallback(BulletAttack bulletAttack, ref BulletAttack.BulletHit hitInfo)
         {
+            float rangeScale = AH64StaticValues.PrimaryRangeDamageScale(
+                Vector3.Distance(bulletAttack.origin, hitInfo.point));
+            bulletAttack.damage = damageCoefficient * damageStat * rangeScale;
+
             bool result = BulletAttack.defaultHitCallback(bulletAttack, ref hitInfo);
 
             if (AH64Assets.gatlingSplashEffect)
@@ -178,6 +182,7 @@ namespace AH64.Survivors.SkillStates
                 }, true);
             }
 
+            float splashDamage = splashDamageCoefficient * damageStat * rangeScale;
             if (splashDamage <= 0f || splashRadius <= 0f)
                 return result;
 

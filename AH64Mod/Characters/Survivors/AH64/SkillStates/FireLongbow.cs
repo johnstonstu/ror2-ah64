@@ -9,7 +9,7 @@ namespace AH64.Survivors.SkillStates
     /// <summary>
     /// Launch half of Longbow. Walks the list <see cref="PaintLongbow"/> built and fires one guided
     /// missile every <see cref="AH64StaticValues.longbowFireInterval"/> from alternating inboard rails.
-    /// Later locks in the salvo deal more damage (hybrid count + damage scale).
+    /// Later locks in the salvo deal more damage, capped at the sixth missile.
     /// </summary>
     public class FireLongbow : BaseSkillState
     {
@@ -111,8 +111,7 @@ namespace AH64.Survivors.SkillStates
             Components.AH64FlightVisuals.Kick(gameObject, AH64StaticValues.kickLongbowPitch,
                 (lockIndex % 2 == 0 ? 1f : -1f) * AH64StaticValues.kickLongbowRoll);
 
-            float damageCoefficient = AH64StaticValues.longbowDamageBase
-                + lockIndex * AH64StaticValues.longbowDamagePerLock;
+            float damageCoefficient = AH64StaticValues.LongbowDamageCoefficient(lockIndex);
 
             Ray aimRay = GetAimRay();
             Vector3 railDirection = AH64Muzzles.AimDirection(

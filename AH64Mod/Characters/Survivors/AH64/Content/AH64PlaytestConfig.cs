@@ -1,3 +1,4 @@
+using System;
 using BepInEx.Configuration;
 
 namespace AH64.Survivors
@@ -104,9 +105,22 @@ namespace AH64.Survivors
         internal static float RotorResponse => rotorResponse.Value;
         internal static float RotorToneCutoff => rotorToneCutoff.Value;
 
+        //Bumped when a release changes config-backed defaults. Not registered with Risk of Options.
+        private const int CurrentBalanceVersion = 1;
+        private static ConfigEntry<int> balanceVersion;
+
         internal static void Init(ConfigFile config)
         {
-            baseMoveSpeed = Bind(config, Movement, "Base speed", 10f, 7f, 14f,
+            balanceVersion = config.Bind(
+                "AH-64 Internal",
+                "Balance version",
+                0,
+                new ConfigDescription(
+                    "Which balance migration has been applied. The mod writes this; it is not a player setting.",
+                    null,
+                    new ConfigurationManagerAttributes { Browsable = false }));
+
+            baseMoveSpeed = Bind(config, Movement, "Base speed", 8.5f, 7f, 14f,
                 "Horizontal cruise speed. Test this before changing hover mechanics.");
             acceleration = Bind(config, Movement, "Acceleration", 110f, 60f, 180f,
                 "How quickly the helicopter starts, stops, and reverses while hovering.");
@@ -219,6 +233,8 @@ namespace AH64.Survivors
             rotorToneCutoff = Bind(config, Presentation, "Rotor high-frequency cutoff Hz", AH64StaticValues.rotorToneCutoff, 600f, 20000f,
                 "Approximate tonal target mapped to Wwise low-pass. Lower removes hiss; 20000 adds no filtering.");
 
+            MigrateBalance();
+
             var entries = new ConfigEntryBase[] {
                 baseMoveSpeed, acceleration, radarFacingSpeedBonus, classicAltitude, airtime, airtimePerExtraJump, controllerBDescends,
                 chaingunDamage, chaingunMaxSpread, chaingunBloom, chaingunReload, chaingunSplashDamage, chaingunSplashRadius, chaingunSplashVfxScale,
@@ -235,6 +251,49 @@ namespace AH64.Survivors
         {
             return config.Bind(section, name, value,
                 new ConfigDescription(description, new AcceptableValueRange<float>(min, max)));
+        }
+
+        /// <summary>
+        /// BepInEx keeps whatever a player already saved, so a new default would never reach them.
+        /// If their value is still the previous default, move it to the new one. A value they chose
+        /// stays. Fresh installs already bind the new default, so the compare does not touch them.
+        /// </summary>
+        private static void MigrateBalance()
+        {
+            if (balanceVersion.Value >= CurrentBalanceVersion)
+                return;
+
+            if (balanceVersion.Value < 1)
+            {
+                //1.2.0 defaults -> 1.2.1 defaults.
+                MigrateOldDefault(baseMoveSpeed, 10f);
+                MigrateOldDefault(chaingunDamage, 0.62f);
+                MigrateOldDefault(chaingunSplashDamage, 0.34f);
+                MigrateOldDefault(gatlingDamage, 0.39f);
+            }
+
+            balanceVersion.Value = CurrentBalanceVersion;
+        }
+
+        private static void MigrateOldDefault(ConfigEntry<float> entry, float oldDefault)
+        {
+            float updated = (float)entry.DefaultValue;
+            if (Matches(entry.Value, oldDefault) && !Matches(entry.Value, updated))
+                entry.Value = updated;
+        }
+
+        private static bool Matches(float value, float expected)
+        {
+            return Math.Abs(value - expected) <= 0.0001f;
+        }
+
+        /// <summary>
+        /// Duck-typed for BepInEx Configuration Manager, which hides an entry when a tag of this
+        /// name has <c>Browsable == false</c>. Risk of Options only shows the list we register.
+        /// </summary>
+        private sealed class ConfigurationManagerAttributes
+        {
+            public bool? Browsable { get; set; }
         }
     }
 }

@@ -28,9 +28,31 @@ namespace AH64.Survivors
         /// </summary>
         public int barrierRestocks = 1;
 
+        /// <summary>
+        /// Seconds added to <see cref="SkillDef.GetRechargeInterval"/> for each stock above
+        /// <see cref="SkillDef.baseMaxStock"/>. Zero on the primaries. The Hydra pods use it so Backup
+        /// Magazine lengthens the reload instead of raising sustained damage.
+        /// </summary>
+        public float reloadSecondsPerExtraStock;
+
         private class InstanceData : BaseSkillInstanceData
         {
             public int lastStock;
+            public int trackedExtraStocks = int.MinValue;
+        }
+
+        public override float GetRechargeInterval(GenericSkill skillSlot)
+        {
+            float interval = base.GetRechargeInterval(skillSlot);
+            if (reloadSecondsPerExtraStock <= 0f || skillSlot == null)
+                return interval;
+            return interval + ExtraStocks(skillSlot) * reloadSecondsPerExtraStock;
+        }
+
+        private int ExtraStocks(GenericSkill skillSlot)
+        {
+            int extra = skillSlot.maxStock - baseMaxStock;
+            return extra > 0 ? extra : 0;
         }
 
         public override BaseSkillInstanceData OnAssigned(GenericSkill skillSlot)
@@ -41,6 +63,18 @@ namespace AH64.Survivors
         public override void OnFixedUpdate(GenericSkill skillSlot, float deltaTime)
         {
             InstanceData data = skillSlot.skillInstanceData as InstanceData;
+            //maxStock changes when Backup Magazine is picked up. Recalculate so the extra-rocket
+            //penalty is in finalRechargeInterval before this tick's reload progress is applied.
+            if (reloadSecondsPerExtraStock > 0f && data != null)
+            {
+                int extra = ExtraStocks(skillSlot);
+                if (extra != data.trackedExtraStocks)
+                {
+                    data.trackedExtraStocks = extra;
+                    skillSlot.RecalculateFinalRechargeInterval();
+                }
+            }
+
             int before = skillSlot.stock;
             bool restockedElsewhere = data != null && before > data.lastStock;
 

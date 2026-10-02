@@ -8,6 +8,25 @@ presents to players as a lobby rejection.
 
 ---
 
+## 1.2.1
+
+Balance patch. Hover height and airtime are unchanged, and so is the Hellfire.
+
+Saved settings that were still on the previous default for base speed, M230 direct damage, M230 HE splash, or XM301 direct damage move to the new default. A value you set yourself is left alone.
+
+### Changed
+
+- M230 chain gun: time per round 0.09s → 0.10s. Direct damage 0.62 → 0.52. HE splash 0.34 → 0.26. Proc coefficient 0.35 → 0.50. The direct hit and the HE blast both deal 75% damage at 10m or closer, rising to full damage at 30m.
+- XM301 rotary cannon: direct damage 0.39 → 0.34. Proc coefficient 0.20 → 0.30. Same 10m–30m damage ramp as the M230, on the direct hit and the splash.
+- Hydra-70 rockets: time between rockets 0.10s → 0.115s. A rocket deals 75% damage within 8m of flight, rising to full damage at 25m. Each rocket past the base six (Backup Magazine and any other extra stock) adds 0.8s to the magazine reload, so extra magazines add burst rather than a matching rise in sustained damage.
+- AGM-114L Longbow: recharge per missile 3.5s → 4.1s. Per-missile damage stops climbing at the sixth missile (6.75), so extra stocks from Lysate Cell no longer hit harder than that.
+- Evasive Roll: armor 300 → 200, and the armor lasts about 0.95s (the length of the roll) instead of about 2.85s. The short invulnerability window is unchanged.
+- Fire Control Radar: close-range armor +60 → +30.
+- Eclipse Lite: a primary reload counts as 2 cooldowns instead of 4.
+- Base move speed 10 → 8.5.
+
+---
+
 ## 1.2.0
 
 Altitude controls rework with airtime, an item compatibility pass, a crash on death, Army Green and Night Stalker paint, and a model polish pass.
