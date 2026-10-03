@@ -33,6 +33,7 @@ internal static partial class VisualChecks
             Call(visuals,"Start");if(recoil)visuals.AddKick(6,-3);
             float savedDelta=Time.deltaTime;Time.deltaTime=0;Call(visuals,"LateUpdate");
             Quaternion entryWorld=locator.modelTransform.rotation;
+            Quaternion entryBasis=(Quaternion)Field(visuals,"lastRenderedBaseWorld");
             var capture=AH64BrakingTurnCapture.Create(new Vector3(0,0,8.5f),new Vector3(1,0,0),
                 Vector3.forward,Vector3.forward,visuals.CaptureAttitude(),8.5f);
             machine.state=state;
@@ -41,8 +42,10 @@ internal static partial class VisualChecks
             locator.modelBaseTransform.rotation=Quaternion.Euler(0,-120,0);
             int writes=locator.modelTransform.PositionAndRotationWrites;
             var aim=g.GetComponent<InputBankTest>().aimDirection;
+            Time.deltaTime=.001f;
             Call(visuals,"LateUpdate");
-            Check(Angle(entryWorld,locator.modelTransform.rotation)<.06f,"braking entry preserves displayed world attitude across yaw change and recoil");
+            Check(Angle(entryBasis,(Quaternion)Field(visuals,"lastRenderedBaseWorld"))<.06f,"braking entry preserves displayed world attitude basis across yaw change");
+            Check(Angle(entryWorld,locator.modelTransform.rotation)<.2f,"braking entry preserves displayed world attitude while recoil decays normally");
             Check(locator.modelTransform.PositionAndRotationWrites==writes+1,"single central transform write");
             Check(ReferenceEquals(Field(visuals,"brakingVisualOwner"),state),"central visual lease matches Body owner");
             Check(g.GetComponent<InputBankTest>().aimDirection==aim,"braking presentation leaves native aim");

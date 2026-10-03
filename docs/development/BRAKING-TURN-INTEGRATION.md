@@ -47,3 +47,12 @@ After handback, native gates include initial displayed world attitude/recovery,
 phase/input cadence, grounded/airborne vertical continuity, ceiling/airtime, launch
 pads/Quail/Headstompers/forces, multi-stock reentry, interrupts/death/stage cleanup,
 simultaneous primary/Hydra/guided Hellfire, and host/non-host/observer transport.
+
+Observed offline integration validation: 3,905 existing movement assertions,
+75 central visual/policy assertions (37 existing plus 38 integration assertions),
+26,463 actual braking state/motor assertions, four core negative controls, and two
+central visual negative controls. Compiled utility registration interpretation passes.
+The first entry mutant escaped a zero-render-delta fixture; the corrected test
+advances a nonzero delta and checks the displayed recoil-free world basis as well
+as normal recoil decay. The earlier attempt/logs remain retained under dist.
+No native gameplay or balance acceptance is inferred from these counts.
