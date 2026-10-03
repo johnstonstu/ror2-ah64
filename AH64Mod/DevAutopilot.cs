@@ -53,6 +53,7 @@ namespace AH64
             On.RoR2.PlayerCharacterMasterController.FixedUpdate += AfterInput;
             On.RoR2.PlayerCharacterMasterController.Update += AfterAim;
             On.RoR2.Projectile.ProjectileManager.FireProjectile_FireProjectileInfo += OnProjectile;
+            Survivors.Components.AH64BombingRunTrace.Emitted += OnBombingTrace;
         }
 
         private void OnDestroy()
@@ -63,6 +64,7 @@ namespace AH64
             On.RoR2.PlayerCharacterMasterController.FixedUpdate -= AfterInput;
             On.RoR2.PlayerCharacterMasterController.Update -= AfterAim;
             On.RoR2.Projectile.ProjectileManager.FireProjectile_FireProjectileInfo -= OnProjectile;
+            Survivors.Components.AH64BombingRunTrace.Emitted -= OnBombingTrace;
             if (output != null && !finished) Finish("incomplete", "runner destroyed");
         }
 

@@ -174,6 +174,7 @@ namespace AH64
         {
             if (finished) return;
             finished = true; scripting = false; move = Vector3.zero;
+            Survivors.Components.AH64BombingRunTrace.Emitted -= OnBombingTrace;
             int failures = checks.Count(c => !c.passed);
             bool prototypePassed = FinishPrototypeEvidence();
             bool balancePassed = FinishBalanceEvidence();

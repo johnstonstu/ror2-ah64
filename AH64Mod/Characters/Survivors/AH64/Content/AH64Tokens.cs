@@ -119,6 +119,10 @@ namespace AH64.Survivors
             #endregion
 
             #region Special
+            Language.Add(prefix + "SPECIAL_BOMBING_NAME", "Bombing Run");
+            Language.Add(prefix + "SPECIAL_BOMBING_DESCRIPTION",
+                $"Drop {AH64BombingRunStaticValues.DropCount} bombs along your flight path for {Tokens.DamageValueText(AH64BombingRunStaticValues.DamageCoefficient)} each. " +
+                $"Each enemy can be damaged by at most {AH64BombingRunStaticValues.HitsPerTarget} bombs per run. Interrupted drops are lost.");
             Language.Add(prefix + "SPECIAL_HELLFIRE_NAME", "AGM-114 Hellfire");
             Language.Add(prefix + "SPECIAL_HELLFIRE_DESCRIPTION", $"Press to launch a missile from a wing rail. Hold Special and aim with your crosshair to guide the latest missile; release to let it coast. Primary and secondary stay available. Detonates on contact for {Tokens.DamageValueText(AH64StaticValues.hellfireDamageCoefficient)}.");
 

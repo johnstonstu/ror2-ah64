@@ -38,6 +38,7 @@ namespace AH64
             //easy to use logger
             Log.Init(Logger);
             Survivors.Components.AH64HellfireNetwork.Init();
+            Survivors.Components.AH64BombingRunNetwork.Init();
             AH64PlaytestConfig.Init(Config);
 
             // used when you want to properly set up language folders
@@ -53,6 +54,7 @@ namespace AH64
 
         void OnDestroy()
         {
+            Survivors.Components.AH64BombingRunNetwork.Shutdown();
             Survivors.Components.AH64HellfireNetwork.Shutdown();
         }
     }

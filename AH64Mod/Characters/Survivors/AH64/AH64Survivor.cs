@@ -720,8 +720,32 @@ namespace AH64.Survivors
                 mustKeyPress = true,
             });
 
-            //Longbow first: it's the working special. AI still can't drive paint well — see AH64AI.
-            Skills.AddSpecialSkills(bodyPrefab, longbowSkillDef, hellfireSkillDef);
+            SkillDef bombingSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64BombingRun",
+                skillNameToken = AH64_PREFIX + "SPECIAL_BOMBING_NAME",
+                skillDescriptionToken = AH64_PREFIX + "SPECIAL_BOMBING_DESCRIPTION",
+                // Private prototype presentation; a unique bomb icon remains a release gate.
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64SpecialIcon"),
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.BombingRun)),
+                activationStateMachineName = "Weapon2",
+                interruptPriority = EntityStates.InterruptPriority.Skill,
+                baseMaxStock = 1,
+                requiredStock = 1,
+                stockToConsume = 1,
+                rechargeStock = 1,
+                baseRechargeInterval = AH64BombingRunStaticValues.Cooldown,
+                beginSkillCooldownOnSkillEnd = false,
+                resetCooldownTimerOnUse = false,
+                dontAllowPastMaxStocks = false,
+                fullRestockOnAssign = true,
+                mustKeyPress = true,
+                isCombatSkill = true,
+                canceledFromSprinting = false,
+                cancelSprintingOnActivation = false
+            });
+            // Existing defaults and variant order remain intact; AI paint behavior is unchanged.
+            Skills.AddSpecialSkills(bodyPrefab, longbowSkillDef, hellfireSkillDef, bombingSkillDef);
         }
         #endregion skills
         

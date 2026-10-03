@@ -902,6 +902,8 @@ namespace AH64.Survivors
             if (hellfireProjectilePrefab)
                 Content.AddProjectilePrefab(hellfireProjectilePrefab);
 
+            CreateBombingRunProjectile();
+
             CreateLongbowProjectile();
 
             if (_longbowProjectile)
@@ -911,6 +913,18 @@ namespace AH64.Survivors
 
             if (hydraRocketProjectilePrefab)
                 Content.AddProjectilePrefab(hydraRocketProjectilePrefab);
+        }
+
+        private static void CreateBombingRunProjectile()
+        {
+            ProjectileController source = hellfireProjectilePrefab
+                ? hellfireProjectilePrefab.GetComponent<ProjectileController>() : null;
+            if (!source || !source.ghostPrefab || !hellfireExplosionEffect)
+                throw new System.InvalidOperationException("AH64 bombing requires the existing Hellfire ghost and impact effect.");
+            // Presentation reuse only: this builder supplies independent flight/damage components.
+            GameObject bomb = AH64BombingRunProjectiles.Build(source.ghostPrefab, hellfireExplosionEffect);
+            PrefabAPI.RegisterNetworkPrefab(bomb);
+            Content.AddProjectilePrefab(bomb);
         }
 
         /// <summary>

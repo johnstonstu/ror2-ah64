@@ -31,6 +31,8 @@ namespace AH64.Survivors
 
             Modules.Content.AddEntityState(typeof(FireHellfire));
 
+            Modules.Content.AddEntityState(typeof(BombingRun));
+
             //both halves of the Longbow special. Fire is only ever entered from Paint, but it still has
             //to be in the catalog — EntityStateCatalog resolves it by type when the machine serializes.
             Modules.Content.AddEntityState(typeof(PaintLongbow));
