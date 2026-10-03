@@ -291,3 +291,40 @@ state, plus command-buffer names/sizes. Private cached destinations are not read
 An external capture must bind to the exact returned PID/window and comparison
 request; unrelated desktop/app capture is excluded. A flat result from a window
 capture API alone does not prove the visible game viewport itself is black.
+
+## Owned-window baseline capture contract
+
+The reserved visible comparison at `b2064a2` showed real AH64, Titanic Plains and
+HUD pixels in the exact owned game window, while the camera-to-texture output
+remained flat. Its public postprocess flag was `finalBlitToCameraTarget=False`;
+cached command-buffer destinations were not observed and are not a confirmed cause.
+The replacement baseline path reads the original game window using installed
+Pillow `ImageGrab.grab(window=HWND)`. It performs no extra camera render, target
+swap, postprocess mutation, game input, display change or simulation pause.
+
+Supply `Run-Autopilot.ps1 -VisibleWindow -WindowCapturePython <installed-python>`
+alongside the existing stage/owner/reservation/lease arguments. That Python must
+already have Pillow with Windows HWND support and pywin32. The launcher owns the
+helper PID, starts it hidden, captures its full stdout/stderr, and restores the
+child-only `AH64_AUTOPILOT_WINDOW_CAPTURE` environment gate. The previous
+`AH64_AUTOPILOT_WINDOW_COMPARE`/OnGUI diagnostic marker is retired.
+
+Each of the five unchanged checkpoints publishes a fresh GUID token, run/body,
+Body and Weapon2 state, scenario phase, request frame/fixed/realtime/UTC, candidate,
+PID/executable and canonical lease identity. The helper verifies stage/request/
+lease and the unique visible owned HWND before and after reading window pixels.
+It records actual capture start/end UTC, original client dimensions, RGB extrema
+and PNG hash, then atomically publishes the matching acknowledgement. Game-side
+frame/physics observations must retain the requested body/states/phase through
+acknowledgement; Hellfire also requires a surviving owner projectile. A changed
+phase, stale token/process, flat pixels, wrong hash/dimensions or ten-second
+deadline rejects the capture. No later image is relabelled as an earlier phase.
+The request frame is not claimed as the precise captured rendered frame.
+
+All 12 assertions, continuous physics samples, five PNGs and complete raw logs
+remain required. `window-captures` preserves request/ack/phase records; review
+the five actual PNGs separately from automated nonflat/provenance checks. The
+offline `Test-Capture.ps1`, `Test-WindowIdentity.py` and `Test-Foundation.ps1`
+checks exercise rejection paths using labelled fixtures, not gameplay images.
+Raw warning/error counts are preserved; classification and acceptance of exact
+pre-existing limitations remain a separate review from the strict raw verdict.

@@ -1,108 +1,50 @@
-// Real capture helper with offline render/ownership doubles. No game images are produced.
+// Compile the real bridge validator; these are protocol fixtures, never game evidence.
 using System;
-using System.Collections.Generic;
-namespace UnityEngine
+using System.IO;
+using AH64;
+internal static class CaptureChecks
 {
-    public class Object {
-        public string name = "preview";
-        public static implicit operator bool(Object value) { return value != null; }
-        public int GetInstanceID() { return 17; }
-        public static void Destroy(Object value) { Fixture.destroyed++; }
+    private static int checks;
+    private static readonly DateTime Now=new DateTime(2026,10,3,12,0,2,DateTimeKind.Utc);
+    private static readonly byte[] Png={137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,10,0,0,0,5,160};
+    private static WindowCaptureRequest Request() { return new WindowCaptureRequest {
+        runId="execution-test",token="0123456789abcdef0123456789abcdef",name="roll-entered",pid=17,bodyId=42,
+        phase="roll",bodyState="ServoDash",weaponState="Idle",executable="C:/Game/Risk of Rain 2.exe",
+        sourceSha="source",owner="owner",reservation="lease",requestedUtc=Now.AddSeconds(-1).ToString("o")
+    }; }
+    private static WindowCaptureAck Ack() { var request=Request(); return new WindowCaptureAck {
+        schema=1,status="captured",source="Pillow.ImageGrab.grab(window=observed-owned-HWND)",
+        runId=request.runId,token=request.token,name=request.name,pid=request.pid,bodyId=request.bodyId,phase=request.phase,
+        bodyState=request.bodyState,weaponState=request.weaponState,executable=request.executable,sourceSha=request.sourceSha,
+        owner=request.owner,reservation=request.reservation,hwnd=99,width=2560,height=1440,nonflat=true,
+        startedUtc=Now.AddSeconds(-.7).ToString("o"),finishedUtc=Now.AddSeconds(-.4).ToString("o"),png="roll-entered.png",pngSha256="hash"
+    }; }
+    private static void Validate(WindowCaptureAck ack,bool expired=false,string hash="hash",byte[] png=null) {
+        WindowCaptureContract.Validate(Request(),ack,expired,hash,png??Png,Now);
     }
-    public class GameObject : Object { }
-    public enum RenderTextureFormat { ARGB32 }
-    public class RenderTexture : Object {
-        public static RenderTexture active; public int width,height;
-        public RenderTexture(int w,int h,int depth,RenderTextureFormat format) { width=w; height=h; }
-        public bool Create() { return !Fixture.createFails; }
-        public void Release() { Fixture.released++; }
+    private static void Reject(Action<WindowCaptureAck> change,string reason) {
+        var ack=Ack(); change(ack);
+        try { Validate(ack); } catch (InvalidDataException) { checks++; return; }
+        throw new Exception("Accepted "+reason);
     }
-    public static class Time { public static int frameCount=42; public static float realtimeSinceStartup=1.25f; }
-    public class Camera : Object {
-        public static Camera[] allCameras; public RenderTexture targetTexture;
-        public int pixelWidth=2560,pixelHeight=1440; public RoR2.SceneCamera scene;
-        public T GetComponent<T>() { return (T)(object)scene; }
-        public void Render() {
-            if (targetTexture==null || targetTexture.width!=pixelWidth || targetTexture.height!=pixelHeight) throw new Exception("Wrong render dimensions");
-            Fixture.rendered++; if (Fixture.renderThrows) throw new InvalidOperationException("render failure");
-            if (Fixture.renderLogsError) Fixture.runner.TestLogError();
-        }
+    private static void RejectCall(Action operation,string reason) {
+        try { operation(); } catch (InvalidDataException) { checks++; return; }
+        throw new Exception("Accepted "+reason);
     }
-    public enum TextureFormat { RGB24 }
-    public struct Color32 { public byte r,g,b; }
-    public struct Rect { public float width,height; public Rect(float x,float y,float w,float h) { width=w; height=h; } }
-    public class Texture2D : Object {
-        public int width,height;
-        public Texture2D(int w,int h,TextureFormat format,bool mip) { width=w; height=h; }
-        public void ReadPixels(Rect region,int x,int y,bool mip) {
-            if (RenderTexture.active==null || region.width!=RenderTexture.active.width || region.height!=RenderTexture.active.height) throw new Exception("Wrong active source/dimensions");
-            Fixture.reads++; if (Fixture.readThrows) throw new InvalidOperationException("read failure");
-        }
-        public void Apply(bool mip,bool unreadable) { }
-        public Color32[] GetPixels32() { return new[] {new Color32(),new Color32 {r=(byte)(Fixture.flat ? 0 : 1)}}; }
-    }
-    public static class ImageConversion {
-        public static byte[] EncodeToPNG(Texture2D texture) {
-            if (RenderTexture.active!=Fixture.prior || Fixture.camera.targetTexture!=Fixture.cameraPrior) throw new Exception("State not restored before encoding");
-            if (Fixture.encodeThrows) throw new InvalidOperationException("encode failure");
-            return Fixture.empty ? new byte[0] : new byte[] {1,2};
-        }
-    }
-}
-namespace RoR2
-{
-    public class LocalUser { }
-    public static class LocalUserManager { public static LocalUser user; public static LocalUser GetFirstLocalUser() { return user; } }
-    public class CharacterBody : UnityEngine.Object { public UnityEngine.GameObject gameObject=new UnityEngine.GameObject {name="AH64Body(Clone)"}; }
-    public class CameraRigController : UnityEngine.Object { public LocalUser localUserViewer; public UnityEngine.GameObject target; public UnityEngine.Camera sceneCam; }
-    public class SceneCamera : UnityEngine.Object { public CameraRigController cameraRigController; public UnityEngine.Camera camera; }
-}
-internal static class Fixture
-{
-    internal static int checks,destroyed,released,rendered,reads;
-    internal static bool createFails,renderThrows,renderLogsError,readThrows,encodeThrows,empty,flat;
-    internal static AH64.DevAutopilot runner;
-    internal static UnityEngine.RenderTexture prior,cameraPrior;
-    internal static UnityEngine.Camera camera;
-    private static AH64.DevAutopilot Reset() {
-        destroyed=released=rendered=reads=0; createFails=renderThrows=renderLogsError=readThrows=encodeThrows=empty=flat=false;
-        prior=new UnityEngine.RenderTexture(512,512,0,UnityEngine.RenderTextureFormat.ARGB32); UnityEngine.RenderTexture.active=prior;
-        cameraPrior=null; camera=new UnityEngine.Camera {targetTexture=cameraPrior};
-        runner=new AH64.DevAutopilot(); var user=new RoR2.LocalUser(); RoR2.LocalUserManager.user=user;
-        camera.scene=new RoR2.SceneCamera {camera=camera,cameraRigController=new RoR2.CameraRigController {target=runner.Body.gameObject,localUserViewer=user,sceneCam=camera}};
-        UnityEngine.Camera.allCameras=new[] {camera}; return runner;
-    }
-    private static void Check(bool value,string reason) { if (!value) throw new Exception(reason); checks++; }
-    private static bool Reject(AH64.DevAutopilot runner) { try { runner.TestReadCamera(); return false; } catch (InvalidOperationException) { return true; } }
-    private static bool Clean() { return UnityEngine.RenderTexture.active==prior && camera.targetTexture==cameraPrior && released==1 && destroyed>=1; }
     public static int Main() {
-        try {
-            var runner=Reset(); Check(runner.TestReadCamera().Length>0 && rendered==1 && reads==1 && Clean(),"native camera renders despite mismatched prior target");
-            Check(runner.events[0].Contains("width=2560; height=1440") && runner.events[0].Contains("512x512") && runner.events[0].Contains("frame=42"),"source dimensions and frame diagnostics");
-            runner=Reset(); renderThrows=true; Check(Reject(runner) && Clean(),"render exception cleanup");
-            runner=Reset(); renderLogsError=true; Check(Reject(runner) && Clean(),"native logged error rejects capture with cleanup");
-            runner=Reset(); readThrows=true; Check(Reject(runner) && Clean(),"read exception cleanup");
-            runner=Reset(); encodeThrows=true; Check(Reject(runner) && Clean(),"encode exception cleanup");
-            runner=Reset(); createFails=true; Check(Reject(runner) && Clean() && rendered==0,"failed target creation cleanup");
-            runner=Reset(); flat=true; Check(Reject(runner) && Clean(),"flat black image rejected");
-            runner=Reset(); empty=true; Check(Reject(runner) && Clean(),"empty PNG rejected");
-            runner=Reset(); camera.pixelWidth=0; Check(Reject(runner) && rendered==0 && destroyed==0 && UnityEngine.RenderTexture.active==prior,"invalid dimensions reject before state changes");
-            runner=Reset(); camera.scene.cameraRigController.target=new UnityEngine.GameObject(); Check(Reject(runner) && rendered==0,"wrong target body rejected");
-            runner=Reset(); camera.scene.cameraRigController.localUserViewer=new RoR2.LocalUser(); Check(Reject(runner) && rendered==0,"wrong local viewer rejected");
-            runner=Reset(); UnityEngine.Camera.allCameras=new[] {camera,camera}; Check(Reject(runner) && rendered==0,"ambiguous gameplay camera rejected");
-            Console.WriteLine("CAPTURE_CHECK_PASS checks="+checks+" game=not-run images=not-produced"); return 0;
-        } catch (Exception error) { Console.Error.WriteLine(error); return 1; }
-    }
-}
-namespace AH64
-{
-    internal sealed partial class DevAutopilot {
-        private RoR2.CharacterBody pilot=new RoR2.CharacterBody(); private int errors;
-        internal RoR2.CharacterBody Body {get {return pilot;}}
-        internal readonly List<string> events=new List<string>();
-        private void Event(string name,string reason) {events.Add(name+":"+reason);}
-        internal byte[] TestReadCamera() {return ReadGameCameraPng();}
-        internal void TestLogError() {errors++;}
-        private static string DescribeCaptureCamera(UnityEngine.Camera camera) {return "offline diagnostics double";}
+        Validate(Ack()); checks++;
+        Reject(a=>a.runId="old","wrong run"); Reject(a=>a.token="old","stale token");
+        Reject(a=>a.pid=18,"wrong PID"); Reject(a=>a.hwnd=0,"missing window");
+        Reject(a=>a.executable="other.exe","wrong executable"); Reject(a=>a.reservation="other","wrong lease");
+        Reject(a=>a.sourceSha="other","wrong candidate"); Reject(a=>a.bodyId=43,"wrong body");
+        Reject(a=>a.bodyState="AH64Main","later state"); Reject(a=>a.phase="backflip","wrong phase");
+        Reject(a=>a.weaponState="FireHellfire","wrong weapon state"); RejectCall(()=>Validate(Ack(),true),"expired phase");
+        Reject(a=>a.startedUtc=Now.AddSeconds(-2).ToString("o"),"capture preceding request");
+        Reject(a=>a.finishedUtc=Now.AddSeconds(-.9).ToString("o"),"reversed interval");
+        Reject(a=>a.finishedUtc=Now.AddSeconds(1).ToString("o"),"future response");
+        Reject(a=>a.nonflat=false,"flat pixels"); Reject(a=>a.width=512,"resized PNG");
+        Reject(a=>a.png="other.png","wrong PNG"); RejectCall(()=>Validate(Ack(),false,"other"),"wrong hash");
+        RejectCall(()=>Validate(Ack(),false,"hash",new byte[0]),"empty PNG");
+        Console.WriteLine("CAPTURE_CHECK_PASS checks="+checks+" game=not-run images=not-produced"); return 0;
     }
 }

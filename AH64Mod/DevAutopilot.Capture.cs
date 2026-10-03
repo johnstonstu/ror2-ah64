@@ -1,61 +1,82 @@
 using System;
-using System.Linq;
-using RoR2;
+using System.Collections;
+using System.Diagnostics;
+using System.IO;
 using UnityEngine;
 
 namespace AH64
 {
     internal sealed partial class DevAutopilot
     {
-        // Render the verified local gameplay camera at its existing native dimensions.
-        private byte[] ReadGameCameraPng()
+        private WindowCaptureRequest pendingCapture;
+        private bool capturePhaseInvalid;
+        private int capturePhaseChecks;
+
+        // Observe frame and physics cadence; never pause or alter ability timing.
+        private void CheckWindowCapturePhase()
         {
-            var user = LocalUserManager.GetFirstLocalUser();
-            var owned = Camera.allCameras.Select(candidate => candidate.GetComponent<SceneCamera>()).Where(scene =>
-                scene && scene.cameraRigController && scene.cameraRigController.localUserViewer == user &&
-                pilot && scene.cameraRigController.target == pilot.gameObject && scene.camera == scene.cameraRigController.sceneCam).ToArray();
-            if (user == null || owned.Length != 1) throw new InvalidOperationException("Missing/ambiguous local AH64 gameplay camera.");
-            var camera = owned[0].camera;
-            int width = camera.pixelWidth, height = camera.pixelHeight;
-            if (width <= 0 || height <= 0) throw new InvalidOperationException("Invalid gameplay camera dimensions.");
-            RenderTexture previous = RenderTexture.active, previousCameraTarget = camera.targetTexture;
-            string target = previous ? previous.name + "/" + previous.GetInstanceID() + "/" + previous.width + "x" + previous.height : "backbuffer";
-            Event("capture-source", "source=owned-gameplay-camera; phase=end-of-frame; width=" + width + "; height=" + height +
-                "; frame=" + Time.frameCount + "; realtime=" + Time.realtimeSinceStartup + "; previousTarget=" + target +
-                "; camera=" + camera.name + "/" + camera.GetInstanceID() + "; targetBody=" + pilot.gameObject.name + "; UI=not-rendered");
-            Texture2D texture = null;
-            Event("capture-camera-diagnostics", DescribeCaptureCamera(camera));
-            RenderTexture capture = null;
-            int errorsBefore = errors;
+            if (pendingCapture == null) return;
+            capturePhaseChecks++;
+            if (!pilot || pilot.gameObject.GetInstanceID() != pendingCapture.bodyId || segment != pendingCapture.phase ||
+                Machine("Body").state.GetType().FullName != pendingCapture.bodyState ||
+                Machine("Weapon2").state.GetType().FullName != pendingCapture.weaponState ||
+                (pendingCapture.requiresProjectile && OwnedProjectiles() == 0)) capturePhaseInvalid = true;
+        }
+
+        private IEnumerator Capture(string name)
+        {
+            if (Environment.GetEnvironmentVariable("AH64_AUTOPILOT_WINDOW_CAPTURE") != "1")
+                throw new InvalidOperationException("Baseline requires its explicitly configured owned-window helper.");
+            yield return new WaitForEndOfFrame();
+            var stage = JsonUtility.FromJson<WindowCaptureStage>(File.ReadAllText(Path.Combine(output, "identity.json")));
+            string directory = Path.Combine(output, "window-captures");
+            Directory.CreateDirectory(directory);
+            var request = new WindowCaptureRequest {
+                runId=Path.GetFileName(output), token=Guid.NewGuid().ToString("N"), name=name,
+                phase=segment, bodyId=pilot.gameObject.GetInstanceID(), bodyName=pilot.gameObject.name,
+                bodyState=Machine("Body").state.GetType().FullName, weaponState=Machine("Weapon2").state.GetType().FullName,
+                requiresProjectile=name=="hellfire-launched", pid=Process.GetCurrentProcess().Id,
+                executable=Path.Combine(stage.gameDirectory, "Risk of Rain 2.exe"), sourceSha=stage.sourceSha,
+                owner=stage.owner, reservation=stage.reservation, lockPath=stage.runtimeLockPath,
+                requestFrame=Time.frameCount, requestFixedTime=Time.fixedTime, requestRealtime=Time.realtimeSinceStartup,
+                requestedUtc=DateTime.UtcNow.ToString("o")
+            };
+            pendingCapture=request; capturePhaseInvalid=false; capturePhaseChecks=0;
+            string requestPath=Path.Combine(directory, request.token+".request.json");
+            string ackPath=Path.Combine(directory, request.token+".ack.json");
             try {
-                try {
-                    capture = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32);
-                    if (!capture.Create()) throw new InvalidOperationException("Gameplay capture target creation failed.");
-                    camera.targetTexture = capture;
-                    camera.Render();
-                    Event("capture-before-read", DescribeCaptureCamera(camera));
-                    RenderTexture.active = capture;
-                    texture = new Texture2D(width, height, TextureFormat.RGB24, false);
-                    texture.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);
-                    texture.Apply(false, false);
-                } finally {
-                    camera.targetTexture = previousCameraTarget;
-                    RenderTexture.active = previous;
+                CheckWindowCapturePhase();
+                File.WriteAllText(requestPath+".tmp", JsonUtility.ToJson(request, true));
+                File.Move(requestPath+".tmp", requestPath);
+                Event("capture-request", name+"; token="+request.token+"; frame="+request.requestFrame+"; utc="+request.requestedUtc);
+                float deadline=Time.realtimeSinceStartup+10f;
+                while (!File.Exists(ackPath)) {
+                    CheckWindowCapturePhase();
+                    if (capturePhaseInvalid) throw new InvalidOperationException("Requested capture phase expired: "+name);
+                    if (Time.realtimeSinceStartup>deadline) throw new TimeoutException("Owned-window acknowledgement: "+name);
+                    yield return null;
                 }
-                if (errors != errorsBefore) throw new InvalidOperationException("Unity logged an error during gameplay capture.");
-                Color32[] pixels = texture.GetPixels32();
-                if (pixels.Length == 0 || !pixels.Any(pixel => pixel.r != pixels[0].r || pixel.g != pixels[0].g || pixel.b != pixels[0].b))
-                    throw new InvalidOperationException("Gameplay capture has no RGB variation; visual evidence unavailable.");
-                byte[] png = ImageConversion.EncodeToPNG(texture);
-                if (png == null || png.Length == 0) throw new InvalidOperationException("Gameplay PNG encoding was empty.");
-                Event("capture-read", "source=owned-gameplay-camera; width=" + texture.width + "; height=" + texture.height +
-                    "; frame=" + Time.frameCount + "; restoredTarget=" + (RenderTexture.active == previous) +
-                    "; restoredCameraTarget=" + (camera.targetTexture == previousCameraTarget) + "; pixels=" + pixels.Length + "; bytes=" + png.Length);
-                return png;
-            } finally {
-                if (texture) UnityEngine.Object.Destroy(texture);
-                if (capture) { capture.Release(); UnityEngine.Object.Destroy(capture); }
-            }
+                CheckWindowCapturePhase();
+                var ack=JsonUtility.FromJson<WindowCaptureAck>(File.ReadAllText(ackPath));
+                string png=Path.Combine(output, name+".png");
+                WindowCaptureContract.Validate(request, ack, capturePhaseInvalid, Hash(png), File.ReadAllBytes(png), DateTime.UtcNow);
+                File.WriteAllText(Path.Combine(directory, request.token+".phase.json"), JsonUtility.ToJson(new WindowPhaseEvidence {
+                    runId=request.runId, token=request.token, phaseValid=true, phaseChecks=capturePhaseChecks,
+                    confirmedFrame=Time.frameCount, confirmedFixedTime=Time.fixedTime, confirmedUtc=DateTime.UtcNow.ToString("o"),
+                    limitation="State/body/phase observed at frame and physics cadence through acknowledgement; request frame is not the captured rendered frame; simulation never paused"
+                }, true));
+                captures++;
+                Event("capture", name+".png; token="+request.token+"; source=owned-game-window; interval="+ack.startedUtc+".."+ack.finishedUtc+
+                    "; state/phase retained; no exact rendered-frame claim; controller/audio unverified");
+            } finally { pendingCapture=null; }
+        }
+
+#pragma warning disable CS0649 // Populated by Unity JSON deserialization.
+        [Serializable] private sealed class WindowCaptureStage { public string sourceSha, gameDirectory, owner, reservation, runtimeLockPath; }
+#pragma warning restore CS0649
+        [Serializable] private sealed class WindowPhaseEvidence {
+            public string runId, token, confirmedUtc, limitation; public bool phaseValid;
+            public int phaseChecks, confirmedFrame; public float confirmedFixedTime;
         }
     }
 }

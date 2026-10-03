@@ -68,6 +68,7 @@ namespace AH64
 
         private void Update()
         {
+            CheckWindowCapturePhase();
             if (finished) { if (Time.realtimeSinceStartup >= quitAt) Application.Quit(terminalExit); return; }
             if (Time.realtimeSinceStartup - started > 240f) Finish("incomplete", "runtime deadline");
             if (NetworkUser.readOnlyInstancesList.Count > 1 || LocalUserManager.readOnlyLocalUsersList.Count > 1)

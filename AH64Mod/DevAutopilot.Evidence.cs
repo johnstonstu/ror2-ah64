@@ -69,6 +69,7 @@ namespace AH64
             if (!scripting || finished || !pilot) return;
             try {
                 tick++;
+                CheckWindowCapturePhase();
                 Vector3 position = pilot.gameObject.transform.position, velocity = pilot.characterMotor.velocity;
                 Quaternion attitude = pilot.modelLocator.modelTransform.rotation;
                 if (!Finite(position) || !Finite(velocity) || !Finite(new Vector3(attitude.x, attitude.y, attitude.z)) || float.IsNaN(attitude.w) || float.IsInfinity(attitude.w))

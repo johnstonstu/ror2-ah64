@@ -19,6 +19,7 @@ function Fixture {
     New-Item -ItemType Directory -Path $dir | Out-Null
     $checks = @($ids | ForEach-Object { @{ id = $_; passed = $true } })
     $summary = @{ schemaVersion = 1; schema = 1; recordType = 'summary'; runId = [IO.Path]::GetFileName($dir); scenario = 'baseline-v1'; suite = 'baseline-v1'; status = 'completed'; expectedAssertions = 12; assertions = 12; failedAssertions = 0; executed = 12; passed = 12; failed = 0; skipped = 0; errors = 0; warnings = 0; visualFlags = 0; samples = 100; checks = $checks }
+    $summary.captures = 5
     $summary | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $dir 'result.json')
     $header = @{ schemaVersion = 1; recordType = 'header'; runId = $summary.runId; scenario = 'baseline-v1'; sourceSha = ('a' * 40); dirtyWorkspaceFingerprint = ('b' * 64); pluginVersion = '1.2.1'; profile = 'fixture'; requestedAssertionCount = 12; dllSha256 = 'DLL'; bundleSha256 = 'BUNDLE'; bankSha256 = 'BANK'; configSha256 = 'CONFIG'; gameBuild = 'GAME' }
     $identity = @{ sourceSha = $header.sourceSha; dirtyWorkspaceFingerprint = $header.dirtyWorkspaceFingerprint; pluginVersion = '1.2.1'; profile = 'fixture'; game = @(@{ path = 'RoR2.dll'; sha256 = 'GAME' }); replacements = @(
@@ -34,6 +35,17 @@ function Fixture {
     @('tick,time,scenario,px,py,pz,vx,vy,vz,fx,fy,fz,ax,ay,az,qx,qy,qz,qw') + @(1..100 | ForEach-Object { "$_,0.02,roll,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,1" }) | Set-Content -LiteralPath (Join-Path $dir 'telemetry.csv')
     $ids | ForEach-Object { "ASSERT $_ PASS" } | Set-Content -LiteralPath (Join-Path $dir 'trace.txt')
     foreach ($name in @('runtime.log','LogOutput.log','Player.log')) { 'clean fixture log' | Set-Content -LiteralPath (Join-Path $dir $name) }
+    $bridge = Join-Path $dir 'window-captures'; New-Item -ItemType Directory -Path $bridge | Out-Null
+    foreach ($name in @('roll-entered','roll-cleanup','backflip-entered','backflip-cleanup','hellfire-launched')) {
+        $token = [guid]::NewGuid().ToString('N'); $now = [DateTime]::UtcNow
+        $request = @{schema=1;runId=$summary.runId;token=$token;name=$name;pid=17;executable='fixture.exe';sourceSha=$header.sourceSha;owner='fixture';reservation='fixture';bodyId=42;phase=($name -split '-')[0];bodyState='fixture';weaponState='fixture';requestedUtc=$now.ToString('o')}
+        $request | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $bridge ($token+'.request.json'))
+        $png = Join-Path $dir ($name+'.png'); [IO.File]::WriteAllBytes($png,[byte[]](137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,2,0,0,0,1))
+        $ack = @{}; foreach ($key in $request.Keys) { $ack[$key]=$request[$key] }
+        $ack.status='captured';$ack.source='Pillow.ImageGrab.grab(window=observed-owned-HWND)';$ack.nonflat=$true;$ack.hwnd=99;$ack.width=2;$ack.height=1;$ack.startedUtc=$now.AddMilliseconds(1).ToString('o');$ack.finishedUtc=$now.AddMilliseconds(2).ToString('o');$ack.png=$name+'.png';$ack.pngSha256=(Get-FileHash -LiteralPath $png -Algorithm SHA256).Hash
+        $ack | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $bridge ($token+'.ack.json'))
+        @{runId=$summary.runId;token=$token;phaseValid=$true;phaseChecks=2;confirmedUtc=$now.AddMilliseconds(3).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $bridge ($token+'.phase.json'))
+    }
     $dir
 }
 function RejectFixture([scriptblock]$mutation, [string]$name) {
@@ -84,6 +96,11 @@ Remove-Item -LiteralPath $lock
 'partial' | Set-Content -LiteralPath $lock
 MustThrow { New-RuntimeLease $lock 'fixture-owner' 'fixture-token' 'fixture' 'sha' } 'partly written lease stays occupied'
 MustThrow { Assert-RuntimeLease $lock 'fixture-owner' 'fixture-token' } 'malformed lease cannot pass'
+RejectFixture { param($d) Remove-Item -LiteralPath (Join-Path $d 'roll-entered.png') } 'missing checkpoint pixels fail'
+RejectFixture { param($d) $p=Get-ChildItem (Join-Path $d 'window-captures') -Filter '*.ack.json' | Select-Object -First 1; $a=Get-Content $p.FullName -Raw | ConvertFrom-Json; $a.token='old'; $a | ConvertTo-Json | Set-Content $p.FullName } 'stale capture token fails'
+RejectFixture { param($d) $p=Get-ChildItem (Join-Path $d 'window-captures') -Filter '*.ack.json' | Select-Object -First 1; $a=Get-Content $p.FullName -Raw | ConvertFrom-Json; $a.pid=18; $a | ConvertTo-Json | Set-Content $p.FullName } 'wrong capture process fails'
+RejectFixture { param($d) $p=Get-ChildItem (Join-Path $d 'window-captures') -Filter '*.ack.json' | Select-Object -First 1; $a=Get-Content $p.FullName -Raw | ConvertFrom-Json; $a.nonflat=$false; $a | ConvertTo-Json | Set-Content $p.FullName } 'flat checkpoint fails'
+RejectFixture { param($d) $p=Get-ChildItem (Join-Path $d 'window-captures') -Filter '*.phase.json' | Select-Object -First 1; $a=Get-Content $p.FullName -Raw | ConvertFrom-Json; $a.phaseValid=$false; $a | ConvertTo-Json | Set-Content $p.FullName } 'expired checkpoint phase fails'
 $result = @{ status = 'passed'; checks = $script:count; evidence = $root; runtime = 'not run'; profiles = 'untouched' }
 $result | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $root 'checks.json')
 Write-Output "FOUNDATION_CHECK_PASS checks=$script:count evidence=$root"

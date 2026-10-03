@@ -3,7 +3,7 @@ $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $output = Join-Path $repo ('dist/capture-tests/' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $output | Out-Null
-$capture = [Security.SecurityElement]::Escape((Join-Path $repo 'AH64Mod/DevAutopilot.Capture.cs'))
+$capture = [Security.SecurityElement]::Escape((Join-Path $repo 'AH64Mod/DevAutopilot.WindowContract.cs'))
 $fixtures = [Security.SecurityElement]::Escape((Join-Path $PSScriptRoot 'CaptureChecks.cs'))
 $project = Join-Path $output 'CaptureChecks.csproj'
 @"
