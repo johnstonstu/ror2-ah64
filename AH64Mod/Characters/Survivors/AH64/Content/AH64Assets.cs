@@ -1071,6 +1071,7 @@ namespace AH64.Survivors
             //same hazard as the Hydra rocket: the Commando grenade clone's procCoefficient must not
             //be left inherited. Set explicitly so on-hit items see the special's intended weight.
             controller.procCoefficient = AH64StaticValues.hellfireProcCoefficient;
+            Components.AH64HellfireGuidance.Install(hellfireProjectilePrefab);
         }
 
         /// <summary>

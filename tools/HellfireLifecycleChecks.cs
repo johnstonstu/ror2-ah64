@@ -68,6 +68,20 @@ internal static partial class HellfireChecks
         uint newestToken=localOwner.Policy.ActiveToken;
         Check(localOwner.Policy.CanGuide(newestToken,Time.fixedTime),"new launch while held guides");
         Lifecycle.Call(localOwner,"FixedUpdate");Check(localOwner.Policy.CanGuide(newestToken,Time.fixedTime),"normal launch recovery does not block guidance");
+        foreach(var maneuver in new EntityStates.EntityState[] {new ServoDash(),new SmokeBackflip()})
+        {
+            local.GetComponent<EntityStateMachine>().state=maneuver;
+            Time.fixedTime+=0.11f;
+            Lifecycle.Call(localOwner,"FixedUpdate");
+            Check(localOwner.Policy.CanGuide(newestToken,Time.fixedTime),"maneuver re-entry protection preserves held guidance: "+maneuver.GetType().Name);
+            localOwner.BeginLaunch();var maneuverMissile=Missile(local);Lifecycle.Call(maneuverMissile,"Start");
+            newestToken=localOwner.Policy.ActiveToken;
+            Check(localOwner.ServerRequest!=0&&localOwner.Policy.CanGuide(newestToken,Time.fixedTime),"launch during maneuver retains begin/ack pairing: "+maneuver.GetType().Name);
+            newest=maneuverMissile;
+        }
+        local.GetComponent<EntityStateMachine>().state=new EntityStates.EntityState {priority=EntityStates.InterruptPriority.Pain};
+        Lifecycle.Call(localOwner,"FixedUpdate");Check(localOwner.Policy.ActiveToken==0,"genuine pain still clears local guidance after maneuver");
+        local.GetComponent<EntityStateMachine>().state=new EntityStates.EntityState();
         Lifecycle.Call(newest,"OnDisable");Check(localOwner.Policy.ActiveToken==0,"local latest expiry cleanup");
 
         localOwner.BeginLaunch();var rapidOld=Missile(local);uint oldToken=localOwner.Policy.ActiveToken;

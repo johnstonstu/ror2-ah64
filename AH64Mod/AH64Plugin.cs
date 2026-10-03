@@ -27,7 +27,7 @@ namespace AH64
         //BepInEx 5 requires System.Version format: major.minor[.build[.revision]] — NOT semver
         //letters. A suffix like "1.0.0-rc1" silently skips the plugin while still registering
         //achievements, which presents as a hang at 99%.
-        public const string MODVERSION = "1.2.1";
+        public const string MODVERSION = "1.3.0";
 
         public static AH64Plugin instance;
 
@@ -37,6 +37,7 @@ namespace AH64
 
             //easy to use logger
             Log.Init(Logger);
+            Survivors.Components.AH64HellfireNetwork.Init();
             AH64PlaytestConfig.Init(Config);
 
             // used when you want to properly set up language folders
@@ -48,6 +49,11 @@ namespace AH64
             // make a content pack and add it. this has to be last
             new Modules.ContentPacks().Initialize();
             DevAutopilot.TryStart();
+        }
+
+        void OnDestroy()
+        {
+            Survivors.Components.AH64HellfireNetwork.Shutdown();
         }
     }
 }

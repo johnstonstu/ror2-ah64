@@ -55,6 +55,9 @@ namespace AH64.Survivors.Components
         internal bool Alive => isActiveAndEnabled && body && body.healthComponent
             && body.healthComponent.alive && body.inputBank;
         private bool Interrupted => bodyMachine && bodyMachine.state != null
+            // These utilities use Pain priority to reject re-entry, while weapons remain usable.
+            && !(bodyMachine.state is SkillStates.ServoDash)
+            && !(bodyMachine.state is SkillStates.SmokeBackflip)
             && bodyMachine.state.GetMinimumInterruptPriority() >= InterruptPriority.Pain;
 
         public void BeginLaunch()

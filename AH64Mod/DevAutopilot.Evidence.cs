@@ -88,7 +88,7 @@ namespace AH64
                     ownerId = pilot.master ? pilot.master.gameObject.GetInstanceID() : 0, role = "solo-server-authority",
                     position = position, velocity = velocity, facing = forward, nativeAim = aim,
                     modelAttitude = attitude, authority = pilot.hasAuthority,
-                    maneuverCapture = "unverified: baseline observational sample", guidanceToken = "unverified",
+                    maneuverCapture = ManeuverObservation(), guidanceToken = GuidanceObservation(),
                     attitudeSamplePhase = "FixedUpdate reads most recent LateUpdate model pose"
                 };
                 Write(sample); samples++;
@@ -121,10 +121,33 @@ namespace AH64
             foreach (var projectile in FindObjectsOfType<RoR2.Projectile.ProjectileController>()) {
                 if (!projectile || projectile.owner != pilot.gameObject) continue;
                 int id = projectile.gameObject.GetInstanceID(); current.Add(id);
-                if (observedProjectiles.Add(id)) Event("projectile-spawn", "projectileId=" + id + "; prefab=" + projectile.gameObject.name + "; leadExtraIndex=0; token=unverified");
+                var guidance = projectile.GetComponent<Survivors.Components.AH64HellfireGuidance>();
+                if (observedProjectiles.Add(id)) Event("projectile-spawn", "projectileId=" + id + "; prefab=" + projectile.gameObject.name + "; combo="+projectile.combo+"; token="+(guidance ? guidance.Token.ToString() : "not-guided"));
+                if (prototypeStarted && guidance) Write(new ProjectileSample {
+                    recordType="projectile-sample",runId=Path.GetFileName(output),scenario=segment,tick=tick,
+                    projectileId=id,combo=projectile.combo,token=guidance.Token,position=projectile.gameObject.transform.position,
+                    heading=projectile.gameObject.transform.forward,lastTurnDegrees=guidance.LastTurnDegrees,
+                    remainingTurnDegrees=guidance.RemainingTurnDegrees
+                });
             }
             foreach (int id in liveProjectiles) if (!current.Contains(id)) Event("projectile-despawn", "projectileId=" + id + "; reason=observed disappearance; collision/payload=unverified");
             liveProjectiles.Clear(); foreach (int id in current) liveProjectiles.Add(id);
+        }
+
+        private string ManeuverObservation()
+        {
+            var state=Machine("Body").state;
+            var roll=state as Survivors.SkillStates.ServoDash;
+            if(roll!=null) return JsonUtility.ToJson(roll.EntrySnapshot)+"; progress="+roll.ManeuverProgress.ToString("R",Invariant)+"; yielded="+roll.MotionYielded;
+            var flip=state as Survivors.SkillStates.SmokeBackflip;
+            if(flip!=null) return JsonUtility.ToJson(flip.EntrySnapshot)+"; progress="+flip.ManeuverProgress.ToString("R",Invariant)+"; yielded="+flip.MotionYielded;
+            return "no-active-maneuver";
+        }
+
+        private string GuidanceObservation()
+        {
+            var owner=pilot.GetComponent<Survivors.Components.AH64HellfireOwner>();
+            return owner ? "server-active-token="+owner.Policy.ActiveToken : "no-guidance-owner";
         }
 
         private void Event(string name, string reason)
@@ -149,6 +172,8 @@ namespace AH64
             if (finished) return;
             finished = true; scripting = false; move = Vector3.zero;
             int failures = checks.Count(c => !c.passed);
+            bool prototypePassed = FinishPrototypeEvidence();
+            if (!prototypePassed) status = "failed";
             if (status == "completed" && (checks.Count != ExpectedAssertions || failures > 0 || errors > 0 || warnings > 0 || visualFlags > 0)) status = "failed";
             var summary = new Summary { recordType = "summary", runId = Path.GetFileName(output), scenario = Suite, suite = Suite,
                 status = status, reason = reason, expectedAssertions = ExpectedAssertions, assertions = checks.Count,
@@ -178,6 +203,10 @@ namespace AH64
             public int tick, entityId, ownerId; public float simulationTime;
             public Vector3 position, velocity, facing, nativeAim; public Quaternion modelAttitude;
             public bool authority; public string role, maneuverCapture, guidanceToken, attitudeSamplePhase;
+        }
+        [Serializable] private class ProjectileSample : Record {
+            public int tick,projectileId,combo; public uint token;
+            public Vector3 position,heading; public float lastTurnDegrees,remainingTurnDegrees;
         }
         [Serializable] private class EventRecord : Record {
             public int tick, entityId, ownerId; public float simulationTime; public string role, eventName, reason;

@@ -24,6 +24,8 @@ namespace AH64
         private bool gameLoaded, scripting, finished;
         private int tick, samples, errors, warnings, visualFlags, launches, captures;
         private readonly List<Check> checks = new List<Check>();
+        private bool prototypeHeld;
+        private Vector3 prototypeAim;
         private StreamWriter jsonl, csv, trace, runtimeLog;
 
         internal static void TryStart()
@@ -125,6 +127,8 @@ namespace AH64
             yield return MovementCase("roll", new Survivors.SkillStates.ServoDash(), facing);
             yield return MovementCase("backflip", new Survivors.SkillStates.SmokeBackflip(), -facing);
             yield return HellfireCase();
+            if (Environment.GetEnvironmentVariable("AH64_AUTOPILOT_FEATURE_CHECKS") == "solo-prototype-v1")
+                yield return PrototypeCases();
         }
 
         private void AfterInput(On.RoR2.PlayerCharacterMasterController.orig_FixedUpdate orig, PlayerCharacterMasterController self)
@@ -134,12 +138,15 @@ namespace AH64
             var bank = pilot.inputBank;
             bank.moveVector = move; bank.aimDirection = facing;
             bank.skill1.down = bank.skill2.down = bank.skill3.down = bank.skill4.down = bank.jump.down = bank.sprint.down = false;
+            if (prototypeHeld) bank.skill4.down = true;
+            if (prototypeAim.sqrMagnitude > 0f) bank.aimDirection = prototypeAim;
         }
 
         private void AfterAim(On.RoR2.PlayerCharacterMasterController.orig_Update orig, PlayerCharacterMasterController self)
         {
             orig(self);
-            if (scripting && !finished && pilot && self.master && self.master.GetBody() == pilot) pilot.inputBank.aimDirection = facing;
+            if (scripting && !finished && pilot && self.master && self.master.GetBody() == pilot)
+                pilot.inputBank.aimDirection = prototypeAim.sqrMagnitude > 0f ? prototypeAim : facing;
         }
     }
 }

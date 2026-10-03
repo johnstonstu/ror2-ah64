@@ -255,6 +255,10 @@ namespace AH64.Survivors.Components
 namespace AH64.Survivors.SkillStates
 {
     using UnityEngine;
+    public sealed class ServoDash : EntityStates.EntityState
+    { public ServoDash() { priority = EntityStates.InterruptPriority.Pain; } }
+    public sealed class SmokeBackflip : EntityStates.EntityState
+    { public SmokeBackflip() { priority = EntityStates.InterruptPriority.Pain; } }
     public static class AH64Muzzles
     {
         public const string MissileL="left",MissileR="right";
