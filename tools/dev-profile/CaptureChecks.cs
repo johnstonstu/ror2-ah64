@@ -103,5 +103,6 @@ namespace AH64
         private void Event(string name,string reason) {events.Add(name+":"+reason);}
         internal byte[] TestReadCamera() {return ReadGameCameraPng();}
         internal void TestLogError() {errors++;}
+        private static string DescribeCaptureCamera(UnityEngine.Camera camera) {return "offline diagnostics double";}
     }
 }

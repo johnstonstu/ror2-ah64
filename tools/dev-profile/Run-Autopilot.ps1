@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$StageRecord, [string]$RuntimeReservation, [string]$RuntimeOwner, [string]$RuntimeLockPath, [int]$TimeoutSeconds = 300, [switch]$ValidateOnly)
+param([string]$StageRecord, [string]$RuntimeReservation, [string]$RuntimeOwner, [string]$RuntimeLockPath, [int]$TimeoutSeconds = 300, [switch]$ValidateOnly, [switch]$VisibleWindow)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Stage-Build.ps1') -RuntimeReservation $RuntimeReservation -RuntimeOwner $RuntimeOwner -RuntimeLockPath $RuntimeLockPath
 
@@ -108,17 +108,22 @@ New-Item -ItemType Directory -Path $out | Out-Null
 Copy-Item -LiteralPath $StageRecord -Destination (Join-Path $out 'identity.json')
 $process = $null; $timedOut = $false; $exitCode = -1; $failure = $null; $launchUtc = [DateTime]::UtcNow
 $priorDir = $env:AH64_AUTOPILOT_DIR; $priorMode = $env:AH64_AUTOPILOT_MODE
+$priorCompare = $env:AH64_AUTOPILOT_WINDOW_COMPARE
 $profileLock = $null
 try {
     $profileLock = [IO.File]::Open((Join-Path $profile '.ah64-autopilot.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
     Assert-NoGame
     $env:AH64_AUTOPILOT_DIR = $out; $env:AH64_AUTOPILOT_MODE = 'solo-baseline-v1'
+    $env:AH64_AUTOPILOT_WINDOW_COMPARE = $(if ($VisibleWindow) { '1' } else { $null })
+    @{schema=1; runId=[IO.Path]::GetFileName($out); visibleWindow=[bool]$VisibleWindow; createdUtc=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $out 'launch-settings.json')
     $args = '--doorstop-enabled true --doorstop-target-assembly "' + $preloader + '" --r2profile "' + $stage.profileName + '" -logFile "' + (Join-Path $out 'Player.log') + '"'
-    $process = Start-Process -FilePath (Join-Path $stage.gameDirectory 'Risk of Rain 2.exe') -WorkingDirectory $stage.gameDirectory -ArgumentList $args -WindowStyle Hidden -PassThru
+    $windowStyle = $(if ($VisibleWindow) { 'Normal' } else { 'Hidden' })
+    $process = Start-Process -FilePath (Join-Path $stage.gameDirectory 'Risk of Rain 2.exe') -WorkingDirectory $stage.gameDirectory -ArgumentList $args -WindowStyle $windowStyle -PassThru
     $lease = Assert-RuntimeLease $RuntimeLockPath $RuntimeOwner $RuntimeReservation
     $lease.processIds = @($process.Id)
     $lease | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $RuntimeLockPath
     $env:AH64_AUTOPILOT_DIR = $priorDir; $env:AH64_AUTOPILOT_MODE = $priorMode
+    $env:AH64_AUTOPILOT_WINDOW_COMPARE = $priorCompare
     $watch = [Diagnostics.Stopwatch]::StartNew()
     while (!$process.HasExited -and $watch.Elapsed.TotalSeconds -lt $TimeoutSeconds) { Start-Sleep -Milliseconds 500; $process.Refresh() }
     if (!$process.HasExited) {
@@ -131,6 +136,7 @@ try {
 } catch { $failure = $_.Exception.Message }
 finally {
     $env:AH64_AUTOPILOT_DIR = $priorDir; $env:AH64_AUTOPILOT_MODE = $priorMode
+    $env:AH64_AUTOPILOT_WINDOW_COMPARE = $priorCompare
     $log = Join-Path $profile 'BepInEx/LogOutput.log'
     if (Test-Path -LiteralPath $log -PathType Leaf) {
         Copy-Item -LiteralPath $log -Destination (Join-Path $out 'LogOutput.log')

@@ -24,6 +24,7 @@ namespace AH64
                 "; frame=" + Time.frameCount + "; realtime=" + Time.realtimeSinceStartup + "; previousTarget=" + target +
                 "; camera=" + camera.name + "/" + camera.GetInstanceID() + "; targetBody=" + pilot.gameObject.name + "; UI=not-rendered");
             Texture2D texture = null;
+            Event("capture-camera-diagnostics", DescribeCaptureCamera(camera));
             RenderTexture capture = null;
             int errorsBefore = errors;
             try {
@@ -32,6 +33,7 @@ namespace AH64
                     if (!capture.Create()) throw new InvalidOperationException("Gameplay capture target creation failed.");
                     camera.targetTexture = capture;
                     camera.Render();
+                    Event("capture-before-read", DescribeCaptureCamera(camera));
                     RenderTexture.active = capture;
                     texture = new Texture2D(width, height, TextureFormat.RGB24, false);
                     texture.ReadPixels(new Rect(0, 0, width, height), 0, 0, false);

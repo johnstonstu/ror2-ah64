@@ -36,7 +36,9 @@ namespace AH64
 
         private IEnumerator Capture(string name)
         {
+            BeginWindowComparison(name);
             yield return new WaitForEndOfFrame();
+            WriteWindowComparisonRequest(name);
             string path = System.IO.Path.Combine(output, name + ".png");
             System.IO.File.WriteAllBytes(path, ReadGameCameraPng());
             yield return Until(() => System.IO.File.Exists(path) && new System.IO.FileInfo(path).Length > 0,

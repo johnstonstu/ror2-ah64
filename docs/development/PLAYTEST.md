@@ -281,3 +281,13 @@ fail before PNG acceptance. Captures show the gameplay scene without the UI came
 this supported camera render is additional diagnostic render work, not a new pose.
 [Unity Camera.Render](https://docs.unity3d.com/2021.3/Documentation/ScriptReference/Camera.Render.html)
 describes the existing camera settings, image filters and render callbacks used.
+
+An explicitly reserved comparison may pass `Run-Autopilot.ps1 -VisibleWindow`.
+It changes only that launch's window style and enables a run/capture/frame marker;
+no OS, display, resolution, privacy or security setting is changed. The existing
+render algorithm remains unchanged for comparison. Before render/read, diagnostics
+record camera pose/culling and the postprocess layer's public enabled/final-blit
+state, plus command-buffer names/sizes. Private cached destinations are not read.
+An external capture must bind to the exact returned PID/window and comparison
+request; unrelated desktop/app capture is excluded. A flat result from a window
+capture API alone does not prove the visible game viewport itself is black.
