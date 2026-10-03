@@ -81,7 +81,7 @@ namespace AH64.Survivors.Components
                 cast.Trace("impact", drop, transform.position, velocity, crit: crit);
                 if (ImpactEffect)
                     EffectManager.SpawnEffect(ImpactEffect, new EffectData
-                    { origin = transform.position, scale = AH64BombingRunStaticValues.BlastRadius }, true);
+                    { origin = transform.position, scale = AH64BombingRunVisualValues.ImpactScale }, true);
                 if (cast.OwnerAlive && cast.SameStage)
                     GetComponent<AH64BombingRunDamage>().Detonate(cast, drop, crit);
                 else cast.Trace("suppressed", drop, transform.position, velocity, "invalid-owner-at-impact");

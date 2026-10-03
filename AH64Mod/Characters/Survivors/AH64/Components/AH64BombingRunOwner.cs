@@ -10,6 +10,7 @@ namespace AH64.Survivors.Components
         private AH64BombingRunCast active;
         private SkillStates.BombingRun observed;
         private uint lastRequest;
+        internal bool PresentationRunning => observed != null;
 
         internal uint NextRequest()
         {

@@ -35,6 +35,7 @@ namespace AH64.Survivors
             // Kinematic sphere sweeps own server collision; no native grenade impact can double-hit.
             seed.AddComponent<AH64BombingRunProjectile>().ImpactEffect = impactEffect;
             seed.AddComponent<AH64BombingRunDamage>();
+            seed.AddComponent<AH64BombingRunReleaseVisual>();
             Prefab = PrefabAPI.InstantiateClone(seed, "AH64BombingRunProjectile", false);
             Object.Destroy(seed);
             // PrefabAPI keeps clones beneath its inactive prefab parent.
