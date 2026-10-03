@@ -1,0 +1,150 @@
+# AH64 controlled SOLO foundation
+
+This foundation is an opt-in diagnostic for the unchanged `fe3c6ca` gameplay baseline.
+It is not release acceptance. It does not establish multiplayer, physical controller
+behavior, normal input activation, audio, hit attribution, complete revolutions or feel.
+Normal launches install no autopilot hooks and write no autopilot evidence.
+
+Offline checkpoint: Release compilation passed with 0 errors and 25 warnings
+(22 baseline plus two FOV reads and one legacy teleport call in the harness).
+32 evidence/lease checks and three synthetic access fixtures passed. The real-game
+scan resolves every reference and reports 31 non-public sites, exactly matching the
+unmodified baseline DLL with no added sites. This is an explicit staging blocker,
+not a runtime pass. The integrator's verified 1.2.1 bundle/bank snapshots are available;
+this worker did not copy them into generated packaging paths or run the game.
+
+## Integration hook and ownership
+
+Integrator: add `DevAutopilot.TryStart();` at the end of `AH64Plugin.Awake()`, after
+`new Modules.ContentPacks().Initialize();`. The SDK includes `DevAutopilot*.cs`
+automatically; no csproj addition is needed. This worker does not edit that shared file.
+The harness never changes framework, registries, config entries, tuning or version.
+
+Both environment gates are required: `AH64_AUTOPILOT_MODE=solo-baseline-v1` and an
+absolute `AH64_AUTOPILOT_DIR` naming a new prepared execution directory with
+`identity.json`. Use the launcher to set these only for its child process.
+Do not persist either variable in a player or machine environment.
+
+## Bounded baseline contract
+
+The harness hosts `host 0`, selects AH64, fixes seed 1301, enters Titanic Plains,
+disables combat directors and grants test-only invincibility. It checks a fixed
+terrain mark and chooses the longest unobstructed facing from 24 fixed directions.
+More than one local/network user fails the SOLO guard. Every wait has a deadline.
+
+The 12 required assertions are:
+
+| Scenario | Stable assertion IDs | Required observation |
+| --- | --- | --- |
+| Evasive Roll | `roll.enter`, `.travel`, `.exit`, `.cleanup` | Requested Body state observed; forward displacement >0.1m; original main state resumed; FOV override and air-control ownership released |
+| Smoke Backflip | `backflip.enter`, `.travel`, `.exit`, `.cleanup` | Requested Body state observed; rearward displacement >0.1m; original main state resumed; same cleanup |
+| Hellfire | `hellfire.enter`, `.launch`, `.exit`, `.cleanup` | Requested Weapon2 state observed; exactly one launch request and one observed owned projectile; original weapon state resumed; observed projectile gone within 30s |
+
+These scenarios inject existing entity states to isolate enter/exit behavior. They
+bypass stock, cooldown, alternate-loadout selection and button activation. No I.C.B.M.
+is allowed in this baseline. Future tests must separately cover input activation,
+side/reverse/high-speed entries, interruption/death/walls, guidance tokens and payload.
+Launch-request evidence and observed spawn/despawn evidence are separately labeled.
+Disappearance does not establish an impact, damage, proc or crit result.
+
+## Evidence and failure semantics
+
+Each stage and execution gets a GUID directory under ignored `dist/autopilot/`.
+`stage.json` records exact source SHA, dirty status/fingerprint, plugin version,
+candidate and installed artifact hashes, full game/dependency/config inventories,
+reviewed asset provenance, reservation identity and a per-target rollback map.
+`dirty.json` contains the tracked binary diff and untracked file hashes.
+
+`telemetry.jsonl` uses schema version 1 records `header`, `sample`, `event`,
+`assertion`, `summary`, matching the coordination contract. The header links full
+identity and independently hashes loaded DLL/bundle/bank/config/game assembly.
+Every physics sample records tick/time, body/owner identity, authority, position,
+velocity, facing, native aim and model quaternion. Movement capture/progress and
+guidance token are explicitly unverified in this baseline, rather than guessed.
+Model attitude is the latest LateUpdate pose read at physics cadence; it is not a
+second transform writer or a claim of a freshly evaluated physics pose.
+
+`telemetry.csv` supports before/after comparison. `trace.txt` records assertions
+and observed state transitions. `runtime.log` preserves all observed Unity messages,
+including loading. The launcher archives the whole profile `LogOutput.log` and the
+dedicated Unity `Player.log`, including shutdown. Missing/stale/empty logs fail.
+No screen captures are produced by this slice; captures remain unverified.
+
+The atomic terminal `result.json` and final JSONL summary must agree on a complete
+suite, the 12 distinct assertion IDs, all passing results and sample counts. The
+launcher also validates artifact identities, continuous CSV ticks and finite values.
+Exit 0 alone cannot pass: missing evidence, incomplete runs, timeouts, skipped or
+duplicated assertions, errors, warnings and untriaged visual flags all return failure.
+Attitude changes >60 degrees per sampled tick are heuristic visual flags, independent
+of semantic assertions. They require review; the foundation has no blanket exclusions.
+
+## Offline preparation (no game or profile writes)
+
+Set worktree-local CLI home, NuGet caches, TEMP/TMP and disabled reusable build
+servers, following the integration bootstrap helper. Set
+`DOTNET_GENERATE_ASPNET_CERTIFICATE=false` before the first SDK invocation.
+Always compile with `/p:AH64DeployToProfiles=false`.
+
+```powershell
+dotnet build AH64Mod/AH64.csproj -c Release --no-restore /p:AH64DeployToProfiles=false /p:UseSharedCompilation=false /nodeReuse:false
+pwsh -NoProfile -File tools/dev-profile/Test-Foundation.ps1
+pwsh -NoProfile -File tools/dev-profile/Check-Access.ps1 -DependencyDirectories $runtimeDllDirectories -OutputDirectory $newAccessDirectory
+pwsh -NoProfile -File tools/dev-profile/Test-Access.ps1 -ScannerDll $scannerDll -CecilPath $restoredCecil
+```
+
+The scanner resolves real game APIs from the installed game's Managed folder first,
+never publicized GameLibs. Supply explicit runtime dependency directories (including
+loader, hooks, R2API and patchers). Missing directories and every unresolved assembly,
+type or member are failures. Output identifies all resolved assembly paths/hashes.
+Protected inheritance is recognized; conservative non-public findings require review.
+This is an IL preflight, not a simulation of runtime publicizer patches. Existing
+baseline non-public sites are not silently grandfathered; staging stays blocked until
+the integrator resolves/classifies that actual-game access gate. Do not edit Modules
+or declare GameLibs compilation a game-access pass to clear it.
+
+## Reserved serial trial (integrator only; not performed by this task)
+
+1. Integrator grants owner/run token and the canonical absolute lock path:
+   `<integration-root>/dist/coordination/runtime.lock`. Prepare its parent directory.
+   Atomic CreateNew acquisition fails if occupied, unreadable or partially written.
+   No stale timeout takeover; only matching owner/token can release, with game closed.
+   Stage retains the lease through launch and full-log capture. Failure restores the
+   targeted allowlist; a blocked rollback retains the lease for integrator review.
+2. Prepare only `AH64 1.3 Dev`, install the mod and its declared/transitive dependencies,
+   and place `.ah64-disposable-test-profile` containing exactly `AH64 1.3 Dev` in its
+   root. Create no player profiles through these scripts. Close the game normally.
+3. Supply a reviewed dependency-lock JSON: `packages` contains each exact manifest
+   dependency string once and `directories` contains existing profile-relative DLL
+   directories, including the BepInEx core directory for its loader package. Empty or
+   missing directories fail. All core/plugins/patchers DLLs are separately inventoried;
+   package labels are reviewer-provided claims, not manager listing proof. Config and
+   support additions/deletions or changed bytes after staging fail launch preflight.
+4. Supply explicit DLL, bundle, `AH64Rotor.bnk`, AH64 config, successful `access.json`,
+   and integrator `provenance.json`. Baseline snapshot reuse accepts the schema from
+   `dist/bootstrap/runtime-assets/baseline-1.2.1`: matching source trees, unchanged asset
+   inputs, input-manifest hash, exact artifact hashes and audio-license hash. Snapshots
+   remain outside canonical packaging paths. No Unity/Wwise rebuild is implied.
+   The DLL must be this worktree's Release output. Staging recompiles with profile
+   deployment disabled and compares SHA/dirty/diff/untracked identities before and
+   after compilation, preventing an arbitrary old binary from claiming current source.
+   The supplied access scan must still match the resulting exact DLL bytes.
+5. Invoke staging only after access review, then launch the retained lease:
+
+```powershell
+pwsh -NoProfile -File tools/dev-profile/Stage-Build.ps1 -Dll $dll -Bundle $bundle -Bank $bank -Config $config -DependencyLock $dependencyLock -AccessResult $accessJson -AssetProvenance $provenance -RuntimeOwner $owner -RuntimeReservation $token -RuntimeLockPath $canonicalLock
+pwsh -NoProfile -File tools/dev-profile/Run-Autopilot.ps1 -StageRecord $stageJson -RuntimeOwner $owner -RuntimeReservation $token -RuntimeLockPath $canonicalLock -ValidateOnly
+pwsh -NoProfile -File tools/dev-profile/Run-Autopilot.ps1 -StageRecord $stageJson -RuntimeOwner $owner -RuntimeReservation $token -RuntimeLockPath $canonicalLock
+```
+
+`-AllowDirty` is explicit diagnostic use, not clean acceptance. Backups are completed
+before any replacement. Only DLL, AssetBundles/ah64, the rotor bank/source license,
+mod manifest and AH64 config are replaced. Partial staging failure restores prior
+bytes/removes newly created target files, preserving backups and failure records.
+Rollback restores only paths listed by that stage, with game closed. A launcher
+timeout may stop only its returned PID; failed/missing results never become passes.
+
+Start with one baseline run. Review all warnings/access findings/visual flags and
+terrain selection before expanding scenarios or comparing feature branches. Then
+repeat the same suite/artifact/config identities for a before/after trace. Normal
+controller play, multiplayer owner/observer tests and exact-ZIP clean acceptance
+remain separate reserved trials. No main merge or publication is authorized.
