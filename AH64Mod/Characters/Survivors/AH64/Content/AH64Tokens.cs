@@ -124,7 +124,7 @@ namespace AH64.Survivors
                 $"Drop {AH64BombingRunStaticValues.DropCount} bombs along your flight path for {Tokens.DamageValueText(AH64BombingRunStaticValues.DamageCoefficient)} each. " +
                 $"Each enemy can be damaged by at most {AH64BombingRunStaticValues.HitsPerTarget} bombs per run. Interrupted drops are lost.");
             Language.Add(prefix + "SPECIAL_HELLFIRE_NAME", "AGM-114 Hellfire");
-            Language.Add(prefix + "SPECIAL_HELLFIRE_DESCRIPTION", $"Press to launch a missile from a wing rail. Hold Special and aim with your crosshair to guide the latest missile; release to let it coast. Primary and secondary stay available. Detonates on contact for {Tokens.DamageValueText(AH64StaticValues.hellfireDamageCoefficient)}.");
+            Language.Add(prefix + "SPECIAL_HELLFIRE_DESCRIPTION", $"Press to launch a slow missile from a wing rail. Hold Special to show the targeting laser and accelerate the latest live missile toward your aim; release to slow it, then hold again to resume guidance. A new press with stock available launches a new missile. Primary and secondary stay available. Detonates on contact for {Tokens.DamageValueText(AH64StaticValues.hellfireDamageCoefficient)}.");
 
             Language.Add(prefix + "SPECIAL_LONGBOW_NAME", "AGM-114L Longbow");
             Language.Add(prefix + "SPECIAL_LONGBOW_DESCRIPTION",

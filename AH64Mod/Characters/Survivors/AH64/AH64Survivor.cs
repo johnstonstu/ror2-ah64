@@ -193,6 +193,7 @@ namespace AH64.Survivors
             //input, and holds at 0 rpm without touching the transform.
             bodyPrefab.AddComponent<AH64GatlingSpin>();
             bodyPrefab.AddComponent<AH64PylonMissiles>();
+            AH64HellfireOwner.Install(bodyPrefab);
             bodyPrefab.AddComponent<AH64FlightVisuals>();
             bodyPrefab.AddComponent<AH64FlightAudio>();
             bodyPrefab.AddComponent<AH64HeatVisuals>();
