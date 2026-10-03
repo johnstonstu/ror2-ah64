@@ -35,9 +35,9 @@ namespace AH64
             try {
                 yield return Until(() => slot.stock==slot.maxStock && slot.CanExecute(),10f,"M230 full native drum");
                 float attackSpeed=pilot.attackSpeed;
-                BalanceCheck("m230.defaults",AH64StaticValues.chaingunMagazineSize==24 && FireChaingun.baseDuration==0.11f && Mathf.Abs(attackSpeed-1f)<0.001f,
+                BalanceCheck("m230.defaults",AH64StaticValues.chaingunMagazineSize==20 && FireChaingun.baseDuration==0.11f && Mathf.Abs(attackSpeed-1f)<0.001f,
                     "nominal interval="+FireChaingun.baseDuration+" attackSpeed="+attackSpeed+" damage="+AH64PlaytestConfig.ChaingunDamage+" HE="+AH64PlaytestConfig.ChaingunSplashDamage+" proc="+AH64StaticValues.chaingunProcCoefficient);
-                BalanceCheck("m230.native-magazine",skill.baseMaxStock==24 && slot.maxStock==24 && slot.stock==24,
+                BalanceCheck("m230.native-magazine",skill.baseMaxStock==20 && slot.maxStock==20 && slot.stock==20,
                     "SkillDef="+skill.baseMaxStock+" native max="+slot.maxStock+" stock="+slot.stock);
                 var nativeEntries=new List<float>();
                 EntityState last=null;
@@ -63,8 +63,8 @@ namespace AH64
                 }
                 yield return new WaitForFixedUpdate();observe();
                 yield return new WaitForFixedUpdate();observe();
-                BalanceCheck("m230.stock-cost",accepted==24 && singleStock && slot.stock==0,"accepted="+accepted+" one-stock-each="+singleStock+" stock="+slot.stock);
-                BalanceCheck("m230.native-fire-entries",nativeEntries.Count==24,"actual FireChaingun state entries="+nativeEntries.Count);
+                BalanceCheck("m230.stock-cost",accepted==20 && singleStock && slot.stock==0,"accepted="+accepted+" one-stock-each="+singleStock+" stock="+slot.stock);
+                BalanceCheck("m230.native-fire-entries",nativeEntries.Count==20,"actual FireChaingun state entries="+nativeEntries.Count);
                 var intervals=nativeEntries.Skip(1).Select((time,index)=>time-nativeEntries[index]).ToArray();
                 float nominal=FireChaingun.baseDuration/attackSpeed;
                 bool cadence=intervals.Length==23 && intervals.All(dt=>dt>=nominal-0.001f && dt<=nominal+Time.fixedDeltaTime*3f+0.001f);
@@ -74,7 +74,7 @@ namespace AH64
                 float reload=skill.GetRechargeInterval(slot);
                 yield return Until(()=>slot.stock>0,10f,"M230 native full reload");
                 float elapsed=Time.fixedTime-lastRequest;
-                BalanceCheck("m230.whole-reload",slot.stock==24 && slot.maxStock==24,"native stock="+slot.stock+" max="+slot.maxStock);
+                BalanceCheck("m230.whole-reload",slot.stock==20 && slot.maxStock==20,"native stock="+slot.stock+" max="+slot.maxStock);
                 BalanceCheck("m230.reload-timing",Mathf.Abs(elapsed-reload)<=Time.fixedDeltaTime*3f+0.001f,"native elapsed from last request="+elapsed.ToString("R",Invariant)+" expected="+reload.ToString("R",Invariant));
                 yield return Until(()=>!(Machine("Weapon").state is FireChaingun),5f,"M230 firing state exit");
             } finally {slot.UnsetSkillOverride(this,skill,GenericSkill.SkillOverridePriority.Contextual);}

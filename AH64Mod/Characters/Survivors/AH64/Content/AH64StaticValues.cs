@@ -475,10 +475,10 @@ namespace AH64.Survivors
         //or you are reloading.
         //  burst     = chaingunMagazineSize rounds at 1 / chaingunBaseDuration per second
         //  sustained = chaingunMagazineSize / (chaingunMagazineSize * chaingunBaseDuration + chaingunReloadDuration)
-        //            = 24 * 0.52 / (2.64 + 1.7) = 2.88 direct coeff/sec at full range.
-        //            Close range (75%) is 2.16. Native fixed-tick scheduling adds quantization.
-        //1.3 playtest: 30 -> 24 rounds; reduce firing uptime without changing per-round damage/reload.
-        public const int chaingunMagazineSize = 24;
+        //            = 20 * 0.52 / (2.20 + 1.7) = 2.67 direct coeff/sec at full range.
+        //            Close range (75%) is 2.00. Native fixed-tick scheduling adds quantization.
+        //1.3 hands-on feedback: 24 -> 20 rounds; per-round damage, cadence and reload unchanged.
+        public const int chaingunMagazineSize = 20;
         public const float chaingunReloadDuration = 1.7f;
         #endregion
 
@@ -487,7 +487,7 @@ namespace AH64.Survivors
         //rounds per second at full spool, each hitting for about half as much. Sustained
         //The 1.3 M230-only nerf leaves this variant untouched. See AH64GatlingSpin for spin/audio.
         //
-        //  M230     sustained = 24 * 0.52 / (24 * 0.11 + 1.7)  = 2.88 coeff/sec at full range
+        //  M230     sustained = 20 * 0.52 / (20 * 0.11 + 1.7)  = 2.67 coeff/sec at full range
         //  Gatling  sustained = 60 * 0.34 / (60 * 0.055 + 2.4) = 3.58 coeff/sec at full range
         //
         //1.2.1: per-round coeff 0.39 -> 0.34. Both chin guns also take PrimaryRangeDamageScale,
