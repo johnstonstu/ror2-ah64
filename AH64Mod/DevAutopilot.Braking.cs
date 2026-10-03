@@ -32,6 +32,10 @@ namespace AH64
 
         private IEnumerator BrakingCases()
         {
+            // Historical stop/pivot assertions are not Banked Break acceptance. The user owns
+            // this wave's playtest; fail the old opt-in explicitly rather than reporting stale passes.
+            if (Environment.GetEnvironmentVariable("AH64_AUTOPILOT_BRAKING_CHECKS") == "braking-solo-v1")
+                throw new InvalidOperationException("braking-solo-v1 is retired for Banked Break. Use the four pilot-visible cases in tools/braking-turn/BANKED-BREAK-HANDOFF.md.");
             brakingStarted = true;
             Event("braking-scope", "braking-solo-v1: actual SOLO skill/stock and native PreMove; scripted aim, held collective, initial momentum, inventory and overrides. No physical input, peer, collision/item, target-hit or audio acceptance.");
             var utility = pilot.skillLocator.utility;

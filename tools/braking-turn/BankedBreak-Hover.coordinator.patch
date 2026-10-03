@@ -1,0 +1,20 @@
+--- a/AH64Mod/Characters/Survivors/AH64/Components/AH64HoverController.cs
++++ b/AH64Mod/Characters/Survivors/AH64/Components/AH64HoverController.cs
+@@ -136,0 +137,2 @@
++            AH64BrakingTurnMotor bankedMotor = GetComponent<AH64BrakingTurnMotor>();
++            if (bankedMotor) bankedMotor.CancelForTeleport();
+@@ -561,0 +564,14 @@
++            // Only consume after external handoffs and resource/terrain/ceiling evaluation.
++            AH64BankedBreakAltitude bankedHold = GetComponent<AH64BankedBreakAltitude>();
++            float requestedBodyAltitude;
++            if (bankedHold && bankedHold.TryGetBodyAltitude(jumpHeld, descendHeld,
++                hasGround, climbLocked || Airtime <= 0f, classic, out requestedBodyAltitude))
++            {
++                float requestedFeetAltitude = requestedBodyAltitude + FeetY() - transform.position.y;
++                pilotHeight = Mathf.Clamp(requestedFeetAltitude - groundY, rest, ceiling);
++                pilotAltitude = groundY + pilotHeight;
++                pilotAltitudeValid = true;
++                holdingAltitude = true;
++                bumpHeight = Mathf.Min(bumpHeight, pilotHeight);
++            }
++

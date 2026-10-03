@@ -42,6 +42,7 @@ namespace AH64.Survivors.Components
             On.RoR2.CharacterMotor.PreMove += OnPreMove;
             On.RoR2.CharacterMotor.ApplyForceImpulse += OnForce;
             SceneManager.activeSceneChanged += SceneChanged;
+            MapZone.onBodyTeleportGlobal += Teleported;
             hooked = true;
         }
 
@@ -104,7 +105,9 @@ namespace AH64.Survivors.Components
             if (hit.hitNormal.y < 0.5f) Yield("wall-or-roof");
         }
 
+        internal void CancelForTeleport() { if (owner != null) Yield("teleport"); }
         private void SceneChanged(Scene previous, Scene next) { Yield("stage-change"); }
+        private void Teleported(CharacterBody teleported) { if (teleported == body) Yield("teleport"); }
         private void FixedUpdate() { Check(owner); }
         private void OnDisable() { Yield("disabled"); Release(owner); }
 
@@ -112,6 +115,8 @@ namespace AH64.Survivors.Components
         {
             IsYielding = true;
             YieldReason = reason;
+            AH64BankedBreakAltitude altitude = GetComponent<AH64BankedBreakAltitude>();
+            if (altitude) altitude.End(owner);
             Unhook();
         }
 
@@ -121,6 +126,7 @@ namespace AH64.Survivors.Components
             On.RoR2.CharacterMotor.PreMove -= OnPreMove;
             On.RoR2.CharacterMotor.ApplyForceImpulse -= OnForce;
             SceneManager.activeSceneChanged -= SceneChanged;
+            MapZone.onBodyTeleportGlobal -= Teleported;
             if (motor) motor.onMovementHit -= OnMovementHit;
             hooked = false;
         }

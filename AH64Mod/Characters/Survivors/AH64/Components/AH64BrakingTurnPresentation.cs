@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 
 namespace AH64.Survivors.Components
 {
+    // Brake is retained as the internal bank-in phase identifier for existing central wiring.
     internal enum AH64BrakingTurnPhase { Brake, Turn, Exit }
 
     internal struct AH64BrakingTurnFrame
@@ -56,14 +57,9 @@ namespace AH64.Survivors.Components
             float phaseProgress = phase == AH64BrakingTurnPhase.Brake ? age / capture.BrakeDuration
                 : phase == AH64BrakingTurnPhase.Turn ? (age - capture.BrakeDuration) / capture.TurnDuration
                 : (age - turnEnd) / capture.ExitDuration;
-            float flare = phase == AH64BrakingTurnPhase.Brake
-                ? Mathf.Sin(phaseProgress * Mathf.PI * 0.5f)
-                : phase == AH64BrakingTurnPhase.Turn ? 1f : 1f - phaseProgress;
-            float turnTime = Mathf.Min(capture.TurnDuration,
-                Mathf.Abs(capture.SignedCorrection) / capture.TurnRate);
-            float turnAge = age - capture.BrakeDuration;
-            float bank = turnTime > 0f && turnAge > 0f && turnAge < turnTime
-                ? Mathf.Sin(Mathf.PI * turnAge / turnTime) * Mathf.Sign(capture.SignedCorrection) : 0f;
+            float envelope = Mathf.Sin(Mathf.PI * age / capture.Duration);
+            float flare = envelope;
+            float bank = envelope * Mathf.Sign(capture.SignedCorrection);
             frame = new AH64BrakingTurnFrame
             {
                 EntryAttitude = capture.EntryAttitude, RequestedHeading = capture.RequestedHeading,

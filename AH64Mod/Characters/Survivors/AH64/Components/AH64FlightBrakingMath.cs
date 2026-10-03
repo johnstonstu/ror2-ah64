@@ -25,8 +25,8 @@ namespace AH64.Survivors.Components
             float blend = AH64ManeuverMath.Smooth(frame.PhaseProgress);
             if (frame.Phase == AH64BrakingTurnPhase.Brake)
                 return Quaternion.Slerp(entryWorld, command, blend);
-            if (frame.Phase == AH64BrakingTurnPhase.Exit)
-                return Quaternion.Slerp(command, ordinaryWorld, blend);
+            // Keep the aircraft tangent to the moving arc through exit. The central
+            // owner already recovers smoothly to ordinaryWorld after the lease ends.
             return command;
         }
     }

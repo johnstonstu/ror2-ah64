@@ -13,6 +13,7 @@ namespace AH64.Survivors.SkillStates
         private bool hasCapture;
         private AH64BrakingTurnMotor motion;
         private AH64BrakingTurnPresentation presentation;
+        private AH64BankedBreakAltitude altitude;
         internal AH64BrakingTurnCapture EntrySnapshot => capture;
         internal float ManeuverProgress => hasCapture ? Mathf.Clamp01(fixedAge / capture.Duration) : 0f;
         internal bool MotionYielded => motion && motion.IsYielding;
@@ -28,7 +29,7 @@ namespace AH64.Survivors.SkillStates
                     inputBank ? inputBank.moveVector : Vector3.zero,
                     inputBank ? inputBank.aimDirection : Vector3.zero,
                     characterDirection ? characterDirection.forward : transform.forward,
-                    visuals ? visuals.CaptureAttitude() : Quaternion.identity, moveSpeedStat);
+                    visuals ? visuals.CaptureAttitude() : Quaternion.identity, NormalMoveSpeed());
                 hasCapture = true;
             }
             // Received capture is never overwritten by remote OnEnter.
@@ -41,7 +42,22 @@ namespace AH64.Survivors.SkillStates
                 motion = GetComponent<AH64BrakingTurnMotor>();
                 if (!motion) motion = gameObject.AddComponent<AH64BrakingTurnMotor>();
                 motion.Begin(this, () => isAuthority, capture);
+                altitude = GetComponent<AH64BankedBreakAltitude>();
+                if (!altitude) altitude = gameObject.AddComponent<AH64BankedBreakAltitude>();
+                altitude.Begin(this, () => isAuthority && motion && motion.HasActiveLease
+                    && characterMotor && characterMotor.hasEffectiveAuthority
+                    && characterBody && characterBody.healthComponent && characterBody.healthComponent.alive,
+                    transform.position.y);
             }
+        }
+
+        private float NormalMoveSpeed()
+        {
+            // CharacterBody.moveSpeed includes sprint scaling. Capture the underlying buffed
+            // normal-speed budget so sprint or chained maneuvers cannot multiply the boost.
+            float sprint = characterBody && characterBody.isSprinting
+                ? characterBody.sprintingSpeedMultiplier : 1f;
+            return moveSpeedStat / Mathf.Max(sprint, 1f);
         }
 
         public override void HandleMovements()
@@ -64,6 +80,7 @@ namespace AH64.Survivors.SkillStates
 
         public override void OnExit()
         {
+            if (altitude) altitude.End(this);
             if (motion) motion.Release(this);
             if (presentation) presentation.End(this);
             base.OnExit();
