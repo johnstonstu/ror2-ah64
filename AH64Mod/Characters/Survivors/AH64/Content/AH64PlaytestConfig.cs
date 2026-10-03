@@ -147,7 +147,7 @@ namespace AH64.Survivors
             chaingunBloom = Bind(config, Chaingun, "Spread bloom", 0.08f, 0f, 0.25f,
                 "Spread added per M230 round.");
             chaingunReload = Bind(config, Chaingun, "Drum reload seconds", 1.7f, 0.50f, 4f,
-                "Time to refill the 30-round drum after firing stops or it empties.");
+                $"Time to refill the {AH64StaticValues.chaingunMagazineSize}-round drum after firing stops or it empties.");
             chaingunSplashDamage = Bind(config, Chaingun, "HE splash coefficient",
                 AH64StaticValues.chaingunSplashDamageCoefficient, 0f, 0.75f,
                 "Damage at the centre of each 30mm HE impact. Splash proc remains hard-locked at zero.");

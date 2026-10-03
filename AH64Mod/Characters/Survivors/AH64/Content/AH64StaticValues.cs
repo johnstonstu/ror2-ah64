@@ -422,10 +422,10 @@ namespace AH64.Survivors
             return RangeDamageScale(distance, primaryCloseRange, primaryFullRange, primaryCloseRangeDamageScale);
         }
 
-        //600 rpm at base attack speed (0.10s per round). The real M230 runs 625.
-        //1.2.1 slowed this from 0.09s (~667 rpm).
-        public const float chaingunBaseDuration = 0.10f;
-        //1.2.1: 0.62 -> 0.52. Full-range burst is 0.52 / 0.10 = 5.2 coeff/sec.
+        //1.3 playtest: 0.10 -> 0.11s (~545 rpm), a smaller cadence cut alongside the shorter drum.
+        //1.2.1 previously slowed this from 0.09s; attack-speed scaling is unchanged.
+        public const float chaingunBaseDuration = 0.11f;
+        //1.2.1: 0.62 -> 0.52. Full-range burst is now 0.52 / 0.11 = 4.73 coeff/sec.
         //Close range is 75% of that (see PrimaryRangeDamageScale). HE splash is separate, below.
         public const float chaingunDamageCoefficient = 0.52f;
         public const float chaingunRange = 220f;
@@ -436,8 +436,8 @@ namespace AH64.Survivors
         public const float chaingunRecoil = 1.0f;
 
         //per-shot camera shake, carried by our cloned muzzle flash (vanilla Muzzleflash1 is shared
-        //with Commando, so the ShakeEmitter lives on a clone). Tiny on purpose: at 10 rounds/sec a
-        //full drum is 3.0s of continuous shake, so anything readable per-shot blurs the screen held.
+        //with Commando, so the ShakeEmitter lives on a clone). Tiny on purpose: a full drum is
+        //2.64s of nominal continuous fire, so anything readable per-shot blurs the screen held.
         public const float chaingunShakeDuration = 0.08f;
         public const float chaingunShakeRadius = 12f;
         public const float chaingunShakeAmplitude = 0.5f;
@@ -458,8 +458,8 @@ namespace AH64.Survivors
 
         //PROC COEFFICIENT IS THE DANGEROUS NUMBER HERE. It applies per hit. Left at 1.0 the chain gun
         //would quietly be the best on-hit platform in the game, with nothing in any log to explain why.
-        //1.2.1: 0.35 -> 0.50. At 10 rounds/sec that is 5 procs/sec.
-        //Any change to chaingunBaseDuration has to be paid for here.
+        //1.2.1: 0.35 -> 0.50. Keep the per-hit value in 1.3: slower cadence deliberately reduces
+        //nominal proc-weight per second from 5.0 to 4.55; do not compensate away the requested nerf.
         public const float chaingunProcCoefficient = 0.50f;
 
         //A chin turret hosing rounds is never pinpoint, so unlike the blaster this starts loose. Bloom
@@ -475,19 +475,19 @@ namespace AH64.Survivors
         //or you are reloading.
         //  burst     = chaingunMagazineSize rounds at 1 / chaingunBaseDuration per second
         //  sustained = chaingunMagazineSize / (chaingunMagazineSize * chaingunBaseDuration + chaingunReloadDuration)
-        //            = 30 * 0.52 / (3.0 + 1.7) = 3.32 direct coeff/sec at full range.
-        //            Close range (75%) is 2.49.
-        public const int chaingunMagazineSize = 30;
+        //            = 24 * 0.52 / (2.64 + 1.7) = 2.88 direct coeff/sec at full range.
+        //            Close range (75%) is 2.16. Native fixed-tick scheduling adds quantization.
+        //1.3 playtest: 30 -> 24 rounds; reduce firing uptime without changing per-round damage/reload.
+        public const int chaingunMagazineSize = 24;
         public const float chaingunReloadDuration = 1.7f;
         #endregion
 
         #region primary variant - XM301 rotary cannon (gatling)
         //Alternate primary. Trades the M230's per-round weight for volume: roughly 60% more
         //rounds per second at full spool, each hitting for about half as much. Sustained
-        //direct output is deliberately close to the M230's rather than above it - this is a
-        //different feel, not an upgrade. See AH64GatlingSpin for the spin/audio side.
+        //The 1.3 M230-only nerf leaves this variant untouched. See AH64GatlingSpin for spin/audio.
         //
-        //  M230     sustained = 30 * 0.52 / (30 * 0.10 + 1.7)  = 3.32 coeff/sec at full range
+        //  M230     sustained = 24 * 0.52 / (24 * 0.11 + 1.7)  = 2.88 coeff/sec at full range
         //  Gatling  sustained = 60 * 0.34 / (60 * 0.055 + 2.4) = 3.58 coeff/sec at full range
         //
         //1.2.1: per-round coeff 0.39 -> 0.34. Both chin guns also take PrimaryRangeDamageScale,

@@ -175,7 +175,8 @@ namespace AH64
             finished = true; scripting = false; move = Vector3.zero;
             int failures = checks.Count(c => !c.passed);
             bool prototypePassed = FinishPrototypeEvidence();
-            if (!prototypePassed) status = "failed";
+            bool balancePassed = FinishBalanceEvidence();
+            if (!prototypePassed || !balancePassed) status = "failed";
             if (status == "completed" && (checks.Count != ExpectedAssertions || failures > 0 || errors > 0 || warnings > 0 || visualFlags > 0)) status = "failed";
             var summary = new Summary { recordType = "summary", runId = Path.GetFileName(output), scenario = Suite, suite = Suite,
                 status = status, reason = reason, expectedAssertions = ExpectedAssertions, assertions = checks.Count,

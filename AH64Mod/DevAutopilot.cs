@@ -129,6 +129,8 @@ namespace AH64
             yield return HellfireCase();
             if (Environment.GetEnvironmentVariable("AH64_AUTOPILOT_FEATURE_CHECKS") == "solo-prototype-v1")
                 yield return PrototypeCases();
+            if (Environment.GetEnvironmentVariable("AH64_AUTOPILOT_BALANCE_CHECKS") == "m230-v1")
+                yield return M230BalanceCase();
         }
 
         private void AfterInput(On.RoR2.PlayerCharacterMasterController.orig_FixedUpdate orig, PlayerCharacterMasterController self)
