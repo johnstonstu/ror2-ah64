@@ -60,7 +60,7 @@ internal static class FeedbackChecks
         cadence.Value = 0.055f;
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
         string report = AH64BalanceReport.Build("test-version", entries, startup, "Feels good!\nTry this setup.");
-        Require(report.Contains("Base speed = 11.25 (default: 10) [restart pending; active: 10]"), "Pending restart/default/current values not reported accurately.");
+        Require(report.Contains("Base speed = 11.25 (default: 8.5) [restart pending; active: 8.5]"), "Pending restart/default/current values not reported accurately.");
         Require(report.Contains("Seconds per round at full spool = 0.055"), "Culture or precision changed the cadence.");
         Require(report.Contains("[XM301 Gatling]") && report.Contains("[M789 Cannon]") && report.Contains("[Audio]"), "Missing weapon/audio category.");
         Require(report.Contains("Feels good!\nTry this setup.") && report.Contains("test-version"), "Missing comments/version.");
@@ -95,7 +95,60 @@ internal static class FeedbackChecks
         Require(openFailed && Log.ErrorCount == 1, "Browser failure must be logged and rethrown.");
         Require(UnityEngine.GUIUtility.systemCopyBuffer.Contains(new string('漢', 1200)), "Browser failure lost the copied report.");
         System.IO.File.Delete(config.ConfigFilePath);
-        Console.WriteLine("PASS: all 34 release controls, legacy audio preservation, seven categories, restart state, precision, comments, export isolation, prefill/clipboard fallback, and browser failure handling.");
+        CheckBalanceMigration();
+        Console.WriteLine("PASS: all 34 release controls, legacy audio preservation, seven categories, restart state, precision, comments, export isolation, prefill/clipboard fallback, browser failure handling, and 1.2.1 default migration.");
+    }
+
+    private static void CheckBalanceMigration()
+    {
+        string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid() + ".cfg");
+        var legacy = new ConfigFile(path, false);
+        legacy.SaveOnConfigSet = false;
+        legacy.Bind("AH-64 Playtest - Movement", "Base speed", 0f).Value = 10f;
+        legacy.Bind("AH-64 Playtest - M230", "Direct damage coefficient", 0f).Value = 0.62f;
+        legacy.Bind("AH-64 Playtest - M230", "HE splash coefficient", 0f).Value = 0.40f;
+        legacy.Bind("AH-64 Playtest - XM301 Gatling", "Direct damage coefficient", 0f).Value = 0.39f;
+        legacy.Save();
+
+        var migrated = new ConfigFile(path, false);
+        migrated.SaveOnConfigSet = false;
+        AH64PlaytestConfig.Init(migrated);
+        Require(AH64PlaytestConfig.BaseMoveSpeed == 8.5f, "Old default speed was not migrated.");
+        Require(AH64PlaytestConfig.ChaingunDamage == 0.52f, "Old default M230 damage was not migrated.");
+        Require(AH64PlaytestConfig.ChaingunSplashDamage == 0.40f, "Custom M230 splash was overwritten.");
+        Require(AH64PlaytestConfig.GatlingDamage == 0.34f, "Old default XM301 damage was not migrated.");
+        Require(migrated.Bind("AH-64 Internal", "Balance version", -1).Value == 1, "Balance version was not bumped.");
+        Require(!AH64RiskOfOptions.Entries.Any(entry => entry.Definition.Key == "Balance version"),
+            "Balance version leaked into the settings menu.");
+
+        migrated.Bind("AH-64 Playtest - Movement", "Base speed", 0f).Value = 10f;
+        migrated.Save();
+        var retuned = new ConfigFile(path, false);
+        retuned.SaveOnConfigSet = false;
+        AH64PlaytestConfig.Init(retuned);
+        Require(AH64PlaytestConfig.BaseMoveSpeed == 10f, "A speed retuned to the old default was migrated again.");
+
+        string freshPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid() + ".cfg");
+        var fresh = new ConfigFile(freshPath, false);
+        fresh.SaveOnConfigSet = false;
+        AH64PlaytestConfig.Init(fresh);
+        Require(AH64PlaytestConfig.BaseMoveSpeed == 8.5f, "Fresh profile did not get the new speed.");
+        Require(AH64PlaytestConfig.ChaingunDamage == 0.52f, "Fresh profile did not get the new M230 damage.");
+        Require(AH64PlaytestConfig.ChaingunSplashDamage == 0.26f, "Fresh profile did not get the new M230 splash.");
+        Require(AH64PlaytestConfig.GatlingDamage == 0.34f, "Fresh profile did not get the new XM301 damage.");
+        Require(AH64StaticValues.PrimaryRangeDamageScale(0f) == 0.75f, "Primary ramp below 10m.");
+        Require(AH64StaticValues.PrimaryRangeDamageScale(10f) == 0.75f, "Primary ramp at 10m.");
+        Require(AH64StaticValues.PrimaryRangeDamageScale(30f) == 1f, "Primary ramp at 30m.");
+        Require(AH64StaticValues.PrimaryRangeDamageScale(40f) == 1f, "Primary ramp beyond 30m.");
+        Require(AH64StaticValues.PrimaryRangeDamageScale(20f) == 0.875f, "Primary ramp midpoint.");
+        Require(AH64StaticValues.RangeDamageScale(0f, 8f, 25f, 0.75f) == 0.75f, "Hydra ramp at launch.");
+        Require(AH64StaticValues.RangeDamageScale(25f, 8f, 25f, 0.75f) == 1f, "Hydra ramp at 25m.");
+        Require(AH64StaticValues.LongbowDamageCoefficient(5) == AH64StaticValues.LongbowDamageCoefficient(8),
+            "Longbow ramp must stop at the sixth missile.");
+        Require(AH64StaticValues.LongbowDamageCoefficient(5) > AH64StaticValues.LongbowDamageCoefficient(4),
+            "Longbow ramp must still climb through the sixth missile.");
+        System.IO.File.Delete(path);
+        System.IO.File.Delete(freshPath);
     }
 }
 

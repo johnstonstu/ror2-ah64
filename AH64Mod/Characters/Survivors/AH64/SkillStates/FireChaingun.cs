@@ -8,7 +8,7 @@ namespace AH64.Survivors.SkillStates
     /// <summary>
     /// Primary. The M230 chain gun in the chin turret: a hitscan 30mm round that auto-fires while the
     /// button is held, out of a fixed ammo drum. Each impact kicks a small HE splash so packs shred
-    /// without raising the direct coeff (or the proc rate).
+    /// without raising the proc rate. Direct hit and splash both take the close-range damage ramp.
     /// </summary>
     public class FireChaingun : BaseSkillState
     {
@@ -34,7 +34,6 @@ namespace AH64.Survivors.SkillStates
 
         private float duration;
         private AH64ChinTurret chinTurret;
-        private float splashDamage;
 
         public override void OnEnter()
         {
@@ -42,7 +41,6 @@ namespace AH64.Survivors.SkillStates
             duration = baseDuration / attackSpeedStat;
             characterBody.SetAimTimer(2f);
             chinTurret = GetComponent<AH64ChinTurret>();
-            splashDamage = splashDamageCoefficient * damageStat;
 
             Fire();
         }
@@ -96,6 +94,8 @@ namespace AH64.Survivors.SkillStates
             //Leave the barrel tip (ChildLocator Muzzle on ChinBarrel), not AimOrigin — otherwise the
             //tracer reads as coming out of the cockpit. Converge on the crosshair so chin parallax
             //doesn't walk shots past the aim point at close range.
+            //Damage is the full-range coefficient. ChaingunHitCallback scales it by impact distance
+            //before the hit lands, so a miss pays nothing and each hit uses its own range.
             new BulletAttack
             {
                 bulletCount = 1,
@@ -153,9 +153,15 @@ namespace AH64.Survivors.SkillStates
         /// <summary>
         /// Direct hit first, then a small HE blast at the impact point. Splash proc is zero on purpose —
         /// at chaingun cadence any non-zero splash proc would dominate the item economy.
+        /// Both use the close-range ramp: 75% at 10m and closer, full at 30m and beyond.
         /// </summary>
         private bool ChaingunHitCallback(BulletAttack bulletAttack, ref BulletAttack.BulletHit hitInfo)
         {
+            float rangeScale = AH64StaticValues.PrimaryRangeDamageScale(
+                Vector3.Distance(bulletAttack.origin, hitInfo.point));
+            //defaultHitCallback reads bulletAttack.damage, so the scale has to land before it runs.
+            bulletAttack.damage = damageCoefficient * damageStat * rangeScale;
+
             bool result = BulletAttack.defaultHitCallback(bulletAttack, ref hitInfo);
 
             //Do not rely solely on BulletAttack's implicit hit-effect path: it is tiny on terrain
@@ -184,6 +190,7 @@ namespace AH64.Survivors.SkillStates
                 }, true);
             }
 
+            float splashDamage = splashDamageCoefficient * damageStat * rangeScale;
             if (splashDamage <= 0f || splashRadius <= 0f)
                 return result;
 
@@ -206,7 +213,7 @@ namespace AH64.Survivors.SkillStates
                 procCoefficient = splashProcCoefficient,
                 procChainMask = default,
                 attackerFiltering = AttackerFiltering.NeverHitSelf,
-                //None, not NearestHit: at 11 rps a LoS reject on cluttered geometry would make the HE tip
+                //None, not NearestHit: at 10 rps a LoS reject on cluttered geometry would make the HE tip
                 //feel intermittent, which reads as "no splash" rather than "blocked".
                 losType = BlastAttack.LoSType.None,
             }.Fire();

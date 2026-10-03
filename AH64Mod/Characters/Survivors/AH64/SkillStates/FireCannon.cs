@@ -14,7 +14,7 @@ namespace AH64.Survivors.SkillStates
     /// primary starts competing with the rocket pods for the same fantasy; travel time and
     /// arc are what Hydra owns, and instant precision is what this owns.</para>
     ///
-    /// <para>This is the only primary with per-shot camera shake. At the M230's 11 rounds
+    /// <para>This is the only primary with per-shot camera shake. At the M230's 10 rounds
     /// per second, or the gatling's 18, shake would be a permanent rumble; at 2.5 each
     /// shot gets to land.</para>
     /// </summary>

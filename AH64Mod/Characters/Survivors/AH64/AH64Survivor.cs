@@ -47,7 +47,7 @@ namespace AH64.Survivors
             podPrefab = LegacyResourcesAPI.Load<GameObject>("Prefabs/NetworkedObjects/SurvivorPod"),
 
             //Gunship: more hull than a human survivor. The large model and pulled-back camera make
-            //human-survivor speeds read slower, so 10 is a noticeable but bounded first-test value.
+            //human-survivor speeds read slower. 8.5 (1.2.1, down from 10) is still a noticeable cruise.
             //Fire Control Radar can add another 15% while facing its paint. Higher acceleration sharpens
             //cyclic reversals without changing the hover controller or top speed. Armor stays 0 here;
             //the passive owns it.
@@ -556,6 +556,7 @@ namespace AH64.Survivors
             });
             //every rocket is an activation; AH64LuminousRipple grants one Luminous Shot stack per ripple instead
             rocketPods.autoHandleLuminousShot = false;
+            rocketPods.reloadSecondsPerExtraStock = AH64StaticValues.hydraReloadPerExtraRocket;
             return rocketPods;
         }
 

@@ -10,7 +10,7 @@ namespace AH64.Survivors.SkillStates
     /// Utility. Forward-diagonal barrel roll — snaps move input to forward / left / right (never back).
     /// Climbs through the maneuver, full procedural 360° on the model. Speed eases up from the entry
     /// velocity then coasts down so it does not slam to a fixed multiplier. I-frames for the first half,
-    /// plating armor after, flares through the move. Class name stays <c>ServoDash</c> for EntityState
+    /// plating armor for the length of the roll, flares through the move. Class name stays <c>ServoDash</c> for EntityState
     /// registration; player-facing name is Evasive Roll.
     /// </summary>
     public class ServoDash : BaseSkillState

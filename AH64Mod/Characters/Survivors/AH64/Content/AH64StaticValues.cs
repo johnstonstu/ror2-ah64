@@ -371,8 +371,8 @@ namespace AH64.Survivors
         //move-speed while facing the paint (dot of aim vs to-target above facingDotMin)
         public const float radarFacingMoveSpeedMult = 0.15f;
         public const float radarFacingDotMin = 0.65f;
-        //flat armor while within close range of the paint
-        public const float radarCloseArmor = 60f;
+        //flat armor while within close range of the paint. 1.2.1: +30, down from +60.
+        public const float radarCloseArmor = 30f;
         public const float radarCloseRange = 25f;
         #endregion
 
@@ -385,9 +385,9 @@ namespace AH64.Survivors
         //these skills, which isn't the balance intent.
         public const float primaryReloadAttackSpeedMultiplier = 0.35f;
         //Eclipse Lite pays barrier per cooldown. A primary reload only comes round after you stop
-        //firing, so at one restock it paid out a fraction of what a cooldown survivor gets. Playtested
-        //too weak on the XM301; counting a reload as four cooldowns brings it in line.
-        public const int primaryReloadBarrierRestocks = 4;
+        //firing, so at one restock it paid out a fraction of what a cooldown survivor gets. 1.2.0
+        //counted a full reload as four cooldowns; 1.2.1 brings that down to two.
+        public const int primaryReloadBarrierRestocks = 2;
 
         #region primary - M230 chain gun
         //HITSCAN, not a projectile. The old wrist blaster fired a real travelling bolt because a laser
@@ -397,16 +397,37 @@ namespace AH64.Survivors
         //BulletAttack plus a tracer. So the tracer here is the correct visual, not a compromise, and the
         //chin turret's off-centre parallax stops mattering because the shot resolves in one frame.
 
-        //~667 rpm at base attack speed. The real M230 runs 625 - close enough that the ear reads it as
-        //a chain gun rather than as a fast pistol.
-        public const float chaingunBaseDuration = 0.09f;
-        //Burst damage is deliberately unchanged from the blaster it replaces:
-        //  0.55 / 0.09 = 6.1 coeff/sec, against the blaster's 1.5 / 0.25 = 6.0.
-        //Three times the rounds for a third of the damage each. Texture change, not a buff.
-        //Small HE splash below is the pack-clearing bump — not a direct coeff raise.
-        //+12% across all three primaries/secondary/specials after playtest 2026-08-04 — first
-        //encounters were running long relative to the kit's fragility. Slight, not a rework.
-        public const float chaingunDamageCoefficient = 0.62f;
+        //Shared by the M230 and the XM301. 75% damage at or inside 10m, rising linearly to full at 30m.
+        //Applied to the direct hit and the splash. Rewards fighting from the hover instead of nose-in.
+        public const float primaryCloseRange = 10f;
+        public const float primaryFullRange = 30f;
+        public const float primaryCloseRangeDamageScale = 0.75f;
+
+        /// <summary>
+        /// 1 at <paramref name="fullRange"/> and beyond, <paramref name="closeScale"/> at
+        /// <paramref name="closeRange"/> and closer, linear between.
+        /// </summary>
+        public static float RangeDamageScale(float distance, float closeRange, float fullRange, float closeScale)
+        {
+            if (distance <= closeRange)
+                return closeScale;
+            if (distance >= fullRange || fullRange <= closeRange)
+                return 1f;
+            float t = (distance - closeRange) / (fullRange - closeRange);
+            return closeScale + (1f - closeScale) * t;
+        }
+
+        public static float PrimaryRangeDamageScale(float distance)
+        {
+            return RangeDamageScale(distance, primaryCloseRange, primaryFullRange, primaryCloseRangeDamageScale);
+        }
+
+        //600 rpm at base attack speed (0.10s per round). The real M230 runs 625.
+        //1.2.1 slowed this from 0.09s (~667 rpm).
+        public const float chaingunBaseDuration = 0.10f;
+        //1.2.1: 0.62 -> 0.52. Full-range burst is 0.52 / 0.10 = 5.2 coeff/sec.
+        //Close range is 75% of that (see PrimaryRangeDamageScale). HE splash is separate, below.
+        public const float chaingunDamageCoefficient = 0.52f;
         public const float chaingunRange = 220f;
         //per-round knockback. Heavier than the early 60 so each round thumps without pinballing at 11/sec.
         public const float chaingunForce = 100f;
@@ -415,17 +436,18 @@ namespace AH64.Survivors
         public const float chaingunRecoil = 1.0f;
 
         //per-shot camera shake, carried by our cloned muzzle flash (vanilla Muzzleflash1 is shared
-        //with Commando, so the ShakeEmitter lives on a clone). Tiny on purpose: at 11 rounds/sec a
-        //full drum is ~2.7s of continuous shake, so anything readable per-shot blurs the screen held.
+        //with Commando, so the ShakeEmitter lives on a clone). Tiny on purpose: at 10 rounds/sec a
+        //full drum is 3.0s of continuous shake, so anything readable per-shot blurs the screen held.
         public const float chaingunShakeDuration = 0.08f;
         public const float chaingunShakeRadius = 12f;
         public const float chaingunShakeAmplitude = 0.5f;
         public const float chaingunShakeFrequency = 22f;
 
-        //30mm HE tip: BlastAttack at the impact point. A 6u / 0.30 first pass is large enough to read
-        //on a pack while Linear falloff keeps the edge gentle. Proc remains ZERO — at 11 rps any splash
-        //proc would quietly become the best on-hit platform in the game.
-        public const float chaingunSplashDamageCoefficient = 0.34f;
+        //30mm HE tip: BlastAttack at the impact point. A 6u blast is large enough to read on a pack
+        //while Linear falloff keeps the edge gentle. Proc remains ZERO — at 10 rps any splash proc
+        //would quietly become the best on-hit platform in the game.
+        //1.2.1: 0.34 -> 0.26. The close-range ramp scales this the same way as the direct hit.
+        public const float chaingunSplashDamageCoefficient = 0.26f;
         public const float chaingunSplashRadius = 6f;
         public const float chaingunSplashProcCoefficient = 0f;
         public const float chaingunSplashForce = 40f;
@@ -434,12 +456,11 @@ namespace AH64.Survivors
         public const float chaingunSplashVfxScale = 2.5f;
         public const float chaingunSplashParticleMult = 0.42f;
 
-        //PROC COEFFICIENT IS THE DANGEROUS NUMBER HERE. It applies per hit, and this fires roughly three
-        //times as often as the blaster did - left at the blaster's 1.0 the chain gun would quietly be
-        //the best on-hit-item platform in the game, with nothing in any log to explain why.
-        //  11 shots/sec * 0.35 = 3.9 procs/sec, matching the blaster's 4/sec * 1.0.
+        //PROC COEFFICIENT IS THE DANGEROUS NUMBER HERE. It applies per hit. Left at 1.0 the chain gun
+        //would quietly be the best on-hit platform in the game, with nothing in any log to explain why.
+        //1.2.1: 0.35 -> 0.50. At 10 rounds/sec that is 5 procs/sec.
         //Any change to chaingunBaseDuration has to be paid for here.
-        public const float chaingunProcCoefficient = 0.35f;
+        public const float chaingunProcCoefficient = 0.50f;
 
         //A chin turret hosing rounds is never pinpoint, so unlike the blaster this starts loose. Bloom
         //per shot is much SMALLER than the blaster's 0.35 for the same reason the damage is - there are
@@ -454,7 +475,8 @@ namespace AH64.Survivors
         //or you are reloading.
         //  burst     = chaingunMagazineSize rounds at 1 / chaingunBaseDuration per second
         //  sustained = chaingunMagazineSize / (chaingunMagazineSize * chaingunBaseDuration + chaingunReloadDuration)
-        //            = 30 * 0.55 / (2.7 + 1.7) = 3.75 direct coeff/sec.
+        //            = 30 * 0.52 / (3.0 + 1.7) = 3.32 direct coeff/sec at full range.
+        //            Close range (75%) is 2.49.
         public const int chaingunMagazineSize = 30;
         public const float chaingunReloadDuration = 1.7f;
         #endregion
@@ -465,15 +487,12 @@ namespace AH64.Survivors
         //direct output is deliberately close to the M230's rather than above it - this is a
         //different feel, not an upgrade. See AH64GatlingSpin for the spin/audio side.
         //
-        //  M230     sustained = 30 * 0.55 / (30 * 0.09 + 1.7)      = 3.75 coeff/sec
-        //  Gatling  sustained = 60 * 0.30 / (60 * 0.055 + 2.4)     = 3.10 coeff/sec
+        //  M230     sustained = 30 * 0.52 / (30 * 0.10 + 1.7)  = 3.32 coeff/sec at full range
+        //  Gatling  sustained = 60 * 0.34 / (60 * 0.055 + 2.4) = 3.58 coeff/sec at full range
         //
-        //Lower sustained on purpose: the gatling's advantage is burst density and the spool
-        //ramp is a real cost, so parity would make it strictly better.
-        //Up 15% from 0.30 after playtest 2026-08-03. Sustained output now sits at
-        //60 * 0.345 / (60 * 0.055 + 2.4) = 3.57 coeff/sec against the M230's 3.75 —
-        //still under it, which keeps the spool ramp a real cost rather than a formality.
-        public const float gatlingDamageCoefficient = 0.39f;
+        //1.2.1: per-round coeff 0.39 -> 0.34. Both chin guns also take PrimaryRangeDamageScale,
+        //so nose-in fights pay 75% until 30m. The spool ramp is still the gatling's cost.
+        public const float gatlingDamageCoefficient = 0.34f;
         public const float gatlingRange = 190f;          //shorter than the M230; volume, not reach
         public const float gatlingForce = 55f;
         public const float gatlingBulletRadius = 0.35f;
@@ -489,9 +508,9 @@ namespace AH64.Survivors
         public const float gatlingMaxSpread = 3.4f;
         public const float gatlingSpreadBloom = 0.055f;
 
-        //Scaled down from the M230's 0.35 in proportion to the higher cadence, so the two
-        //primaries deliver comparable procs per second rather than the gatling flooding items.
-        public const float gatlingProcCoefficient = 0.20f;
+        //1.2.1: 0.20 -> 0.30. Full spool is ~18 rps * 0.30 ≈ 5.4 procs/sec, near the
+        //M230's 10 rps * 0.50 = 5.0, so the gatling does not flood items just by spinning up.
+        public const float gatlingProcCoefficient = 0.30f;
 
         //Splash exists so packs still shred, but it is much lighter than the M230's HE tip -
         //at 18 rps a 6u blast would be a permanent explosion carpet.
@@ -517,9 +536,9 @@ namespace AH64.Survivors
         //fantasy. Travel time and arc are what Hydra owns; instant precision is what this
         //owns.
         //
-        //  M230     sustained = 30 * 0.55  / (30 * 0.09  + 1.7) = 3.75 coeff/sec
-        //  Gatling  sustained = 60 * 0.345 / (60 * 0.055 + 2.4) = 3.57 coeff/sec
-        //  Cannon   sustained =  8 * 2.60  / ( 8 * 0.40  + 2.8) = 3.47 coeff/sec
+        //  M230     sustained = 30 * 0.52 / (30 * 0.10  + 1.7) = 3.32 coeff/sec at full range
+        //  Gatling  sustained = 60 * 0.34 / (60 * 0.055 + 2.4) = 3.58 coeff/sec at full range
+        //  Cannon   sustained =  8 * 2.90 / ( 8 * 0.40  + 2.8) = 3.87 coeff/sec
         //
         //All three sit close on single-target sustained, which is the point - they are
         //different feels, not a power ladder. The cannon's real edge is the splash: at
@@ -539,7 +558,7 @@ namespace AH64.Survivors
         public const float cannonMaxSpread = 0.8f;
         public const float cannonSpreadBloom = 0.35f;
 
-        //Full proc. At 2.5 rps this is ~2.5 procs/sec against the M230's ~3.85, so a
+        //Full proc. At 2.5 rps this is ~2.5 procs/sec against the M230's 5.0, so a
         //1.0 coefficient is affordable and makes on-hit items feel like they belong on
         //a heavy weapon.
         public const float cannonProcCoefficient = 1.0f;
@@ -570,14 +589,23 @@ namespace AH64.Survivors
         //replaces Tri-Blast, which fired three hitscan bolts in a single frame - the ripple is the whole
         //point, because a salvo you can watch walk out to the target is what makes the pods read as pods.
         public const int hydraRocketCount = 6;
-        //Gap between rockets while holding the trigger. Same cadence the old all-at-once salvo used.
-        public const float hydraFireInterval = 0.1f;
+        //Gap between rockets while holding the trigger.
+        //1.2.1: 0.10 -> 0.115. Five gaps in a base salvo are 0.575s, still under a second.
+        public const float hydraFireInterval = 0.115f;
 
-        //6 * 1.6 = 9.6 total against Tri-Blast's 3 * 3 = 9, but these are AoE and Tri-Blast was not.
-        //Reload (was inter-salvo cooldown) sits a touch under the old 6s so dripping rockets still feels
-        //generous while a dumped magazine still pays a real pause.
+        //6 * 1.8 = 10.8 total coefficient. These are AoE.
+        //Reload sits at 5.5s so a dumped magazine still pays a real pause.
         public const float hydraDamageCoefficient = 1.8f;
         public const float hydraReloadDuration = 5.5f;
+        //Each rocket above the base six (Backup Magazine, or anything else that raises max stock)
+        //adds this to the magazine reload. Extra rockets are a bigger burst, not free sustained DPS.
+        //Cooldown reduction still scales the whole reload, including this penalty.
+        public const float hydraReloadPerExtraRocket = 0.8f;
+        //Distance flown from spawn. 75% at or inside 8m, full at or beyond 25m. Straight flight, so
+        //distance from the spawn point is the distance flown. AH64HydraRangeRamp applies it on the server.
+        public const float hydraCloseRange = 8f;
+        public const float hydraFullRange = 25f;
+        public const float hydraCloseRangeDamageScale = 0.75f;
         //legacy alias — keep any stray references compiling during the magazine swap
         public const float hydraCooldown = hydraReloadDuration;
         //small blast. The Hellfire's 12 is the heavy one; these are supposed to shred a crowd, not
@@ -625,9 +653,10 @@ namespace AH64.Survivors
         //Forward weight for L/R paths: travel = normalize(facing * blend + ±right). At 0.7 the jink
         //stays forward-moving but shifts ~55° off the nose, reading more like lateral cyclic.
         public const float dashDiagonalBlend = 0.7f;
-        //bonus armor while the plating is braced, granted as a timed buff for 3x the dash duration
-        public const float dashArmorBonus = 300f;
-        public const float dashArmorDurationCoefficient = 3f;
+        //Bonus armor while the plating is braced. 1.2.1: 200, down from 300, and the buff lasts
+        //the roll itself (1 × 0.95s) rather than lingering for 3× that (~2.85s).
+        public const float dashArmorBonus = 200f;
+        public const float dashArmorDurationCoefficient = 1f;
         public const float dashInvincibilityDurationCoefficient = 0.5f;
 
         //countermeasure flares popped behind the airframe through the roll (kept restrained — firework
@@ -702,17 +731,32 @@ namespace AH64.Survivors
         //Custom PaintLongbow → FireLongbow. Hold special to paint, release to fire; Engi harpoon
         //projectile + lock VFX, our damage + pod muzzles. Primary/secondary stay free while painting.
         //Hybrid scale: more locks = more missiles, and later locks in the salvo hit harder.
-        //  damage = longbowDamageBase + lockIndex * longbowDamagePerLock  (lockIndex 0..max-1)
-        //  → 4.0, 4.55, 5.1, 5.65, 6.2, 6.75 at a full rack of 6 (+12% slight buff, 2026-08-04)
-        //Lysate Cell adds a missile per stack on top of this, and the ramp keeps going for them
-        //(7.3, 7.85, ...) — deliberate, so the cell pays off in burst the way it does for Hellfire.
+        //  damage = longbowDamageBase + rampIndex * longbowDamagePerLock
+        //  rampIndex = min(lockIndex, longbowMaxLocks - 1)
+        //  → 4.0, 4.55, 5.1, 5.65, 6.2, 6.75 across the six-lock rack
+        //1.2.1 caps the ramp at the 6th missile. Lysate Cell still adds a missile per stack, but
+        //those extra missiles deal 6.75 rather than climbing (the old 7.3, 7.85, ...).
         public const int longbowMaxLocks = 6;
         public const float longbowDamageBase = 4.0f;
         public const float longbowDamagePerLock = 0.55f;
         //tooltip / average reference — mid-salvo coeff for language tokens
         public const float longbowDamageCoefficient = longbowDamageBase + 2.5f * longbowDamagePerLock;
-        //six locks at Engi's old 3s felt oppressive once damage went up; slight bump
-        public const float longbowRechargeInterval = 3.5f;
+        //1.2.1: 3.5 -> 4.1 seconds per missile.
+        public const float longbowRechargeInterval = 4.1f;
+
+        /// <summary>
+        /// Per-missile coefficient. <paramref name="lockIndex"/> is 0 for the first lock.
+        /// The ramp stops on the last base-rack missile so extra stocks do not keep scaling damage.
+        /// </summary>
+        public static float LongbowDamageCoefficient(int lockIndex)
+        {
+            if (lockIndex < 0)
+                lockIndex = 0;
+            int rampCap = longbowMaxLocks - 1;
+            if (lockIndex > rampCap)
+                lockIndex = rampCap;
+            return longbowDamageBase + lockIndex * longbowDamagePerLock;
+        }
 
         public const float longbowLockInterval = 0.25f;
         public const float longbowLockAngle = 20f;
