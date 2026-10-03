@@ -24,8 +24,9 @@ namespace AH64.Survivors
             MeshRenderer donor = missileGhost ? missileGhost.GetComponentInChildren<MeshRenderer>(true) : null;
             if (!donor || !donor.sharedMaterial)
                 throw new InvalidOperationException("Bomb presentation requires the existing missile mesh material.");
-            Material flash = ParticleMaterial(explosion, "Flash");
             Material fire = ParticleMaterial(explosion, "Fire");
+            // The donor's Flash child is a Light, not a particle renderer.
+            Material flash = fire;
             Material smoke = ParticleMaterial(explosion, "DebrisSmoke");
             bombMaterial = donor.sharedMaterial;
             EnsureMeshes();
@@ -35,10 +36,20 @@ namespace AH64.Survivors
 
         private static Material ParticleMaterial(GameObject source, string name)
         {
+            Material fallback = null;
             if (source)
                 foreach (ParticleSystemRenderer renderer in source.GetComponentsInChildren<ParticleSystemRenderer>(true))
+                {
                     if (renderer.name == name && renderer.sharedMaterial) return renderer.sharedMaterial;
-            throw new InvalidOperationException("Bomb impact requires donor particle material: " + name);
+                    if (!fallback && renderer.sharedMaterial
+                        && renderer.renderMode != ParticleSystemRenderMode.Mesh)
+                        fallback = renderer.sharedMaterial;
+                }
+            // Bundle variants can omit a named emitter or its material. Cosmetic material
+            // selection must not abort the entire survivor's registration in Awake.
+            Log.Warning("Bomb impact donor material unavailable: " + name
+                + (fallback ? "; reusing another particle material." : "; omitting this cosmetic puff."));
+            return fallback;
         }
 
         private static GameObject BuildGhost()
@@ -78,6 +89,7 @@ namespace AH64.Survivors
         private static void Puff(Transform parent, string name, Material material, short count,
             float size, float life, float speed, Color color)
         {
+            if (!material) return;
             var child = new GameObject(name);
             child.transform.SetParent(parent, false);
             ParticleSystem particles = child.AddComponent<ParticleSystem>();
