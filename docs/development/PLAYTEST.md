@@ -267,3 +267,17 @@ The existing five capture points and ten-second file checks remain required.
 API references: [Unity 2021.3 ReadPixels](https://docs.unity3d.com/2021.3/Documentation/ScriptReference/Texture2D.ReadPixels.html),
 [active render target](https://docs.unity3d.com/2021.3/Documentation/ScriptReference/RenderTexture-active.html),
 and [end-of-frame timing](https://docs.unity3d.com/2021.3/Documentation/ScriptReference/WaitForEndOfFrame.html).
+
+The `b861b22` backbuffer trial passed all 12 ability checks, but its five PNGs were
+identical black frames. Each read logged `ReadPixels ... while not inside drawing
+frame`; the frames are rejected as visual evidence. Diagnostics identified the
+prior target as `crtexVoidSunCaustics`, not a portrait target. Capture now requires
+exactly one `SceneCamera` whose rig viewer is the local user and target is the AH64
+body. It renders that existing gameplay camera into a temporary target at the
+camera's original pixel dimensions, then reads that explicit target. It preserves
+camera pose/FOV/settings, restores its target and global active target in `finally`,
+and releases temporary resources. Unity errors during capture and flat RGB images
+fail before PNG acceptance. Captures show the gameplay scene without the UI camera;
+this supported camera render is additional diagnostic render work, not a new pose.
+[Unity Camera.Render](https://docs.unity3d.com/2021.3/Documentation/ScriptReference/Camera.Render.html)
+describes the existing camera settings, image filters and render callbacks used.
