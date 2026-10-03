@@ -102,9 +102,12 @@ The full copied game log and snapshots remain evidence, including errors outside
 
 ## Worker start gate
 
-Parent assigns isolated movement and guided-Hellfire worktrees after foundation handoff establishes
-the hook, access gate, artifact protocol and telemetry. Both workers start from the same recorded
-baseline and receive only their owned files; shared edits go through the integrator.
+Parent may assign isolated movement and guided-Hellfire prototype coding in parallel with the
+test-foundation work. Both workers start from the same recorded baseline and receive only their
+owned files; shared edits, including the pending foundation hook, go through the integrator.
+Feature integration and runtime deployment/comparison await the runnable foundation handoff
+(hook, access gate, artifact protocol and telemetry) and recorded unmodified-baseline runtime
+evidence. Parallel coding does not grant a runtime slot or permission to modify profiles.
 No further user decision is needed for these reversible prototypes under the defaults above.
 The choice of countermeasure alternative and bombing-path/input/refund semantics belongs to the
 later utility/bombing design checkpoint and must not expand these two workers' scope.
