@@ -18,6 +18,7 @@ namespace AH64
         private readonly HashSet<int> liveProjectiles = new HashSet<int>();
         private Quaternion previousAttitude;
         private bool hasAttitude;
+        private int poseEpoch;
         private int terminalExit;
         private static string Hash(string path)
         {
@@ -88,6 +89,7 @@ namespace AH64
                     ownerId = pilot.master ? pilot.master.gameObject.GetInstanceID() : 0, role = "solo-server-authority",
                     position = position, velocity = velocity, facing = forward, nativeAim = aim,
                     modelAttitude = attitude, authority = pilot.hasAuthority,
+                    poseEpoch = poseEpoch,
                     maneuverCapture = ManeuverObservation(), guidanceToken = GuidanceObservation(),
                     attitudeSamplePhase = "FixedUpdate reads most recent LateUpdate model pose"
                 };
@@ -200,7 +202,7 @@ namespace AH64
             public int requestedAssertionCount, seed;
         }
         [Serializable] private class Sample : Record {
-            public int tick, entityId, ownerId; public float simulationTime;
+            public int tick, entityId, ownerId, poseEpoch; public float simulationTime;
             public Vector3 position, velocity, facing, nativeAim; public Quaternion modelAttitude;
             public bool authority; public string role, maneuverCapture, guidanceToken, attitudeSamplePhase;
         }

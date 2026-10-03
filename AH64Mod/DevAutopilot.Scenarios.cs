@@ -20,11 +20,14 @@ namespace AH64
         private IEnumerator ResetCase(string name)
         {
             segment = name; move = Vector3.zero;
+            poseEpoch++;
+            hasAttitude = false;
             // The restored GameLibs baseline exposes the legacy two-argument API only.
             TeleportHelper.TeleportBody(pilot, mark);
             pilot.characterMotor.velocity = Vector3.zero;
             pilot.characterDirection.forward = facing;
             Event("scenario", "reset; state injection isolates enter/exit, bypasses stock/loadout/input activation");
+            Event("pose-epoch", "epoch="+poseEpoch+"; intentional harness teleport/facing reset; all poses retained, continuity comparison restarts at next observed pose");
             yield return FixedSeconds(2f);
         }
 
@@ -40,6 +43,10 @@ namespace AH64
             var machine = Machine("Body");
             Type mainType = machine.state.GetType();
             Vector3 start = pilot.gameObject.transform.position;
+            var camera = pilot.GetComponent<CameraTargetParams>();
+            float entryFov = camera ? camera.fovOverride : float.NaN;
+            float entryAirControl = pilot.characterMotor.airControl;
+            Event("movement-entry-controls", "observed pre-entry legacy FOV="+entryFov.ToString("R",Invariant)+" airControl="+entryAirControl.ToString("R",Invariant));
             machine.SetNextState(maneuver);
             yield return new WaitForFixedUpdate();
             yield return new WaitForFixedUpdate();
@@ -51,10 +58,19 @@ namespace AH64
             Assert(name + ".travel", travel > 0.1f, ">0.1m along expected travel", travel.ToString("R", Invariant), 0.1f);
             Assert(name + ".exit", machine.state.GetType() == mainType, mainType.Name, machine.state.GetType().Name, 0f);
             yield return FixedSeconds(2f);
-            var camera = pilot.GetComponent<CameraTargetParams>();
-            bool clean = camera && camera.fovOverride == -1f && !pilot.characterMotor.disableAirControlUntilCollision;
-            Assert(name + ".cleanup", clean, "FOV=-1; air control released", camera ? camera.fovOverride.ToString(Invariant) : "no camera", 0f);
+            bool clean = MovementResourcesReleased(entryFov, entryAirControl);
+            Assert(name + ".cleanup", clean, "observed entry legacy FOV/airControl restored; maneuver resources released", camera ? camera.fovOverride.ToString(Invariant)+" vs entry "+entryFov.ToString(Invariant) : "no camera", 0f);
             yield return Capture(name + "-cleanup");
+        }
+
+        private bool MovementResourcesReleased(float entryFov, float entryAirControl)
+        {
+            var camera=pilot.GetComponent<CameraTargetParams>();
+            var motion=pilot.GetComponent<Survivors.Components.AH64ManeuverMotor>();
+            var visuals=pilot.GetComponent<Survivors.Components.AH64FlightVisuals>();
+            return camera && camera.fovOverride==entryFov && pilot.characterMotor.airControl==entryAirControl
+                && !pilot.characterMotor.disableAirControlUntilCollision
+                && (!motion || !motion.HasActiveLease) && (!visuals || !visuals.HasActiveManeuverResources);
         }
 
         private IEnumerator HellfireCase()

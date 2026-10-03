@@ -47,16 +47,30 @@ namespace AH64
             yield return ResetCase(label);
             var slot = pilot.skillLocator.utility;
             var skill = Variant(slot, backflip ? typeof(SmokeBackflip) : typeof(ServoDash));
+            pilot.inventory.GiveItem(RoR2Content.Items.UtilitySkillMagazine);
             slot.SetSkillOverride(this, skill, GenericSkill.SkillOverridePriority.Contextual);
+            bool removedArenaInvulnerability=false;
             try {
-                yield return Until(() => slot.CanExecute(), 15f, "utility readiness");
+                yield return Until(() => slot.maxStock>=2, 10f, "native extra utility stock capacity");
+                if(slot.stock<2) slot.RestockSteplike();
+                yield return Until(() => slot.CanExecute() && slot.stock>=2, 15f, "utility readiness with spare stock");
+                var camera=pilot.GetComponent<CameraTargetParams>();
+                float entryFov=camera ? camera.fovOverride : float.NaN;
+                float entryAirControl=pilot.characterMotor.airControl;
+                Event("movement-entry-controls", "observed pre-entry legacy FOV="+entryFov.ToString("R",Invariant)+" airControl="+entryAirControl.ToString("R",Invariant));
+                // The arena has no combat directors. Remove only its one persistent safety buff
+                // while measuring native timed defense expiry, then restore it in finally.
+                if(pilot.GetBuffCount(RoR2Content.Buffs.HiddenInvincibility)!=1)
+                    throw new InvalidOperationException("Defensive probe requires exactly one arena safety buff.");
+                pilot.RemoveBuff(RoR2Content.Buffs.HiddenInvincibility);
+                removedArenaInvulnerability=true;
                 Vector3 side = Vector3.Cross(Vector3.up, facing);
                 move = side * 0.25f;
                 pilot.inputBank.moveVector = move;
                 pilot.characterMotor.velocity = facing * 7f + side * 3f;
                 int stock = slot.stock;
                 bool activated = slot.ExecuteIfReady();
-                PrototypeCheck(label+".activation-stock", activated && slot.stock == stock-1,
+                PrototypeCheck(label+".activation-stock", activated && stock>=2 && slot.stock>=1 && slot.stock == stock-1,
                     "ExecuteIfReady="+activated+" stock "+stock+" -> "+slot.stock);
                 yield return new WaitForFixedUpdate(); yield return new WaitForFixedUpdate();
                 var state = Machine("Body").state;
@@ -69,23 +83,38 @@ namespace AH64
                 PrototypeCheck(label+".momentum-capture", snapshot.EntryVelocity.magnitude > 1f &&
                     Mathf.Abs(Vector3.Dot(snapshot.EntryVelocity, side)) > 0.1f,
                     "captured="+snapshot.EntryVelocity+" actual="+pilot.characterMotor.velocity);
-                PrototypeCheck(label+".reentry-rejected", !slot.ExecuteIfReady(), "native utility ExecuteIfReady during Pain-priority maneuver");
+                int spareStock=slot.stock;
+                float defenseDuration=snapshot.Duration*(backflip ? Survivors.AH64StaticValues.backflipInvincibilityDurationCoefficient : Survivors.AH64StaticValues.dashInvincibilityDurationCoefficient);
+                float enteredAt=Time.fixedTime-state.fixedAge;
+                bool defenseInitiallyActive=pilot.HasBuff(RoR2Content.Buffs.HiddenInvincibility);
+                bool earlyReentry=slot.ExecuteIfReady();
                 Vector3 velocity = pilot.characterMotor.velocity;
                 move = -side * 0.5f;
+                pilot.inputBank.moveVector=move;
                 yield return FixedSeconds(0.15f);
-                PrototypeCheck(label+".steering-finite", Finite(pilot.characterMotor.velocity) &&
-                    (pilot.characterMotor.velocity-velocity).sqrMagnitude > 0.01f,
-                    "before="+velocity+" after="+pilot.characterMotor.velocity);
+                float lateralBefore=Vector3.Dot(velocity,side),lateralAfter=Vector3.Dot(pilot.characterMotor.velocity,side);
+                PrototypeCheck(label+".steering-direction", Finite(pilot.characterMotor.velocity) && lateralBefore>0.1f && lateralAfter < -0.1f,
+                    "positive-to-negative input; lateral before="+lateralBefore+" after="+lateralAfter);
+                bool lateReentry=slot.ExecuteIfReady();
+                yield return new WaitForFixedUpdate();yield return new WaitForFixedUpdate();
+                PrototypeCheck(label+".reentry-rejected", spareStock>=1 && !earlyReentry && !lateReentry
+                    && slot.stock==spareStock && ReferenceEquals(Machine("Body").state,state) && state.fixedAge>0.15f,
+                    "spare stock="+spareStock+" now="+slot.stock+" attempts="+earlyReentry+","+lateReentry+" sameState="+ReferenceEquals(Machine("Body").state,state)+" age="+state.fixedAge);
+                yield return Until(() => Time.fixedTime>enteredAt+defenseDuration+Time.fixedDeltaTime*2f,5f,"original timed defense deadline");
+                PrototypeCheck(label+".defense-expiry-not-renewed", defenseInitiallyActive && !pilot.HasBuff(RoR2Content.Buffs.HiddenInvincibility),
+                    "native timed invulnerability active at entry; expired after original "+defenseDuration+"s despite spare-stock attempts");
                 yield return Until(() => Machine("Body").state != state, 5f, "utility exit");
                 PrototypeCheck(label+".exit-carry", Finite(pilot.characterMotor.velocity) && pilot.characterMotor.velocity.magnitude > 0.1f,
                     pilot.characterMotor.velocity.ToString());
                 move = Vector3.zero;
                 yield return FixedSeconds(0.5f);
-                var camera = pilot.GetComponent<CameraTargetParams>();
-                PrototypeCheck(label+".cleanup", camera && camera.fovOverride == -1f &&
-                    !pilot.characterMotor.disableAirControlUntilCollision && pilot.characterMotor.airControl > 0f,
-                    "FOV="+(camera ? camera.fovOverride.ToString() : "missing")+" airControl="+pilot.characterMotor.airControl);
-            } finally { slot.UnsetSkillOverride(this, skill, GenericSkill.SkillOverridePriority.Contextual); move=Vector3.zero; }
+                PrototypeCheck(label+".cleanup", MovementResourcesReleased(entryFov,entryAirControl),
+                    "FOV="+(camera ? camera.fovOverride.ToString() : "missing")+" entry="+entryFov+" airControl="+pilot.characterMotor.airControl+" entryAirControl="+entryAirControl+"; native lease/audio/FOV ownership released");
+            } finally {
+                slot.UnsetSkillOverride(this, skill, GenericSkill.SkillOverridePriority.Contextual);move=Vector3.zero;
+                pilot.inventory.RemoveItem(RoR2Content.Items.UtilitySkillMagazine);
+                if(removedArenaInvulnerability) pilot.AddBuff(RoR2Content.Buffs.HiddenInvincibility);
+            }
         }
 
         private ProjectileController[] NativeHellfires()
@@ -187,11 +216,11 @@ namespace AH64
         {
             bool requested=Environment.GetEnvironmentVariable("AH64_AUTOPILOT_FEATURE_CHECKS")=="solo-prototype-v1";
             if(!requested) return true;
-            bool passed=prototypeStarted && prototypeComplete && prototypeChecks.Count==34 && prototypeChecks.All(c => c.passed);
+            bool passed=prototypeStarted && prototypeComplete && prototypeChecks.Count==36 && prototypeChecks.All(c => c.passed);
             File.WriteAllText(Path.Combine(output,"prototype-result.json"),JsonUtility.ToJson(new PrototypeResult {
                 runId=Path.GetFileName(output),sourceSha=JsonUtility.FromJson<StageIdentity>(File.ReadAllText(Path.Combine(output,"identity.json"))).sourceSha,
                 dllSha256=Hash(typeof(AH64Plugin).Assembly.Location),status=passed ? "passed" : "failed",complete=prototypeComplete,
-                expectedChecks=34,checks=prototypeChecks.ToArray(),limitation="SOLO native skill/stock pipeline with scripted aim/hold, initial momentum, skill overrides and isolated ICBM inventory. Physical controller, host/remote/observer, targeted damage, Longbow reservation/refund/Lysate cap, floor/ledge and external knockback remain unverified. Five images belong to the preceding comparable baseline cases."
+                expectedChecks=36,checks=prototypeChecks.ToArray(),limitation="SOLO native skill/stock pipeline with scripted aim/hold, initial momentum, skill overrides and isolated utility-stock/ICBM inventory. Physical controller, host/remote/observer, targeted damage, Longbow reservation/refund/Lysate cap, floor/ledge and external knockback remain unverified. Five images belong to the preceding comparable baseline cases."
             },true));
             return passed;
         }

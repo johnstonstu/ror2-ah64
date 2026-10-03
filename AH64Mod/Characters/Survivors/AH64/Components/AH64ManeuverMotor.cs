@@ -15,6 +15,7 @@ namespace AH64.Survivors.Components
         private bool yielding;
         private bool hooked;
         public bool IsYielding => yielding;
+        internal bool HasActiveLease => owner != null || hooked;
         public bool NeedsMainHandoff => motor && motor.hasEffectiveAuthority
             && BaseHeadstompersState.FindForBody(body) is HeadstompersFall;
 

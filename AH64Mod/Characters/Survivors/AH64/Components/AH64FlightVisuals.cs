@@ -48,6 +48,7 @@ namespace AH64.Survivors.Components
         private float priorFov;
         private float lastFov;
         private bool ownsFov;
+        internal bool HasActiveManeuverResources => maneuverOwner != null || ownsFov || travelAudio;
         private bool travelAudio;
         private float barrelRollSign;
         private float barrelRollTimer;
