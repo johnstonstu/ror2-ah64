@@ -44,6 +44,11 @@ class IdentityChecks(unittest.TestCase):
             with self.subTest(processes=processes), self.assertRaises(RuntimeError):
                 bridge.validate_identity(self.stage, self.request, self.lease, self.run)
 
+    def test_identical_later_window_pixels_rejected(self):
+        bridge.require_fresh_pixels('new', {'old'})
+        with self.assertRaises(RuntimeError):
+            bridge.require_fresh_pixels('old', {'old'})
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -17,6 +17,11 @@ NAMES = {'roll-entered', 'roll-cleanup', 'backflip-entered', 'backflip-cleanup',
 SOURCE = 'Pillow.ImageGrab.grab(window=observed-owned-HWND)'
 
 
+def require_fresh_pixels(png_hash, previous_hashes):
+    if png_hash in previous_hashes:
+        raise RuntimeError('Repeated window pixels across distinct moving baseline phases; cached/stale presentation cannot qualify')
+
+
 def utc():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -78,7 +83,7 @@ def owned_window(pid, executable):
     return windows[0]
 
 
-def capture(stage, request, run, request_path):
+def capture(stage, request, run, request_path, previous_hashes):
     lease_path = pathlib.Path(stage['runtimeLockPath'])
     validate_identity(stage, request, read(lease_path), run)
     if request_path.name != request['token'] + '.request.json':
@@ -102,6 +107,13 @@ def capture(stage, request, run, request_path):
         raise RuntimeError('Refusing an existing checkpoint PNG')
     temporary = png.with_suffix('.png.tmp')
     image.save(temporary, format='PNG', compress_level=1)
+    png_hash = hashlib.sha256(temporary.read_bytes()).hexdigest().upper()
+    try:
+        require_fresh_pixels(png_hash, previous_hashes)
+    except RuntimeError:
+        # Preserve rejected real pixels without labelling them as an accepted phase.
+        temporary.replace(request_path.with_name(request['token'] + '.rejected.png'))
+        raise
     temporary.replace(png)
     evidence = {key: request[key] for key in ('runId', 'token', 'name', 'pid', 'executable', 'sourceSha',
                                              'owner', 'reservation', 'phase', 'bodyId', 'bodyState', 'weaponState')}
@@ -110,12 +122,13 @@ def capture(stage, request, run, request_path):
                     foregroundIsOwned=win32gui.GetForegroundWindow() == hwnd,
                     request=request, startedUtc=started, finishedUtc=finished, acknowledgedUtc=utc(),
                     width=image.width, height=image.height, rgbExtrema=extrema, nonflat=True,
-                    png=png.name, pngSha256=hashlib.sha256(png.read_bytes()).hexdigest().upper(),
+                    png=png.name, pngSha256=png_hash,
                     limitation='Original owned-window pixels; request frame and capture interval only, no exact rendered-frame identity')
     ack = request_path.with_name(request['token'] + '.ack.json')
     temporary = ack.with_suffix('.json.tmp')
     temporary.write_text(json.dumps(evidence, indent=2), encoding='utf-8')
     temporary.replace(ack)
+    previous_hashes.add(png_hash)
     print(json.dumps(evidence), flush=True)
 
 
@@ -125,9 +138,13 @@ def main():
     if run.parent != pathlib.Path(stage['runDirectory']) or not run.name.startswith('execution-'):
         raise RuntimeError('Run directory does not belong to the supplied stage')
     seen = set()
+    previous_hashes = set()
     deadline = time.monotonic() + 300
     while time.monotonic() < deadline:
         if (run / 'result.json').exists():
+            terminal = dict(schema=1, status='completed', runId=run.name, helperPid=os.getpid(),
+                            checkpointNames=sorted(name for name in seen if not name.endswith('.json')), finishedUtc=utc())
+            (run / 'window-helper-result.json').write_text(json.dumps(terminal, indent=2), encoding='utf-8')
             return
         for path in (run / 'window-captures').glob('*.request.json'):
             if path.name in seen:
@@ -135,7 +152,7 @@ def main():
             request = read(path)
             if request['name'] in {name for name in seen if not name.endswith('.json')}:
                 raise RuntimeError('Repeated checkpoint request')
-            capture(stage, request, run, path)
+            capture(stage, request, run, path, previous_hashes)
             seen.update((path.name, request['name']))
         time.sleep(.005)
     raise RuntimeError('Bounded owned-window helper deadline')

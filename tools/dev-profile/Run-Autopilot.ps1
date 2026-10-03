@@ -84,6 +84,13 @@ function Test-AutopilotEvidence([string]$Directory, [int]$ProcessExit, [bool]$Ti
     [pscustomobject]@{ schema = 1; status = $(if ($problems.Count -eq 0) { 'passed' } else { 'failed' }); processExit = $ProcessExit; timedOut = $TimedOut; problems = @($problems); logFindings = $logFindings }
 }
 
+function Get-CaptureEvidenceTime($Value) {
+    # PowerShell 7 may deserialize ISO JSON dates to DateTime; preserve ticks and UTC kind.
+    if ($Value -is [DateTimeOffset]) { return $Value }
+    if ($Value -is [DateTime]) { return [DateTimeOffset]$Value }
+    return [DateTimeOffset]::Parse([string]$Value, [Globalization.CultureInfo]::InvariantCulture)
+}
+
 function Test-WindowCaptureEvidence([string]$Directory) {
     $names = @('roll-entered','roll-cleanup','backflip-entered','backflip-cleanup','hellfire-launched')
     $bridge = Join-Path $Directory 'window-captures'
@@ -91,7 +98,7 @@ function Test-WindowCaptureEvidence([string]$Directory) {
     $acks = @(Get-ChildItem -LiteralPath $bridge -Filter '*.ack.json' -ErrorAction Stop)
     $phases = @(Get-ChildItem -LiteralPath $bridge -Filter '*.phase.json' -ErrorAction Stop)
     if ($requests.Count -ne 5 -or $acks.Count -ne 5 -or $phases.Count -ne 5) { throw 'Missing/extra bridge records.' }
-    $observed = @(); $processId = $null
+    $observed = @(); $hashes = @(); $processId = $null
     foreach ($file in $requests) {
         $request = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
         $ack = Get-Content -LiteralPath (Join-Path $bridge ($request.token + '.ack.json')) -Raw | ConvertFrom-Json
@@ -104,10 +111,11 @@ function Test-WindowCaptureEvidence([string]$Directory) {
         if ($request.runId -cne [IO.Path]::GetFileName($Directory) -or $ack.schema -ne 1 -or $ack.status -cne 'captured' -or $ack.source -cne 'Pillow.ImageGrab.grab(window=observed-owned-HWND)' -or $ack.nonflat -ne $true -or $ack.hwnd -le 0 -or $ack.pid -le 0) { throw 'Wrong capture provenance.' }
         if ($processId -and $ack.pid -ne $processId) { throw 'Capture process changed.' }; $processId = $ack.pid
         if ($phase.runId -cne $request.runId -or $phase.token -cne $request.token -or $phase.phaseValid -ne $true -or $phase.phaseChecks -lt 2) { throw 'Missing phase continuity.' }
-        $requested = [DateTimeOffset]::Parse($request.requestedUtc); $start = [DateTimeOffset]::Parse($ack.startedUtc); $end = [DateTimeOffset]::Parse($ack.finishedUtc)
-        if ($start -lt $requested -or $end -lt $start -or ($end-$requested).TotalSeconds -gt 10 -or [DateTimeOffset]::Parse($phase.confirmedUtc) -lt $end) { throw 'Invalid/stale capture interval.' }
+        $requested = Get-CaptureEvidenceTime $request.requestedUtc; $start = Get-CaptureEvidenceTime $ack.startedUtc; $end = Get-CaptureEvidenceTime $ack.finishedUtc
+        if ($start -lt $requested -or $end -lt $start -or ($end-$requested).TotalSeconds -gt 10 -or (Get-CaptureEvidenceTime $phase.confirmedUtc) -lt $end) { throw 'Invalid/stale capture interval.' }
         $png = Join-Path $Directory ($request.name + '.png')
         if ($ack.png -cne ($request.name + '.png') -or (Get-FileHash -LiteralPath $png -Algorithm SHA256).Hash -cne $ack.pngSha256) { throw 'PNG/hash mismatch.' }
+        $hashes += $ack.pngSha256
         $bytes = [IO.File]::ReadAllBytes($png)
         if ($bytes.Length -lt 24 -or [Convert]::ToBase64String($bytes[0..7]) -cne 'iVBORw0KGgo=') { throw 'Invalid PNG.' }
         $width = ([long]$bytes[16]*16777216)+([long]$bytes[17]*65536)+([long]$bytes[18]*256)+$bytes[19]
@@ -115,6 +123,7 @@ function Test-WindowCaptureEvidence([string]$Directory) {
         if ($width -le 0 -or $height -le 0 -or $ack.width -ne $width -or $ack.height -ne $height) { throw 'Original PNG dimensions mismatch.' }
     }
     if (@(Compare-Object $names $observed).Count -or @($observed | Select-Object -Unique).Count -ne 5) { throw 'Wrong checkpoint set.' }
+    if (@($hashes | Select-Object -Unique).Count -ne 5) { throw 'Repeated window pixels across distinct moving baseline phases; stale presentation.' }
 }
 
 if ($MyInvocation.InvocationName -eq '.') { return }
@@ -178,7 +187,15 @@ finally {
     $env:AH64_AUTOPILOT_WINDOW_CAPTURE = $priorCompare
     if ($captureHelper) {
         if (!$captureHelper.WaitForExit(5000)) { Stop-Process -Id $captureHelper.Id -Force -ErrorAction Stop; $failure = 'Owned-window helper did not finish.' }
-        elseif ($captureHelper.ExitCode -ne 0) { $failure = 'Owned-window helper failed: see window-helper-error.log.' }
+        else {
+            # Require fresh protocol completion even when the Process wrapper's ExitCode is absent.
+            try {
+                if ($null -ne $captureHelper.ExitCode -and $captureHelper.ExitCode -ne 0) { throw ('Helper process exit ' + $captureHelper.ExitCode) }
+                $helperResult = Get-Content -LiteralPath (Join-Path $out 'window-helper-result.json') -Raw | ConvertFrom-Json
+                $expected = @('roll-entered','roll-cleanup','backflip-entered','backflip-cleanup','hellfire-launched')
+                if ($helperResult.schema -ne 1 -or $helperResult.status -cne 'completed' -or $helperResult.runId -cne [IO.Path]::GetFileName($out) -or $helperResult.checkpointNames.Count -ne 5 -or @(Compare-Object $expected $helperResult.checkpointNames).Count -or (Get-Item -LiteralPath (Join-Path $out 'window-helper-error.log')).Length -ne 0) { throw 'Incomplete/failed helper terminal evidence.' }
+            } catch { $failure = 'Owned-window helper failed: ' + $_.Exception.Message }
+        }
     }
     $log = Join-Path $profile 'BepInEx/LogOutput.log'
     if (Test-Path -LiteralPath $log -PathType Leaf) {

@@ -328,3 +328,17 @@ offline `Test-Capture.ps1`, `Test-WindowIdentity.py` and `Test-Foundation.ps1`
 checks exercise rejection paths using labelled fixtures, not gameplay images.
 Raw warning/error counts are preserved; classification and acceptance of exact
 pre-existing limitations remain a separate review from the strict raw verdict.
+
+The first full window-bridge trial (`3ef9ccb`) completed 12/12 assertions and 1,058
+continuous samples, with successful body/state/phase acknowledgements. Visual
+inspection nevertheless rejected all five checkpoint images: every original PNG
+was byte-identical, including an unchanged HUD clock, across eleven seconds of
+moving simulation and different states. Nonflat pixels and correct HWND/process
+identity do not establish fresh presentation. The precise cache/render cause is
+unproven; no postprocess flag, security or display change is justified by this.
+The bridge now rejects duplicate PNG bytes across these distinct moving baseline
+phases, preserving any rejected pixels under their token rather than accepting a
+later phase label. Its helper also writes an explicit terminal record, avoiding
+reliance on a missing Process-wrapper exit code; an observed nonzero exit remains
+blocking. The first launcher reported helper failure with empty stderr. This refinement
+has offline checks; it is not evidence of a subsequent successful game trial.

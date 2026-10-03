@@ -36,11 +36,13 @@ function Fixture {
     $ids | ForEach-Object { "ASSERT $_ PASS" } | Set-Content -LiteralPath (Join-Path $dir 'trace.txt')
     foreach ($name in @('runtime.log','LogOutput.log','Player.log')) { 'clean fixture log' | Set-Content -LiteralPath (Join-Path $dir $name) }
     $bridge = Join-Path $dir 'window-captures'; New-Item -ItemType Directory -Path $bridge | Out-Null
+    $fixturePixelTag=0
     foreach ($name in @('roll-entered','roll-cleanup','backflip-entered','backflip-cleanup','hellfire-launched')) {
         $token = [guid]::NewGuid().ToString('N'); $now = [DateTime]::UtcNow
         $request = @{schema=1;runId=$summary.runId;token=$token;name=$name;pid=17;executable='fixture.exe';sourceSha=$header.sourceSha;owner='fixture';reservation='fixture';bodyId=42;phase=($name -split '-')[0];bodyState='fixture';weaponState='fixture';requestedUtc=$now.ToString('o')}
         $request | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $bridge ($token+'.request.json'))
-        $png = Join-Path $dir ($name+'.png'); [IO.File]::WriteAllBytes($png,[byte[]](137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,2,0,0,0,1))
+        $fixturePixelTag++
+        $png = Join-Path $dir ($name+'.png'); [IO.File]::WriteAllBytes($png,[byte[]](137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,2,0,0,0,1,$fixturePixelTag)) # Distinct synthetic PNG headers, not image evidence.
         $ack = @{}; foreach ($key in $request.Keys) { $ack[$key]=$request[$key] }
         $ack.status='captured';$ack.source='Pillow.ImageGrab.grab(window=observed-owned-HWND)';$ack.nonflat=$true;$ack.hwnd=99;$ack.width=2;$ack.height=1;$ack.startedUtc=$now.AddMilliseconds(1).ToString('o');$ack.finishedUtc=$now.AddMilliseconds(2).ToString('o');$ack.png=$name+'.png';$ack.pngSha256=(Get-FileHash -LiteralPath $png -Algorithm SHA256).Hash
         $ack | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $bridge ($token+'.ack.json'))
@@ -53,6 +55,7 @@ function RejectFixture([scriptblock]$mutation, [string]$name) {
     Check ((Test-AutopilotEvidence $dir 0 $false).status -eq 'failed') $name
 }
 $good = Fixture
+Check ((Get-CaptureEvidenceTime ([DateTime]::Parse('2026-10-03T12:44:07.254347Z'))).UtcDateTime.Ticks -eq (Get-CaptureEvidenceTime '2026-10-03T12:44:07.254347+00:00').UtcDateTime.Ticks) 'typed JSON dates preserve capture interval precision'
 Check ((Test-AutopilotEvidence $good 0 $false).status -eq 'passed') 'complete valid fixture passes'
 Check ((Test-AutopilotEvidence $good 0 $true).status -eq 'failed') 'timeout cannot pass'
 Check ((Test-AutopilotEvidence $good 1 $false).status -eq 'failed') 'process failure cannot pass'
@@ -101,6 +104,7 @@ RejectFixture { param($d) $p=Get-ChildItem (Join-Path $d 'window-captures') -Fil
 RejectFixture { param($d) $p=Get-ChildItem (Join-Path $d 'window-captures') -Filter '*.ack.json' | Select-Object -First 1; $a=Get-Content $p.FullName -Raw | ConvertFrom-Json; $a.pid=18; $a | ConvertTo-Json | Set-Content $p.FullName } 'wrong capture process fails'
 RejectFixture { param($d) $p=Get-ChildItem (Join-Path $d 'window-captures') -Filter '*.ack.json' | Select-Object -First 1; $a=Get-Content $p.FullName -Raw | ConvertFrom-Json; $a.nonflat=$false; $a | ConvertTo-Json | Set-Content $p.FullName } 'flat checkpoint fails'
 RejectFixture { param($d) $p=Get-ChildItem (Join-Path $d 'window-captures') -Filter '*.phase.json' | Select-Object -First 1; $a=Get-Content $p.FullName -Raw | ConvertFrom-Json; $a.phaseValid=$false; $a | ConvertTo-Json | Set-Content $p.FullName } 'expired checkpoint phase fails'
+RejectFixture { param($d) $first=Join-Path $d 'roll-entered.png'; Get-ChildItem (Join-Path $d 'window-captures') -Filter '*.ack.json' | ForEach-Object { $a=Get-Content $_.FullName -Raw | ConvertFrom-Json; $target=Join-Path $d $a.png; if ($target -ne $first) { Copy-Item -LiteralPath $first -Destination $target -Force }; $a.pngSha256=(Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash; $a | ConvertTo-Json | Set-Content $_.FullName } } 'identical presentation at all moving phases fails'
 $result = @{ status = 'passed'; checks = $script:count; evidence = $root; runtime = 'not run'; profiles = 'untouched' }
 $result | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $root 'checks.json')
 Write-Output "FOUNDATION_CHECK_PASS checks=$script:count evidence=$root"
