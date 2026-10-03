@@ -38,7 +38,7 @@ namespace AH64
         {
             yield return new WaitForEndOfFrame();
             string path = System.IO.Path.Combine(output, name + ".png");
-            ScreenCapture.CaptureScreenshot(path);
+            System.IO.File.WriteAllBytes(path, ReadBackbufferPng());
             yield return Until(() => System.IO.File.Exists(path) && new System.IO.FileInfo(path).Length > 0,
                 10f, "screenshot " + name);
             captures++;

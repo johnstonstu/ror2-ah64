@@ -252,3 +252,18 @@ invalidating a live list enumerator. The harness now disables a snapshot; the
 offline bootstrap checks include two directors that remove themselves synchronously.
 All 12 scenario assertions and the no-combat setup remain required. The failed trial,
 full logs and their blocking classifications remain preserved under `dist`.
+
+The director-corrected trial at `bfeea5f` passed `roll.enter`, then capture failed:
+`Player.log:844` reported a 2560x1440 request against an active 512x512 target. The
+target's owner was not established by that log. Capture now waits for end-of-frame
+as before, explicitly binds the window backbuffer (`RenderTexture.active=null`),
+and synchronously reads exactly `Screen.width` by `Screen.height` pixels. A nested
+`finally` restores the prior target before PNG encoding, and the temporary texture
+is destroyed on success or exception. No camera render, resize or display setting
+change occurs. Capture events record source, dimensions, frame/time, prior target
+and camera target names; the actual PNGs still require visual inspection.
+The existing five capture points and ten-second file checks remain required.
+`tools/dev-profile/Test-Capture.ps1` covers mismatched targets and exception cleanup.
+API references: [Unity 2021.3 ReadPixels](https://docs.unity3d.com/2021.3/Documentation/ScriptReference/Texture2D.ReadPixels.html),
+[active render target](https://docs.unity3d.com/2021.3/Documentation/ScriptReference/RenderTexture-active.html),
+and [end-of-frame timing](https://docs.unity3d.com/2021.3/Documentation/ScriptReference/WaitForEndOfFrame.html).
