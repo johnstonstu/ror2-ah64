@@ -110,8 +110,12 @@ namespace AH64.Survivors
 
             Language.Add(prefix + "UTILITY_BACKFLIP_NAME", "Smoke Backflip");
             Language.Add(prefix + "UTILITY_BACKFLIP_DESCRIPTION",
-                $"Kick into an aerobatic {Tokens.UtilityText("backflip")} — surge rearward and climb through a pitch loop while dumping smoke. " +
+                $"Kick into an aerobatic {Tokens.UtilityText("backflip")} - surge rearward and climb through a pitch loop while dumping smoke. " +
                 $"{Tokens.UtilityText("Cloak")} briefly as you fade back into the fight.");
+
+            Language.Add(prefix + "UTILITY_BRAKING_TURN_NAME", "Braking Turn");
+            Language.Add(prefix + "UTILITY_BRAKING_TURN_DESCRIPTION",
+                "Brake your momentum, turn toward your chosen direction, then regain controlled speed. Aim and fire while turning.");
             #endregion
 
             #region Special

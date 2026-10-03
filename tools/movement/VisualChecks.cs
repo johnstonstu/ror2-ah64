@@ -3,7 +3,7 @@ using System.Reflection;
 using AH64.Survivors.Components;
 using RoR2;
 using UnityEngine;
-internal static class VisualChecks
+internal static partial class VisualChecks
 {
     private static int assertions;
     private static void Check(bool b,string id){assertions++;if(!b)throw new Exception(id);}
@@ -14,6 +14,7 @@ internal static class VisualChecks
     {
         var g=new GameObject();g.AddComponent<CharacterMotor>();g.AddComponent<CharacterDirection>();
         g.AddComponent<CharacterBody>();g.AddComponent<InputBankTest>();g.AddComponent<AH64HoverController>();
+        g.GetComponent<CharacterBody>().healthComponent=g.AddComponent<HealthComponent>();
         g.AddComponent<CameraTargetParams>().fovOverride=83;
         var locator=g.AddComponent<ModelLocator>();locator.modelTransform=new GameObject().transform;
         locator.modelTransform.gameObject.AddComponent<CharacterModel>();locator.modelBaseTransform=new GameObject().transform;
@@ -69,6 +70,7 @@ internal static class VisualChecks
         int starts=RoR2.Util.sounds.FindAll(s=>s=="Play_loader_m2_travel_loop").Count;
         int stops=RoR2.Util.sounds.FindAll(s=>s=="Stop_loader_m2_travel_loop").Count;
         Check(starts==stops,"owned travel audio balanced on exit/disable/crash/destroy");
+        BrakingIntegrationChecks();
         Console.WriteLine("Movement visual offline checks passed: "+assertions+" assertions (API doubles; runtime unverified).");
     }
 }

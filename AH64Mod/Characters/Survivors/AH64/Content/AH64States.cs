@@ -27,6 +27,8 @@ namespace AH64.Survivors
 
             Modules.Content.AddEntityState(typeof(SmokeBackflip));
 
+            Modules.Content.AddEntityState(typeof(BrakingTurn));
+
             Modules.Content.AddEntityState(typeof(FireHellfire));
 
             //both halves of the Longbow special. Fire is only ever entered from Paint, but it still has

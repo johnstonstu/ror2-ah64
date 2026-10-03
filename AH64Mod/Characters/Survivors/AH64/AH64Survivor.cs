@@ -562,7 +562,7 @@ namespace AH64.Survivors
 
         /// <summary>
         /// Default: Evasive Roll (barrel roll + toned flares). Loadout variant: Smoke Backflip
-        /// (rearward aerobatic flip + smoke + cloak). Both run on the Body machine.
+        /// (rearward aerobatic flip + smoke + cloak), then Braking Turn. All use the Body machine.
         /// </summary>
         private void AddUtilitySkills()
         {
@@ -629,7 +629,33 @@ namespace AH64.Survivors
                 forceSprintDuringState = false,
             });
 
-            Skills.AddUtilitySkills(bodyPrefab, dashSkillDef, backflipSkillDef);
+            SkillDef brakingSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            {
+                skillName = "AH64BrakingTurn",
+                skillNameToken = AH64_PREFIX + "UTILITY_BRAKING_TURN_NAME",
+                skillDescriptionToken = AH64_PREFIX + "UTILITY_BRAKING_TURN_DESCRIPTION",
+                // Private prototype placeholder; no dedicated braking icon has been authored.
+                skillIcon = assetBundle.LoadAsset<Sprite>("texAH64UtilityIcon"),
+                activationState = new EntityStates.SerializableEntityStateType(typeof(SkillStates.BrakingTurn)),
+                activationStateMachineName = "Body",
+                interruptPriority = EntityStates.InterruptPriority.PrioritySkill,
+                baseRechargeInterval = AH64BrakingTurnStaticValues.Cooldown,
+                baseMaxStock = AH64BrakingTurnStaticValues.Stock,
+                rechargeStock = 1,
+                requiredStock = 1,
+                stockToConsume = 1,
+                resetCooldownTimerOnUse = false,
+                fullRestockOnAssign = true,
+                dontAllowPastMaxStocks = false,
+                mustKeyPress = true,
+                beginSkillCooldownOnSkillEnd = false,
+                isCombatSkill = false,
+                canceledFromSprinting = false,
+                cancelSprintingOnActivation = false,
+                forceSprintDuringState = false,
+            });
+
+            Skills.AddUtilitySkills(bodyPrefab, dashSkillDef, backflipSkillDef, brakingSkillDef);
         }
 
         /// <summary>

@@ -29,6 +29,13 @@ namespace AH64.Survivors.Components
         private Transform model;
         private Transform modelBase;
         private float washCooldown;
+        private EntityStateMachine bodyMachine;
+        private AH64BrakingTurnPresentation brakingPresentation;
+        private object brakingVisualOwner;
+        private Quaternion brakingEntryWorld;
+        private Quaternion lastRenderedBaseWorld;
+        private bool hasRenderedBaseWorld;
+        private bool brakingRecovering;
 
         //rotor blur discs. Shipped inactive on mdlAH64; this component activates and fades them.
         //They are deliberately not CharacterModel renderers, so writing their alpha through a
@@ -108,6 +115,7 @@ namespace AH64.Survivors.Components
             EnsureModelRefs();
 
             EndManeuver(maneuverOwner);
+            ClearBrakingVisual();
             crashing = true;
             crashAge = 0f;
             crashYaw = 0f;
@@ -219,6 +227,8 @@ namespace AH64.Survivors.Components
 
         private void OnEnable()
         {
+            ClearBrakingVisual();
+            hasRenderedBaseWorld = false;
             EnsureModelRefs();
             if (modelLocator) modelLocator.autoUpdateModelTransform = false;
         }
@@ -226,6 +236,7 @@ namespace AH64.Survivors.Components
         private void OnDisable()
         {
             EndManeuver(maneuverOwner);
+            ClearBrakingVisual();
             if (modelLocator) modelLocator.autoUpdateModelTransform = true;
         }
 
@@ -258,6 +269,7 @@ namespace AH64.Survivors.Components
         private void OnDestroy()
         {
             EndManeuver(maneuverOwner);
+            ClearBrakingVisual();
             //hand the model back if we're torn down mid-run
             if (modelLocator)
                 modelLocator.autoUpdateModelTransform = true;
@@ -298,19 +310,54 @@ namespace AH64.Survivors.Components
             if (!model || !motor)
                 return;
 
+            Quaternion yaw = modelBase ? modelBase.rotation : YawBasisFallback();
+            AH64BrakingTurnFrame brakingFrame = default(AH64BrakingTurnFrame);
+            bool braking = !crashing && TryGetBrakingFrame(out brakingFrame);
+            if (!braking && brakingVisualOwner != null)
+            {
+                brakingVisualOwner = null;
+                brakingRecovering = !crashing;
+            }
             if (crashing)
                 leanLocal = EvaluateCrashLean();
+            else if (braking)
+            {
+                if (brakingVisualOwner != bodyMachine.state)
+                {
+                    // Save the last displayed world basis, including native yaw, excluding the
+                    // separately layered recoil. Local lean alone loses continuity when yaw changes.
+                    brakingEntryWorld = hasRenderedBaseWorld ? lastRenderedBaseWorld : model.rotation;
+                    brakingVisualOwner = bodyMachine.state;
+                    brakingRecovering = false;
+                }
+                Quaternion target = AH64FlightBrakingMath.Target(brakingFrame,
+                    brakingEntryWorld, yaw * EvaluateFlightLean(false));
+                Quaternion world = Quaternion.Slerp(hasRenderedBaseWorld ? lastRenderedBaseWorld
+                    : brakingEntryWorld, target, 1f - Mathf.Exp(-AH64StaticValues.leanSmoothing * Time.deltaTime));
+                leanLocal = Quaternion.Inverse(yaw) * world;
+            }
             else if (backflipTimer > 0f)
+            {
+                brakingRecovering = false;
                 leanLocal = EvaluateBackflipLean();
+            }
             else if (barrelRollTimer > 0f)
+            {
+                brakingRecovering = false;
                 leanLocal = EvaluateBarrelRollLean();
+            }
+            else if (brakingRecovering && hasRenderedBaseWorld)
+            {
+                Quaternion target = yaw * EvaluateFlightLean(false);
+                Quaternion world = Quaternion.Slerp(lastRenderedBaseWorld, target,
+                    1f - Mathf.Exp(-AH64StaticValues.leanSmoothing * Time.deltaTime));
+                leanLocal = Quaternion.Inverse(yaw) * world;
+                if (Quaternion.Angle(world, target) < 0.1f) brakingRecovering = false;
+            }
             else
                 leanLocal = EvaluateFlightLean();
 
             //replace ModelLocator's UpdateModelTransform: follow ModelBase position/yaw, layer lean
-            Quaternion yaw = modelBase
-                ? modelBase.rotation
-                : YawBasisFallback();
             Vector3 position = modelBase ? modelBase.position : transform.position;
 
             float kickDecay = 1f - Mathf.Exp(-AH64StaticValues.kickRecovery * Time.deltaTime);
@@ -318,12 +365,30 @@ namespace AH64.Survivors.Components
             kickRoll = Mathf.Lerp(kickRoll, 0f, kickDecay);
             //Positive Euler X is nose down, so a nose-up kick is negative.
             Quaternion kick = Quaternion.Euler(-kickPitch, 0f, kickRoll);
-            model.SetPositionAndRotation(position, yaw * leanLocal * kick);
+            lastRenderedBaseWorld = yaw * leanLocal;
+            hasRenderedBaseWorld = true;
+            model.SetPositionAndRotation(position, lastRenderedBaseWorld * kick);
 
             TryRotorWash();
             UpdateRotorBlur(motor.velocity);
             UpdateDamageSmoke();
             UpdateHitJolt();
+        }
+
+        private bool TryGetBrakingFrame(out AH64BrakingTurnFrame frame)
+        {
+            frame = default(AH64BrakingTurnFrame);
+            if (!bodyMachine) bodyMachine = EntityStateMachine.FindByCustomName(gameObject, "Body");
+            if (!bodyMachine || !(bodyMachine.state is SkillStates.BrakingTurn)) return false;
+            // The state creates this lazily. Retry instead of permanently caching a missing component.
+            if (!brakingPresentation) brakingPresentation = GetComponent<AH64BrakingTurnPresentation>();
+            return brakingPresentation && brakingPresentation.TryGetFrame(bodyMachine.state, out frame);
+        }
+
+        private void ClearBrakingVisual()
+        {
+            brakingVisualOwner = null;
+            brakingRecovering = false;
         }
 
         /// <summary>

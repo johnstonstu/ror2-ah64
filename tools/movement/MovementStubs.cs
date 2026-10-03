@@ -27,7 +27,8 @@ namespace UnityEngine
     {
         public Vector3 position,forward=Vector3.forward,up=Vector3.up;
         public Quaternion rotation=Quaternion.identity;
-        public void SetPositionAndRotation(Vector3 p,Quaternion q){position=p;rotation=q;}
+        public int PositionAndRotationWrites;
+        public void SetPositionAndRotation(Vector3 p,Quaternion q){position=p;rotation=q;PositionAndRotationWrites++;}
     }
     public partial struct Quaternion
     {
@@ -138,11 +139,17 @@ namespace RoR2
     public static class Util
     {
         public static readonly List<string> sounds=new List<string>();public static void PlaySound(string s,GameObject o){sounds.Add(s);}
-        public static Quaternion QuaternionSafeLookRotation(Vector3 v)=>Quaternion.identity;
-        public static Quaternion QuaternionSafeLookRotation(Vector3 v,Vector3 up)=>Quaternion.identity;
+        // Horizontal heading only: sufficient for these presentation tests, not native 3D look rotation.
+        public static Quaternion QuaternionSafeLookRotation(Vector3 v)=>Quaternion.Euler(0,(float)(Math.Atan2(v.x,v.z)*180/Math.PI),0);
+        public static Quaternion QuaternionSafeLookRotation(Vector3 v,Vector3 up)=>QuaternionSafeLookRotation(v);
     }
     public class EffectData { public Vector3 origin;public float scale;public Quaternion rotation; }
     public static class EffectManager { public static void SpawnEffect(GameObject g,EffectData d,bool network){} }
+    public class EntityStateMachine:Component
+    {
+        public EntityStates.EntityState state;
+        public static EntityStateMachine FindByCustomName(GameObject g,string name)=>g.GetComponent<EntityStateMachine>();
+    }
 }
 namespace On.RoR2
 {
@@ -190,7 +197,11 @@ namespace EntityStates
 {
     using RoR2;using UnityEngine;using UnityEngine.Networking;
     public enum InterruptPriority { Any,Skill,PrioritySkill,Pain,Taunt,Stun,Immobilize,Frozen,Vehicle,Death }
-    public class BaseSkillState:Component
+    public class EntityState:Component
+    {
+        public virtual InterruptPriority GetMinimumInterruptPriority()=>InterruptPriority.Any;
+    }
+    public class BaseSkillState:EntityState
     {
         public bool isAuthority; public float moveSpeedStat=12,fixedAge;
         public CharacterMotor characterMotor=>GetComponent<CharacterMotor>();
@@ -200,7 +211,7 @@ namespace EntityStates
         public readonly Machine outer=new Machine();public class Machine{public bool main;public void SetNextStateToMain(){main=true;}}
         public virtual void OnEnter(){} public virtual void OnExit(){} public virtual void FixedUpdate(){fixedAge+=0.02f;}
         public virtual void OnSerialize(NetworkWriter w){} public virtual void OnDeserialize(NetworkReader r){}
-        public virtual InterruptPriority GetMinimumInterruptPriority()=>InterruptPriority.Any;
+        public override InterruptPriority GetMinimumInterruptPriority()=>InterruptPriority.Any;
         public float GetDeltaTime()=>0.02f;
     }
 }

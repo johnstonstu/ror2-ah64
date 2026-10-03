@@ -22,7 +22,13 @@ dotnet run --project $path -c Release --disable-build-servers /p:UseSharedCompil
 if ($LASTEXITCODE -ne 0) { throw 'Movement offline checks failed.' }
 
 $sources = @('tools/movement/MovementStubs.cs', 'tools/movement/VisualStubs.cs', 'tools/movement/VisualChecks.cs',
+    'tools/braking-turn/IntegrationVisualChecks.cs',
     'AH64Mod/Characters/Survivors/AH64/Content/AH64StaticValues.cs',
+    'AH64Mod/Characters/Survivors/AH64/Content/AH64BrakingTurnStaticValues.cs',
+    'AH64Mod/Characters/Survivors/AH64/Components/AH64BrakingTurnCapture.cs',
+    'AH64Mod/Characters/Survivors/AH64/Components/AH64BrakingTurnPresentation.cs',
+    'AH64Mod/Characters/Survivors/AH64/Components/AH64FlightBrakingMath.cs',
+    'AH64Mod/Characters/Survivors/AH64/Components/AH64HellfireInterruption.cs',
     'AH64Mod/Characters/Survivors/AH64/Components/AH64ManeuverCapture.cs',
     'AH64Mod/Characters/Survivors/AH64/Components/AH64FlightVisuals.cs')
 $includes = ($sources | ForEach-Object { '<Compile Include="' + [System.Security.SecurityElement]::Escape((Join-Path $repo $_)) + '" />' }) -join "`n"
