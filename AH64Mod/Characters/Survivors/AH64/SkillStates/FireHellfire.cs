@@ -10,9 +10,8 @@ namespace AH64.Survivors.SkillStates
     /// it is aimed rather than lobbed, and it lives on the "Weapon2" state machine so it can be launched
     /// without ever dropping chain gun fire.
     ///
-    /// <para>Deliberately dumb-fire. Real Hellfires are laser-guided and RoR2 models that with
-    /// ProjectileSteerTowardTarget + ProjectileTargetComponent, but guidance changes how the skill plays
-    /// enough to want its own playtest instead of riding along with the Phase 3 kit swap.</para>
+    /// <para>Press launches immediately; held special designates the latest lead with native aim.
+    /// Release coasts. Guidance lives on the owner/projectile, so this state never holds other guns.</para>
     /// </summary>
     public class FireHellfire : GenericProjectileBaseState
     {
@@ -34,6 +33,7 @@ namespace AH64.Survivors.SkillStates
 
         //the main missile as launched, copied for the Pocket I.C.B.M. extras
         private FireProjectileInfo launchedInfo;
+        private Components.AH64HellfireOwner designation;
 
         //vanilla Wwise event — Engineer's seeker missile launch, verified against SoundbanksInfo.xml.
         //Deliberately heavier than the Hydra pods' AtG launch, so one Hellfire never sounds like one more
@@ -63,6 +63,11 @@ namespace AH64.Survivors.SkillStates
             bloom = 8f;
 
             base.OnEnter();
+            // GenericProjectileBaseState normally waits until FixedUpdate even for zero delay.
+            // Fire on entry and mark it fired, preserving its usual short recovery/cooldown state.
+            firedProjectile = true;
+            FireProjectile();
+            DoFireEffects();
         }
 
         public override void ModifyProjectileInfo(ref FireProjectileInfo fireProjectileInfo)
@@ -70,12 +75,13 @@ namespace AH64.Survivors.SkillStates
             base.ModifyProjectileInfo(ref fireProjectileInfo);
             fireProjectileInfo.damageTypeOverride = DamageTypeCombo.GenericSpecial;
 
-            //GenericProjectileBaseState spawns at the AIM RAY ORIGIN, not at the muzzle — targetMuzzle
-            //only ever drives the muzzle flash. Left alone the missile would appear out of the pilot's
-            //eyeline while the flash lit up a wing rail, which is exactly the kind of mismatch that looks
-            //broken without being obvious why. No crosshair convergence needed to go with it: the rail is
-            //0.78u off centre and the warhead's blast radius is 12u, so the offset is inside the splash.
-            fireProjectileInfo.position = AH64Muzzles.Origin(GetModelChildLocator(), railMuzzle, GetAimRay());
+            // Converge from the actual rail on the first reachable native-aim world point.
+            Ray aim = GetAimRay();
+            fireProjectileInfo.position = AH64Muzzles.Origin(GetModelChildLocator(), railMuzzle, aim);
+            Vector3 point = Components.AH64HellfireAim.Resolve(characterBody, aim);
+            fireProjectileInfo.rotation = Util.QuaternionSafeLookRotation(
+                Components.AH64HellfireAim.Converge(fireProjectileInfo.position, point, aim.direction));
+            fireProjectileInfo.comboNumber = 0;
 
             //Pocket I.C.B.M. extras go out in FireProjectile below. No MissileUtils damage scaling on top:
             //three full Hellfires already triple the payload, and with the multiplier it played far too strong.
@@ -89,6 +95,11 @@ namespace AH64.Survivors.SkillStates
             Components.AH64FlightVisuals.Kick(gameObject, AH64StaticValues.kickHellfirePitch,
                 (railMuzzle == AH64Muzzles.MissileL ? 1f : -1f) * AH64StaticValues.kickHellfireRoll);
 
+            if (isAuthority && projectilePrefab)
+            {
+                designation = Components.AH64HellfireOwner.GetOrAdd(gameObject);
+                designation.BeginLaunch();
+            }
             base.FireProjectile();
 
             if (!isAuthority || MoreMissileCount() <= 0 || !launchedInfo.projectilePrefab)
@@ -98,10 +109,19 @@ namespace AH64.Survivors.SkillStates
             for (int side = -1; side <= 1; side += 2)
             {
                 FireProjectileInfo extra = launchedInfo;
+                extra.comboNumber = (byte)(side < 0 ? 1 : 2);
                 extra.rotation = Quaternion.AngleAxis(side * AH64StaticValues.hellfireIcbmFanAngle, Vector3.up)
                     * launchedInfo.rotation;
                 ProjectileManager.instance.FireProjectile(extra);
             }
+        }
+
+        public override void OnExit()
+        {
+            // Normal recovery leaves guidance with the owner. An interrupted launch closes it.
+            if (isAuthority && designation && stopwatch < duration)
+                designation.StopWatching();
+            base.OnExit();
         }
 
         private int MoreMissileCount()
