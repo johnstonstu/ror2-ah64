@@ -85,7 +85,9 @@ namespace AH64
                     "captured="+snapshot.EntryVelocity+" actual="+pilot.characterMotor.velocity);
                 int spareStock=slot.stock;
                 float defenseDuration=snapshot.Duration*(backflip ? Survivors.AH64StaticValues.backflipInvincibilityDurationCoefficient : Survivors.AH64StaticValues.dashInvincibilityDurationCoefficient);
-                float enteredAt=Time.fixedTime-state.fixedAge;
+                // Use the maneuver's existing read-only normalized progress. EntityState.fixedAge
+                // is protected in the installed game and must not be accessed by this harness.
+                float enteredAt=Time.fixedTime-(backflip ? flip.ManeuverProgress : roll.ManeuverProgress)*snapshot.Duration;
                 bool defenseInitiallyActive=pilot.HasBuff(RoR2Content.Buffs.HiddenInvincibility);
                 bool earlyReentry=slot.ExecuteIfReady();
                 Vector3 velocity = pilot.characterMotor.velocity;
@@ -98,8 +100,8 @@ namespace AH64
                 bool lateReentry=slot.ExecuteIfReady();
                 yield return new WaitForFixedUpdate();yield return new WaitForFixedUpdate();
                 PrototypeCheck(label+".reentry-rejected", spareStock>=1 && !earlyReentry && !lateReentry
-                    && slot.stock==spareStock && ReferenceEquals(Machine("Body").state,state) && state.fixedAge>0.15f,
-                    "spare stock="+spareStock+" now="+slot.stock+" attempts="+earlyReentry+","+lateReentry+" sameState="+ReferenceEquals(Machine("Body").state,state)+" age="+state.fixedAge);
+                    && slot.stock==spareStock && ReferenceEquals(Machine("Body").state,state) && (backflip ? flip.ManeuverProgress : roll.ManeuverProgress)*snapshot.Duration>0.15f,
+                    "spare stock="+spareStock+" now="+slot.stock+" attempts="+earlyReentry+","+lateReentry+" sameState="+ReferenceEquals(Machine("Body").state,state)+" observedAge="+(backflip ? flip.ManeuverProgress : roll.ManeuverProgress)*snapshot.Duration);
                 yield return Until(() => Time.fixedTime>enteredAt+defenseDuration+Time.fixedDeltaTime*2f,5f,"original timed defense deadline");
                 PrototypeCheck(label+".defense-expiry-not-renewed", defenseInitiallyActive && !pilot.HasBuff(RoR2Content.Buffs.HiddenInvincibility),
                     "native timed invulnerability active at entry; expired after original "+defenseDuration+"s despite spare-stock attempts");
