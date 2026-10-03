@@ -33,15 +33,40 @@ def observed_turn(capture, velocity, completed):
     return progress > 1 and alignment < abs(correction) - 1 and (not completed or alignment <= 3 and progress >= abs(correction) - 3)
 
 
+def activation_window(rows):
+    """Exclude ResetCase preparation; capture marks this native state instance."""
+    indices = [i for i, row in enumerate(rows) if row.get("capture") not in (None, "none")]
+    if not indices:
+        return [], [], None, "missing current activation capture"
+    first, last = indices[0], indices[-1]
+    if indices != list(range(first, last + 1)):
+        return [], [], None, "ambiguous current activation windows"
+    active = rows[first:last + 1]
+    capture = json.loads(active[0]["capture"])
+    if any(json.loads(row["capture"]) != capture for row in active):
+        return [], [], None, "current activation capture changed"
+    tail = rows[last + 1:]
+    # Release preserves the motor's last sample. The first inactive observation
+    # can contain its final PreMove step, applied after the last active sample.
+    steps = [row for row in active if row["appliedSteps"] > 0]
+    if steps and tail and tail[0]["appliedSteps"] >= steps[-1]["appliedSteps"] and tail[0]["appliedAge"] >= steps[-1]["appliedAge"]:
+        steps.append(tail[0])
+    final = max(enumerate(steps), key=lambda pair: (pair[1]["appliedSteps"], pair[0]), default=(None, None))[1]
+    return active, tail, final, None
+
+
+def settled_cleanup(tail):
+    return any(row["phase"] == "inactive" and not row["lease"] and not row["visualOwner"] and not row["visualRecovery"] for row in tail)
+
+
 def turn_error(rows, name):
     if name not in ("small", "fast"):
         return None
-    captures = [json.loads(r["capture"]) for r in rows if r.get("capture") != "none"]
-    if not captures:
-        return name + " missing actual turn capture"
-    capture = captures[0]
-    middle = [r for r in rows if r["phase"] == "Turn" and r["appliedAge"] >= 0.35]
-    final = max(rows, key=lambda r: r["appliedAge"], default=None)
+    active, _, final, error = activation_window(rows)
+    if error:
+        return name + " " + error
+    capture = json.loads(active[0]["capture"])
+    middle = [r for r in active if r["phase"] == "Turn" and r["appliedAge"] >= 0.35]
     if not any(observed_turn(capture, r["appliedVelocity"], False) for r in middle):
         return name + " missing actual signed turn progress"
     if final is None or final["appliedAge"] < 0.95 or not observed_turn(capture, final["appliedVelocity"], True):
@@ -74,13 +99,17 @@ def validate(result, identity, records):
         problems.append("render/sample evidence incomplete or alarmed")
     for name in NAMES:
         rows = [r for r in samples if r["scenario"] == "braking-" + name]
-        if turn_error(rows, name):
-            problems.append(turn_error(rows, name))
-        phases = {r["phase"] for r in rows}
+        active, tail, _, window_error = activation_window(rows)
+        if window_error:
+            problems.append(name + " " + window_error)
+        steering_error = turn_error(rows, name)
+        if steering_error and steering_error not in problems:
+            problems.append(steering_error)
+        phases = {r["phase"] for r in active}
         required = {"Brake", "Turn"} if name == "interrupt" else {"Brake", "Turn", "Exit"}
-        if not required.issubset(phases) or not any(r["lease"] and r["appliedSteps"] > 0 for r in rows):
+        if not required.issubset(phases) or not any(r["lease"] and r["appliedSteps"] > 0 for r in active):
             problems.append(name + " missing actual native lease/phase")
-        if not any(r["phase"] == "inactive" and not r["lease"] and not r["visualOwner"] and not r["visualRecovery"] for r in rows):
+        if not settled_cleanup(tail):
             problems.append(name + " missing settled cleanup observation")
     for row in samples:
         if row["appliedSteps"] > 0 and row["nativeVelocity"]["y"] != row["appliedVelocity"]["y"]:
@@ -106,7 +135,54 @@ def main():
             assert not observed_turn(capture, {"x": -middle["x"], "y": 0, "z": middle["z"]}, False)
         assert priority_error({"utilityInterruptPriority": "PrioritySkill"}) is None
         assert priority_error({"utilityInterruptPriority": "Skill"}) == "wrong native utility priority"
-        print("PASS 18 isolated auditor acceptance assertions; synthetic vectors, no native execution")
+        capture = {"EntryHeading": {"x": 0, "y": 0, "z": 1}, "RequestedHeading": {"x": 0.5, "y": 0, "z": math.cos(math.radians(30))}, "SignedCorrection": 30}
+        def sample(phase, age, steps, velocity, captured=True, recovery=False):
+            return {"phase": phase, "appliedAge": age, "appliedSteps": steps, "appliedVelocity": velocity,
+                    "capture": json.dumps(capture) if captured else "none", "lease": captured,
+                    "visualOwner": captured, "visualRecovery": recovery}
+        stale_zero = sample("inactive", 1, 60, {"x": 0, "y": 0, "z": 0}, False)
+        stale_aligned = sample("inactive", 1, 60, capture["RequestedHeading"], False)
+        current = [sample("Brake", 0.1, 6, capture["EntryHeading"]),
+                   sample("Turn", 0.4, 24, {"x": math.sin(math.radians(18)), "y": 0, "z": math.cos(math.radians(18))}),
+                   sample("Exit", 0.98, 59, capture["RequestedHeading"]),
+                   sample("inactive", 1, 60, capture["RequestedHeading"], False, True)]
+        settled = sample("inactive", 1, 60, capture["RequestedHeading"], False)
+        assert turn_error([stale_zero] + current + [settled], "small") is None
+        assert activation_window([stale_zero] + current)[2] is current[-1]
+        assert not settled_cleanup(activation_window([stale_zero] + current)[1])
+        assert settled_cleanup(activation_window([stale_zero] + current + [settled])[1])
+        wrong_final = copy.deepcopy(current)
+        wrong_final[-1]["appliedVelocity"] = capture["EntryHeading"]
+        assert turn_error([stale_aligned] + wrong_final + [settled], "small") == "small actual final velocity misaligned"
+        disabled = copy.deepcopy(current)
+        for row in disabled:
+            row["appliedVelocity"] = capture["EntryHeading"]
+        assert turn_error([stale_aligned] + disabled + [settled], "small") == "small missing actual signed turn progress"
+        assert activation_window(current + [settled] + current)[3] == "ambiguous current activation windows"
+        assert not settled_cleanup(activation_window([stale_zero])[1])
+        identity = {"sourceSha": "fixture", "replacements": [{"target": "AH64.dll", "installed": {"sha256": "fixture"}}]}
+        result = {"sourceSha": "fixture", "dllSha256": "fixture", "utilityInterruptPriority": "PrioritySkill", "schema": 1,
+                  "suite": "braking-solo-v1", "status": "passed", "complete": True, "checks": [{"id": name, "passed": True} for name in IDS],
+                  "expectedChecks": len(IDS), "expectedIds": IDS, "runId": "fixture", "renderSamples": 1, "renderViolations": 0}
+        records = [{"recordType": "braking-render", "runId": "fixture"}]
+        for name in NAMES:
+            for row in copy.deepcopy([stale_zero] + current + [settled]):
+                row.update(recordType="braking-sample", runId="fixture", scenario="braking-" + name,
+                           nativeVelocity=row["appliedVelocity"], position=capture["EntryHeading"],
+                           velocity=row["appliedVelocity"], nativeAim=capture["RequestedHeading"])
+                records.append(row)
+        assert validate(result, identity, records) == []
+        bad_cleanup = copy.deepcopy(records)
+        for row in bad_cleanup:
+            if row.get("scenario") == "braking-small" and row["phase"] == "inactive" and row["appliedVelocity"] != stale_zero["appliedVelocity"]:
+                row["visualRecovery"] = True
+        assert "small missing settled cleanup observation" in validate(result, identity, bad_cleanup)
+        bad_final = copy.deepcopy(records)
+        for row in bad_final:
+            if row.get("scenario") == "braking-small" and row["phase"] == "inactive":
+                row["appliedVelocity"] = capture["RequestedHeading"] if row["appliedVelocity"] == stale_zero["appliedVelocity"] else capture["EntryHeading"]
+        assert "small actual final velocity misaligned" in validate(result, identity, bad_final)
+        print("PASS 29 isolated auditor acceptance assertions, including complete-fixture stale prefix/current activation/post-exit cleanup and disabled-turn rejection; synthetic, no native execution")
         return 0
     run = pathlib.Path(sys.argv[1]).resolve()
     destination = pathlib.Path(sys.argv[2]).resolve()
