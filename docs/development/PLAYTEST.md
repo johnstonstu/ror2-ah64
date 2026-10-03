@@ -28,6 +28,12 @@ Do not persist either variable in a player or machine environment.
 
 ## Bounded baseline contract
 
+Before hosting, the opt-in harness sets the loaded player's public `canSave` and
+`saveRequestPending` flags false for this diagnostic process. The actual game's
+`RequestEventualSave` and logout paths respect `canSave`; no player tuning or saved
+progress is copied into the disposable mod profile. The flags remain false through
+process shutdown so diagnostic progress is not persisted.
+
 The harness hosts `host 0`, selects AH64, fixes seed 1301, enters Titanic Plains,
 disables combat directors and grants test-only invincibility. It checks a fixed
 terrain mark and chooses the longest unobstructed facing from 24 fixed directions.
@@ -69,7 +75,10 @@ second transform writer or a claim of a freshly evaluated physics pose.
 and observed state transitions. `runtime.log` preserves all observed Unity messages,
 including loading. The launcher archives the whole profile `LogOutput.log` and the
 dedicated Unity `Player.log`, including shutdown. Missing/stale/empty logs fail.
-No screen captures are produced by this slice; captures remain unverified.
+The harness requests five bounded game-engine PNG captures at maneuver entry/cleanup
+and Hellfire launch. A missing/empty capture times out the diagnostic. Inspect the
+actual images; these frames do not establish full revolutions, feel, audio or physical
+controller acceptance. The terminal capture count records files actually observed.
 
 The atomic terminal `result.json` and final JSONL summary must agree on a complete
 suite, the 12 distinct assertion IDs, all passing results and sample counts. The

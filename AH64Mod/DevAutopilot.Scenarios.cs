@@ -34,6 +34,17 @@ namespace AH64
             while (Time.fixedTime < end) yield return new WaitForFixedUpdate();
         }
 
+        private IEnumerator Capture(string name)
+        {
+            yield return new WaitForEndOfFrame();
+            string path = System.IO.Path.Combine(output, name + ".png");
+            ScreenCapture.CaptureScreenshot(path);
+            yield return Until(() => System.IO.File.Exists(path) && new System.IO.FileInfo(path).Length > 0,
+                10f, "screenshot " + name);
+            captures++;
+            Event("capture", name + ".png; rendered diagnostic frame, not controller/audio acceptance");
+        }
+
         private IEnumerator MovementCase(string name, EntityState maneuver, Vector3 expectedTravel)
         {
             yield return ResetCase(name);
@@ -44,6 +55,7 @@ namespace AH64
             yield return new WaitForFixedUpdate();
             yield return new WaitForFixedUpdate();
             Assert(name + ".enter", machine.state == maneuver, "requested state", machine.state.GetType().Name, 0f);
+            yield return Capture(name + "-entered");
             float end = Time.realtimeSinceStartup + 8f;
             while (machine.state == maneuver && Time.realtimeSinceStartup < end) yield return new WaitForFixedUpdate();
             float travel = Vector3.Dot(pilot.gameObject.transform.position - start, expectedTravel);
@@ -53,6 +65,7 @@ namespace AH64
             var camera = pilot.GetComponent<CameraTargetParams>();
             bool clean = camera && camera.fovOverride == -1f && !pilot.characterMotor.disableAirControlUntilCollision;
             Assert(name + ".cleanup", clean, "FOV=-1; air control released", camera ? camera.fovOverride.ToString(Invariant) : "no camera", 0f);
+            yield return Capture(name + "-cleanup");
         }
 
         private IEnumerator HellfireCase()
@@ -69,6 +82,7 @@ namespace AH64
             Assert("hellfire.enter", machine.state == state, "FireHellfire", machine.state.GetType().Name, 0f);
             yield return FixedSeconds(0.2f);
             Assert("hellfire.launch", launches - before == 1 && observedProjectiles.Count == 1, "1 request and 1 observed owner projectile", (launches - before) + " requests; " + observedProjectiles.Count + " observed", 0f);
+            yield return Capture("hellfire-launched");
             float deadline = Time.realtimeSinceStartup + 8f;
             while (machine.state == state && Time.realtimeSinceStartup < deadline) yield return new WaitForFixedUpdate();
             Assert("hellfire.exit", machine.state.GetType() == mainType, mainType.Name, machine.state.GetType().Name, 0f);

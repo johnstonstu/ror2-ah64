@@ -22,7 +22,7 @@ namespace AH64
         private Vector3 mark, facing = Vector3.forward, move;
         private float started, quitAt;
         private bool gameLoaded, scripting, finished;
-        private int tick, samples, errors, warnings, visualFlags, launches;
+        private int tick, samples, errors, warnings, visualFlags, launches, captures;
         private readonly List<Check> checks = new List<Check>();
         private StreamWriter jsonl, csv, trace, runtimeLog;
 
@@ -106,6 +106,13 @@ namespace AH64
                     IntroCutsceneController.shouldSkip = true; // runtime-only; no archived intro_skip setting
                 return SceneManager.GetActiveScene().name == "title" && LocalUserManager.GetFirstLocalUser() != null;
             }, 90f, "title/local user");
+            // A mod-manager profile does not isolate Steam's player save. Keep this
+            // diagnostic's progress in memory, including the blocking logout save.
+            var diagnosticProfile = LocalUserManager.GetFirstLocalUser().userProfile;
+            if (diagnosticProfile == null) throw new InvalidOperationException("No player profile for save protection.");
+            diagnosticProfile.canSave = false;
+            diagnosticProfile.saveRequestPending = false;
+            Event("save-protection", "loaded player profile canSave=false for this diagnostic process; no disk save changes");
             yield return new WaitForSecondsRealtime(2f);
             RoR2.Console.instance.SubmitCmd((NetworkUser)null, "transition_command \"gamemode ClassicRun; host 0;\"", false);
             yield return Until(() => PreGameController.instance && LocalUserManager.GetFirstLocalUser().currentNetworkUser, 45f, "solo lobby");

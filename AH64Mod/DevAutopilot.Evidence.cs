@@ -152,7 +152,7 @@ namespace AH64
             var summary = new Summary { recordType = "summary", runId = Path.GetFileName(output), scenario = Suite, suite = Suite,
                 status = status, reason = reason, expectedAssertions = ExpectedAssertions, assertions = checks.Count,
                 failedAssertions = failures, executed = checks.Count, passed = checks.Count - failures, failed = failures,
-                skipped = Math.Max(0, ExpectedAssertions - checks.Count), captures = 0, samples = samples,
+                skipped = Math.Max(0, ExpectedAssertions - checks.Count), captures = captures, samples = samples,
                 errors = errors, warnings = warnings, visualFlags = visualFlags, checks = checks.ToArray(),
                 artifactPaths = new[] { "telemetry.jsonl", "telemetry.csv", "trace.txt", "runtime.log", "identity.json", "LogOutput.log", "Player.log" },
                 warningClassification = "all warnings untriaged", errorClassification = "all observed errors blocking",
