@@ -94,6 +94,7 @@ namespace AH64
                     attitudeSamplePhase = "FixedUpdate reads most recent LateUpdate model pose"
                 };
                 Write(sample); samples++;
+                ObserveBrakingPhysics();
                 var machines = pilot.GetComponents<EntityStateMachine>();
                 foreach (var machine in machines) {
                     EntityStates.EntityState previous;
@@ -176,7 +177,8 @@ namespace AH64
             int failures = checks.Count(c => !c.passed);
             bool prototypePassed = FinishPrototypeEvidence();
             bool balancePassed = FinishBalanceEvidence();
-            if (!prototypePassed || !balancePassed) status = "failed";
+            bool brakingPassed = FinishBrakingEvidence();
+            if (!prototypePassed || !balancePassed || !brakingPassed) status = "failed";
             if (status == "completed" && (checks.Count != ExpectedAssertions || failures > 0 || errors > 0 || warnings > 0 || visualFlags > 0)) status = "failed";
             var summary = new Summary { recordType = "summary", runId = Path.GetFileName(output), scenario = Suite, suite = Suite,
                 status = status, reason = reason, expectedAssertions = ExpectedAssertions, assertions = checks.Count,

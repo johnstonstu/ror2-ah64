@@ -20,6 +20,9 @@ namespace AH64.Survivors.Components
         public string YieldReason { get; private set; }
         internal bool HasActiveLease => hooked;
         internal float AppliedAge => stepAge;
+        internal int AppliedSteps { get; private set; }
+        internal Vector3 LastNativeVelocity { get; private set; }
+        internal Vector3 LastAppliedVelocity { get; private set; }
 
         public void Begin(object state, Func<bool> hasAuthority, AH64BrakingTurnCapture snapshot)
         {
@@ -31,6 +34,7 @@ namespace AH64.Survivors.Components
             motor = GetComponent<CharacterMotor>();
             body = GetComponent<CharacterBody>();
             stepAge = 0f;
+            AppliedSteps = 0;
             IsYielding = false;
             YieldReason = null;
             if (!CanWrite()) { Yield("entry-external-or-authority"); return; }
@@ -79,6 +83,9 @@ namespace AH64.Survivors.Components
             if (!CanWrite()) { Yield("post-move-handoff"); return; }
             Vector3 next = AH64BrakingTurnMath.Step(capture, before, stepAge, dt);
             next.y = self.velocity.y;
+            LastNativeVelocity = self.velocity;
+            LastAppliedVelocity = next;
+            AppliedSteps++;
             self.velocity = next;
             stepAge = Mathf.Min(capture.Duration, stepAge + Mathf.Max(dt, 0f));
         }

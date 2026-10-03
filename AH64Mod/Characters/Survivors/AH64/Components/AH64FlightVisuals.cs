@@ -36,6 +36,9 @@ namespace AH64.Survivors.Components
         private Quaternion lastRenderedBaseWorld;
         private bool hasRenderedBaseWorld;
         private bool brakingRecovering;
+        internal bool HasBrakingOwner => brakingVisualOwner != null;
+        internal bool IsBrakingRecovering => brakingRecovering;
+        internal Quaternion RenderedBaseWorld => lastRenderedBaseWorld;
 
         //rotor blur discs. Shipped inactive on mdlAH64; this component activates and fades them.
         //They are deliberately not CharacterModel renderers, so writing their alpha through a

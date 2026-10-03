@@ -131,6 +131,8 @@ namespace AH64
                 yield return PrototypeCases();
             if (Environment.GetEnvironmentVariable("AH64_AUTOPILOT_BALANCE_CHECKS") == "m230-v1")
                 yield return M230BalanceCase();
+            if (Environment.GetEnvironmentVariable("AH64_AUTOPILOT_BRAKING_CHECKS") == "braking-solo-v1")
+                yield return BrakingCases();
         }
 
         private void AfterInput(On.RoR2.PlayerCharacterMasterController.orig_FixedUpdate orig, PlayerCharacterMasterController self)
@@ -141,6 +143,7 @@ namespace AH64
             bank.moveVector = move; bank.aimDirection = facing;
             bank.skill1.down = bank.skill2.down = bank.skill3.down = bank.skill4.down = bank.jump.down = bank.sprint.down = false;
             if (prototypeHeld) bank.skill4.down = true;
+            if (brakingCollective) bank.jump.down = true;
             if (prototypeAim.sqrMagnitude > 0f) bank.aimDirection = prototypeAim;
         }
 

@@ -22,6 +22,7 @@ namespace AH64.Survivors.Components
         private CharacterBody body;
         private float age;
         private bool subscribed;
+        internal bool HasActiveOwner => owner != null;
 
         public void Begin(object state, AH64BrakingTurnCapture snapshot)
         {
