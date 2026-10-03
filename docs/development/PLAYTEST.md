@@ -244,3 +244,11 @@ detector currently overcounts. These are source-backed classification findings,
 preserved. Actual null-survivor exceptions, cursor confinement errors, shader/
 addressable failures, startup warnings and visual flags remain blocking and need
 individual review. A successful bootstrap does not imply a clean suite result.
+
+The next trial at `527db92` completed AH64 bootstrap, including a fresh fixed-arena
+body, but failed before assertions while disabling combat directors. Installed
+`CombatDirector.OnDisable` removes the disabled component from `instancesList`,
+invalidating a live list enumerator. The harness now disables a snapshot; the
+offline bootstrap checks include two directors that remove themselves synchronously.
+All 12 scenario assertions and the no-combat setup remain required. The failed trial,
+full logs and their blocking classifications remain preserved under `dist`.

@@ -27,6 +27,15 @@ namespace UnityEngine.Networking
 }
 namespace RoR2
 {
+    public class CombatDirector : UnityEngine.Object
+    {
+        public static readonly List<CombatDirector> instancesList = new List<CombatDirector>();
+        private bool active = true;
+        public bool enabled {
+            get { return active; }
+            set { active = value; if (!value) instancesList.Remove(this); }
+        }
+    }
     public enum BodyIndex { None = -1, Commando, AH64 }
     public enum SurvivorIndex { None = -1, AH64 }
     public class SurvivorDef : UnityEngine.Object { public string cachedName = "AH64"; public UnityEngine.GameObject bodyPrefab = new UnityEngine.GameObject(); }
@@ -159,6 +168,12 @@ internal static class Fixture
     public static int Main()
     {
         try {
+            CombatDirector.instancesList.Clear();
+            var firstDirector = new CombatDirector(); var secondDirector = new CombatDirector();
+            CombatDirector.instancesList.Add(firstDirector); CombatDirector.instancesList.Add(secondDirector);
+            AH64.DevAutopilot.TestDisableDirectors();
+            Check(!firstDirector.enabled && !secondDirector.enabled && CombatDirector.instancesList.Count == 0,
+                "director snapshot disables all entries despite synchronous OnDisable removal");
             Reset(); var runner = new AH64.DevAutopilot(); Check(Drive(runner) == null && runner.Ready, "null profile preference replaced before NetworkUser.Start");
             Check(!LocalUserManager.GetFirstLocalUser().userProfile.canSave && !LocalUserManager.GetFirstLocalUser().userProfile.saveRequestPending, "save protection retained through bootstrap");
             Check(runner.events.Any(e => e.Contains("prior=null")) && runner.events.Any(e => e.Contains("bootstrap-ready")), "selection and readiness evidence");
@@ -216,6 +231,7 @@ namespace AH64
         internal DevAutopilot() { NetworkUser.onPostNetworkUserStart += OnNetworkStarted; }
         private void Event(string name, string detail) { events.Add(name + ":" + detail); }
         internal IEnumerator TestBootstrap() { return Bootstrap(); }
+        internal static void TestDisableDirectors() { DisableCombatDirectors(); }
         internal bool Ready { get { return pilot != null; } }
     }
 }

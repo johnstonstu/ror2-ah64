@@ -104,7 +104,7 @@ namespace AH64
         private IEnumerator Script()
         {
             yield return Bootstrap();
-            foreach (var director in CombatDirector.instancesList) if (director) director.enabled = false;
+            DisableCombatDirectors();
             pilot.AddBuff(RoR2Content.Buffs.HiddenInvincibility);
             // Fixed world mark borrowed as terrain coordinates only; no humanoid poses/camera work.
             RaycastHit floor;

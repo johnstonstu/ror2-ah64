@@ -13,6 +13,13 @@ namespace AH64
         private NetworkUser startedNetworkUser;
         private BodyIndex expectedBody = BodyIndex.None;
 
+        private static void DisableCombatDirectors()
+        {
+            // CombatDirector.OnDisable synchronously removes itself from this list.
+            foreach (var director in CombatDirector.instancesList.ToArray())
+                if (director) director.enabled = false;
+        }
+
         private void OnNetworkStarted(NetworkUser networkUser)
         {
             if (!networkUser.isLocalPlayer) return;
