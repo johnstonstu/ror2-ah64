@@ -67,15 +67,16 @@ namespace AH64.Survivors.Components
                 return;
 
             GenericSkill special = skillLocator.special;
-            int max = Mathf.Max(1, special.maxStock);
-            int stock = Mathf.Clamp(special.stock, 0, max);
-
-            //Ceil, so any remaining charge always shows at least one missile on the
-            //rail. Dropping to an empty pylon while you can still fire would read as
-            //a bug rather than as ammunition.
-            int shown = Mathf.CeilToInt(missiles.Length * (stock / (float)max));
-            if (stock > 0)
-                shown = Mathf.Max(1, shown);
+            int shown = 0;
+            if (special.skillDef != AH64Assets.bombingSkillDef)
+            {
+                int max = Mathf.Max(1, special.maxStock);
+                int stock = Mathf.Clamp(special.stock, 0, max);
+                // Bombing uses its own rack; other specials retain proportional wing stores.
+                shown = Mathf.CeilToInt(missiles.Length * (stock / (float)max));
+                if (stock > 0)
+                    shown = Mathf.Max(1, shown);
+            }
 
             if (shown == lastShown)
                 return;

@@ -147,6 +147,7 @@ namespace AH64.Survivors
 
             InitializeEntityStateMachines();
             InitializeSkills();
+            InstallBombingRackPresentation();
             InitializeSkins();
             InitializeCharacterMaster();
 
@@ -744,12 +745,58 @@ namespace AH64.Survivors
                 canceledFromSprinting = false,
                 cancelSprintingOnActivation = false
             });
+            AH64Assets.bombingSkillDef = bombingSkillDef;
             // Existing defaults and variant order remain intact; AI paint behavior is unchanged.
             Skills.AddSpecialSkills(bodyPrefab, longbowSkillDef, hellfireSkillDef, bombingSkillDef);
         }
         #endregion skills
         
         #region skins
+        private void InstallBombingRackPresentation()
+        {
+            Material frameMaterial = null;
+            foreach (CharacterModel.RendererInfo info in prefabCharacterModel.baseRendererInfos)
+                if (info.renderer && info.renderer.name == "AirframeDark")
+                    frameMaterial = info.defaultMaterial;
+            if (!frameMaterial)
+                throw new InvalidOperationException("Bomb rack requires the converted airframe material.");
+
+            AH64BombingRunRack rack = AH64BombingRunPresentationAssets.BuildRack(prefabCharacterModel.transform, frameMaterial);
+            rack.BombingSkill = AH64Assets.bombingSkillDef;
+            RegisterBombingRack(prefabCharacterModel, rack);
+            // Display skins map every body renderer by exact name, including hidden attachments.
+            CharacterModel displayModel = displayPrefab.GetComponent<CharacterModel>();
+            if (!displayModel)
+                throw new InvalidOperationException("Bomb rack requires the display CharacterModel.");
+            AH64BombingRunRack displayRack = AH64BombingRunPresentationAssets.BuildRack(displayPrefab.transform, frameMaterial);
+            displayRack.BombingSkill = AH64Assets.bombingSkillDef;
+            RegisterBombingRack(displayModel, displayRack);
+            displayRack.PresentationReady = false;
+            rack.PresentationReady = true;
+        }
+
+        private static void RegisterBombingRack(CharacterModel model, AH64BombingRunRack rack)
+        {
+            ChildLocator locator = model.GetComponent<ChildLocator>();
+            if (!locator)
+                throw new InvalidOperationException("Bomb rack renderer registration requires ChildLocator.");
+            var infos = new List<CharacterModel.RendererInfo>(model.baseRendererInfos);
+            var pairs = new List<ChildLocator.NameTransformPair>(locator.transformPairs);
+            foreach (Renderer renderer in rack.Renderers)
+            {
+                infos.Add(new CharacterModel.RendererInfo
+                {
+                    renderer = renderer,
+                    defaultMaterial = renderer.sharedMaterial,
+                    ignoreOverlays = false,
+                    defaultShadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On
+                });
+                pairs.Add(new ChildLocator.NameTransformPair { name = renderer.name, transform = renderer.transform });
+            }
+            model.baseRendererInfos = infos.ToArray();
+            locator.transformPairs = pairs.ToArray();
+        }
+
         public override void InitializeSkins()
         {
             ModelSkinController skinController = prefabCharacterModel.gameObject.AddComponent<ModelSkinController>();

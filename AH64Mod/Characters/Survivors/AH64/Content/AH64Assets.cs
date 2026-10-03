@@ -35,6 +35,7 @@ namespace AH64.Survivors
         /// </summary>
         public static RoR2.Skills.SkillDef gatlingSkillDef;
         public static RoR2.Skills.SkillDef cannonSkillDef;
+        public static RoR2.Skills.SkillDef bombingSkillDef;
 
         //projectiles
         public static GameObject hellfireProjectilePrefab;
@@ -921,8 +922,10 @@ namespace AH64.Survivors
                 ? hellfireProjectilePrefab.GetComponent<ProjectileController>() : null;
             if (!source || !source.ghostPrefab || !hellfireExplosionEffect)
                 throw new System.InvalidOperationException("AH64 bombing requires the existing Hellfire ghost and impact effect.");
-            // Presentation reuse only: this builder supplies independent flight/damage components.
-            GameObject bomb = AH64BombingRunProjectiles.Build(source.ghostPrefab, hellfireExplosionEffect);
+            AH64BombingRunPresentationAssets.Build(source.ghostPrefab, hellfireExplosionEffect);
+            Content.CreateAndAddEffectDef(AH64BombingRunPresentationAssets.Impact);
+            GameObject bomb = AH64BombingRunProjectiles.Build(
+                AH64BombingRunPresentationAssets.Ghost, AH64BombingRunPresentationAssets.Impact);
             PrefabAPI.RegisterNetworkPrefab(bomb);
             Content.AddProjectilePrefab(bomb);
         }
