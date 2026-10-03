@@ -701,7 +701,7 @@ namespace AH64.Survivors
                 cancelSprintingOnActivation = false,
             });
 
-            SkillDef hellfireSkillDef = Skills.CreateSkillDef(new SkillDefInfo
+            SkillDef hellfireSkillDef = Skills.CreateSkillDef<AH64HellfireSkillDef>(new SkillDefInfo
             {
                 skillName = "AH64Hellfire",
                 skillNameToken = AH64_PREFIX + "SPECIAL_HELLFIRE_NAME",

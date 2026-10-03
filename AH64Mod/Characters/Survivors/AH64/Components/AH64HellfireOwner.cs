@@ -61,6 +61,10 @@ namespace AH64.Survivors.Components
             }
         }
         internal bool LocalHeld => Eligible && Util.HasEffectiveAuthority(gameObject) && body.inputBank.skill4.down;
+        internal bool HasLiveOrPendingLead => Eligible
+            && ((NetworkServer.active && Policy.ActiveToken != 0)
+                || (Util.HasEffectiveAuthority(gameObject) && acceptingLaunch
+                    && Time.fixedTime <= awaitUntil && (awaiting || localToken != 0)));
         internal Ray AimRay => body && body.inputBank ? body.inputBank.GetAimRay() : default(Ray);
         internal CharacterBody Body => body;
 
