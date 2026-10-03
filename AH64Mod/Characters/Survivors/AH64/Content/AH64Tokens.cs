@@ -116,7 +116,7 @@ namespace AH64.Survivors
 
             #region Special
             Language.Add(prefix + "SPECIAL_HELLFIRE_NAME", "AGM-114 Hellfire");
-            Language.Add(prefix + "SPECIAL_HELLFIRE_DESCRIPTION", $"Launch a missile from a wing rail that flies straight and detonates on contact for {Tokens.DamageValueText(AH64StaticValues.hellfireDamageCoefficient)}.");
+            Language.Add(prefix + "SPECIAL_HELLFIRE_DESCRIPTION", $"Press to launch a missile from a wing rail. Hold Special and aim with your crosshair to guide the latest missile; release to let it coast. Primary and secondary stay available. Detonates on contact for {Tokens.DamageValueText(AH64StaticValues.hellfireDamageCoefficient)}.");
 
             Language.Add(prefix + "SPECIAL_LONGBOW_NAME", "AGM-114L Longbow");
             Language.Add(prefix + "SPECIAL_LONGBOW_DESCRIPTION",
