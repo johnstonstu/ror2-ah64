@@ -41,6 +41,7 @@ try {
  [void](Once (Method $module 'AH64.DevAutopilot' 'InstallHooks') '*AH64BombingRunTrace::add_Emitted*')
  foreach($name in @('OnDestroy','Finish')){[void](Once (Method $module 'AH64.DevAutopilot' $name) '*AH64BombingRunTrace::remove_Emitted*')}
  [void](Once (Method $module 'AH64.DevAutopilot' 'OnBombingTrace') '*AH64.DevAutopilot::Event*')
+ [void](Once (Method $module 'AH64.DevAutopilot' 'OnBombingTrace') '*NetworkBehaviour::get_netId*')
  if((Calls (Method $module 'AH64.DevAutopilot' 'OnBombingTrace') '*StreamWriter*').Count){throw 'Bombing introduces another evidence writer'}
  $id=@($module.GetType('AH64.Survivors.Components.AH64BombingRunNetwork').Fields|Where-Object Name -CEQ 'TerminalMessageId')[0]
  if([int]$id.Constant -ne 28066){throw 'Bombing message ID changed'}

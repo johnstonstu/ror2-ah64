@@ -9,6 +9,7 @@ namespace AH64
         private void OnBombingTrace(AH64BombingRunTrace.Record value)
         {
             if (!scripting || finished || !pilot || value == null) return;
+            if (value.ownerId != pilot.netId.Value) return;
             // Keep one owned writer and the existing versioned event envelope. Fields retain
             // cast/owner/target attribution; a reported hit is not downstream proc evidence.
             Event("bombing-" + value.kind, JsonUtility.ToJson(new BombingPayload {

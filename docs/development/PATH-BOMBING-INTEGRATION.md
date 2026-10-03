@@ -28,6 +28,7 @@ release decisions. No config/version/manifest/Unity/bank changes are introduced.
 
 The owned opt-in autopilot subscribes to worker trace events and removes the
 subscription at both terminal Finish and OnDestroy. One existing versioned JSONL
+event envelope filters to the owned pilot's actual network ID. Its single
 event writer retains all cast, owner, drop, scheduling, position/velocity, target,
 damage, budget, proc and crit fields in a serializable payload. Ordinary launches
 still return before creating a runner. No bombing native scenario or screenshot
