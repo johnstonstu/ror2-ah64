@@ -8,6 +8,18 @@ presents to players as a lobby rejection.
 
 ---
 
+## Unreleased
+
+### Added
+
+- Simplified Chinese (zh-CN), Russian (ru), and Brazilian Portuguese (pt-BR) for the survivor's in-game text: name, subtitle, description, lore, outros, skills, skins, passive, radar chat, and the Mastery achievement. AH-64 follows **Settings → Language** and falls back to English. These translations are machine-translated; corrections are welcome.
+
+### Changed
+
+- Skill tooltips and the character description are filled from `AH64.language`. The numbers still come from the mod, so a translation stays on the values that are actually fired. The gatling splash tooltip prints 13.5% instead of the raw float 13.500001%. The Agile keyword on the chin guns and the Hydra is separated from the next word by a space.
+
+---
+
 ## 1.2.1
 
 Balance patch. Hover height and airtime are unchanged, and so is the Hellfire.

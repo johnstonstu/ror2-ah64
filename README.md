@@ -1,4 +1,11 @@
 <p align="center">
+  <a href="README.md">English</a> |
+  <a href="README.zh-CN.md">简体中文</a> |
+  <a href="README.ru.md">Русский</a> |
+  <a href="README.pt-BR.md">Português (BR)</a>
+</p>
+
+<p align="center">
   <img src="docs/images/banner.jpg" alt="AH-64, an Apache survivor for Risk of Rain 2" width="100%">
 </p>
 
@@ -56,6 +63,12 @@ Each primary has its own chin-mounted assembly. Changing your loadout updates th
 
 *Blender model preview; in-game lighting varies. The title banner is promotional artwork from an earlier airframe revision.*
 
+## Languages
+
+AH-64 follows the language you set in Risk of Rain 2 (**Settings → Language**). Simplified Chinese, Russian, and Brazilian Portuguese are included. Any other language falls back to English. The in-game tuning menu stays in English.
+
+These translations are machine-translated. Corrections are welcome — see [Translating](docs/TRANSLATING.md).
+
 ## Install
 
 **Mod manager (recommended):** install with [r2modman](https://thunderstore.io/c/riskofrain2/p/ebkr/r2modman/) or Thunderstore Mod Manager. Required dependencies are installed automatically.
@@ -65,9 +78,12 @@ Each primary has its own chin-mounted assembly. Changing your loadout updates th
 ```text
 JohnstonStu-AH64/
   AH64.dll
+  AH64.language
   AssetBundles/ah64
   SoundBanks/AH64Rotor.bnk
 ```
+
+`AH64.language` has to sit somewhere under `BepInEx/plugins`. Next to the DLL is the layout this package uses. Without it, the game falls back to English.
 
 Everyone in a lobby needs the **same mod version**. Gameplay tuning is local, so agree on matching settings before a multiplayer run.
 
@@ -157,6 +173,7 @@ Plugin dependencies come from NuGet. Builds stage the DLL in `Build/plugins/`; a
 ### 3. Check and package
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File tools/check-language.ps1
 powershell -ExecutionPolicy Bypass -File tools/check-feedback.ps1
 powershell -ExecutionPolicy Bypass -File tools/check-weapon-previews.ps1
 powershell -ExecutionPolicy Bypass -File tools/pack.ps1 -SkipBuild

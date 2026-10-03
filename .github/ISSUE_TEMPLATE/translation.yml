@@ -1,0 +1,58 @@
+name: Translation correction
+description: A line of Simplified Chinese, Russian, or Brazilian Portuguese is wrong or awkward.
+title: "[Translation] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AH-64's zh-CN, ru, and pt-BR text is machine-translated. A correction can be
+        a single token or a whole sentence. See
+        [docs/TRANSLATING.md](https://github.com/johnstonstu/ror2-ah64/blob/main/docs/TRANSLATING.md)
+        for the file format and what has to stay unchanged (placeholders and style tags).
+
+        You can write the correction in your own language.
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options:
+        - Simplified Chinese (zh-CN)
+        - Russian (ru)
+        - Brazilian Portuguese (pt-BR)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: where
+    attributes:
+      label: Where it appears
+      description: Token name if you know it (for example AH64_PRIMARY_CHAINGUN_DESCRIPTION), or the screen (character select, skill tooltip, logbook, radar chat, README).
+      placeholder: "AH64_LORE, or the M230 tooltip"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current text
+      description: Paste the line as the game or the README shows it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested
+    attributes:
+      label: Suggested text
+      description: Keep {0} placeholders and <style> / <color> tags if the current line has them. Leave the numbers as placeholders.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Optional. A screenshot of the tooltip is useful when the colour tags look wrong.
+    validations:
+      required: false

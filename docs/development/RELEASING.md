@@ -9,8 +9,9 @@ a public mod release.
    `major.minor.patch`. Reconcile both READMEs and the changelog with final behavior.
 3. Build the Unity bundle in 2021.3.33f1 if its inputs changed, build the Wwise bank,
    and compile with `/p:AH64DeployToProfiles=false`.
-4. Run feedback and weapon-preview checks. Package without bypassing freshness
-   checks. Inspect the exact ZIP allowlist and hashes.
+4. Run language, feedback, and weapon-preview checks. Package without bypassing
+   freshness checks. Inspect the exact ZIP allowlist and hashes. `AH64.language`
+   ships next to the DLL; the packager runs the language check itself.
 5. Install the ZIP into a fresh profile with the game closed. Test required
    dependencies alone, then optional Risk of Options. Check defaults, loadouts,
    skins, movement, audio lifecycle, feedback and host/client behavior. Preserve

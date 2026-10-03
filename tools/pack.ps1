@@ -3,8 +3,9 @@
     Builds the AH-64 mod and produces the Thunderstore release zip.
 
 .DESCRIPTION
-    Assembles dist/AH64-<version>.zip from three sources:
+    Assembles dist/AH64-<version>.zip from these sources:
       - AH64.dll                 built here by dotnet
+      - AH64.language            in-game strings, shipped next to the DLL
       - AssetBundles/ah64        built by Unity, mirrored in by this script
       - Build/                   manifest.json, README.md, icon.png (in git), plus the root CHANGELOG.md
 
@@ -53,6 +54,11 @@ function Ok  ([string]$msg) { Write-Host "  ok  $msg" -ForegroundColor Green }
 
 Write-Host "`nAH-64 release packager" -ForegroundColor Cyan
 Write-Host ("-" * 60)
+
+# Language files are an allowlisted package input. Fail before the Unity bundle
+# check so a bad translation is not hidden behind a missing assetbundle.
+& (Join-Path $PSScriptRoot 'check-language.ps1')
+if ($LASTEXITCODE -ne 0) { Fail 'language check failed' }
 
 # --- 1. version parity -------------------------------------------------------
 # NetworkCompatibility is EveryoneNeedSameModVersion. If these two disagree the
@@ -157,6 +163,7 @@ $packageFiles = [ordered]@{
     'CHANGELOG.md' = $Changelog
     'LICENSE' = $License
     'plugins/AH64.dll' = $dll
+    'plugins/AH64.language' = (Join-Path $RepoRoot 'AH64Mod\Language\AH64.language')
     'plugins/AssetBundles/ah64' = (Join-Path $bundleDest 'ah64')
     'plugins/SoundBanks/AH64Rotor.bnk' = (Join-Path $bankDest 'AH64Rotor.bnk')
     'plugins/SoundBanks/LICENSE_SOURCE.txt' = $AudioLicense
