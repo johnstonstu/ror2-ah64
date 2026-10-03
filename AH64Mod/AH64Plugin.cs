@@ -47,6 +47,7 @@ namespace AH64
 
             // make a content pack and add it. this has to be last
             new Modules.ContentPacks().Initialize();
+            DevAutopilot.TryStart();
         }
     }
 }
