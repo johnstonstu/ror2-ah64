@@ -11,10 +11,9 @@ from ctypes import wintypes
 import win32api
 import win32gui
 import win32process
-from PIL import ImageGrab
+from OwnedScreenPixels import SOURCE, grab_client
 
 NAMES = {'roll-entered', 'roll-cleanup', 'backflip-entered', 'backflip-cleanup', 'hellfire-launched'}
-SOURCE = 'Pillow.ImageGrab.grab(window=observed-owned-HWND)'
 
 
 def require_fresh_pixels(png_hash, previous_hashes):
@@ -90,9 +89,7 @@ def capture(stage, request, run, request_path, previous_hashes):
         raise RuntimeError('Request filename/token mismatch')
     hwnd = owned_window(request['pid'], request['executable'])
     client = win32gui.GetClientRect(hwnd)
-    started = utc()
-    image = ImageGrab.grab(window=hwnd)
-    finished = utc()
+    image, screen = grab_client(hwnd, request['pid'], utc)
     # Recheck the lease, executable and unique HWND after reading real pixels.
     validate_identity(stage, request, read(lease_path), run)
     if owned_window(request['pid'], request['executable']) != hwnd or win32gui.GetClientRect(hwnd) != client:
@@ -117,13 +114,14 @@ def capture(stage, request, run, request_path, previous_hashes):
     temporary.replace(png)
     evidence = {key: request[key] for key in ('runId', 'token', 'name', 'pid', 'executable', 'sourceSha',
                                              'owner', 'reservation', 'phase', 'bodyId', 'bodyState', 'weaponState')}
+    evidence.update(screen)
     evidence.update(schema=1, status='captured', source=SOURCE, hwnd=hwnd,
                     windowTitle=win32gui.GetWindowText(hwnd), clientRect=client,
                     foregroundIsOwned=win32gui.GetForegroundWindow() == hwnd,
-                    request=request, startedUtc=started, finishedUtc=finished, acknowledgedUtc=utc(),
+                    request=request, acknowledgedUtc=utc(),
                     width=image.width, height=image.height, rgbExtrema=extrema, nonflat=True,
                     png=png.name, pngSha256=png_hash,
-                    limitation='Original owned-window pixels; request frame and capture interval only, no exact rendered-frame identity')
+                    limitation='Actual unobstructed owned-client screen pixels; request phase and capture interval only, no exact rendered-frame identity')
     ack = request_path.with_name(request['token'] + '.ack.json')
     temporary = ack.with_suffix('.json.tmp')
     temporary.write_text(json.dumps(evidence, indent=2), encoding='utf-8')

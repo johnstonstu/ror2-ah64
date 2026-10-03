@@ -13,10 +13,12 @@ internal static class CaptureChecks
         sourceSha="source",owner="owner",reservation="lease",requestedUtc=Now.AddSeconds(-1).ToString("o")
     }; }
     private static WindowCaptureAck Ack() { var request=Request(); return new WindowCaptureAck {
-        schema=1,status="captured",source="Pillow.ImageGrab.grab(window=observed-owned-HWND)",
+        schema=1,status="captured",source="Pillow.ImageGrab.grab(bbox=verified-owned-client-screen-bounds,all_screens=True)",
         runId=request.runId,token=request.token,name=request.name,pid=request.pid,bodyId=request.bodyId,phase=request.phase,
         bodyState=request.bodyState,weaponState=request.weaponState,executable=request.executable,sourceSha=request.sourceSha,
         owner=request.owner,reservation=request.reservation,hwnd=99,width=2560,height=1440,nonflat=true,
+        foregroundIsOwned=true,unobstructed=true,foregroundHwnd=99,foregroundPid=request.pid,
+        screenBounds=new[]{0,0,2560,1440},virtualScreen=new[]{0,0,5120,1440},
         startedUtc=Now.AddSeconds(-.7).ToString("o"),finishedUtc=Now.AddSeconds(-.4).ToString("o"),png="roll-entered.png",pngSha256="hash"
     }; }
     private static void Validate(WindowCaptureAck ack,bool expired=false,string hash="hash",byte[] png=null) {
@@ -33,6 +35,13 @@ internal static class CaptureChecks
     }
     public static int Main() {
         Validate(Ack()); checks++;
+        var negativeOrigin=Ack(); negativeOrigin.screenBounds=new[]{-2560,0,0,1440}; negativeOrigin.virtualScreen=new[]{-2560,0,5120,1440}; Validate(negativeOrigin); checks++;
+        Reject(a=>a.source="Pillow.ImageGrab.grab(window=observed-owned-HWND)","cached HWND capture provenance");
+        Reject(a=>a.foregroundIsOwned=false,"background capture"); Reject(a=>a.unobstructed=false,"obstructed capture");
+        Reject(a=>a.foregroundPid=18,"wrong foreground process"); Reject(a=>a.foregroundHwnd=100,"wrong foreground window");
+        Reject(a=>a.screenBounds=null,"missing client screen bounds"); Reject(a=>a.screenBounds=new[]{0,0,2560},"truncated client bounds");
+        Reject(a=>a.virtualScreen=new[]{0,0,0,1440},"invalid virtual screen"); Reject(a=>a.screenBounds[2]=5120,"resized client bounds");
+        Reject(a=>a.screenBounds=new[]{-2560,0,0,1440},"client outside physical screen");
         Reject(a=>a.runId="old","wrong run"); Reject(a=>a.token="old","stale token");
         Reject(a=>a.pid=18,"wrong PID"); Reject(a=>a.hwnd=0,"missing window");
         Reject(a=>a.executable="other.exe","wrong executable"); Reject(a=>a.reservation="other","wrong lease");

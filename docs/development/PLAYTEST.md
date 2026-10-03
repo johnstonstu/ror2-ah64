@@ -298,13 +298,13 @@ The reserved visible comparison at `b2064a2` showed real AH64, Titanic Plains an
 HUD pixels in the exact owned game window, while the camera-to-texture output
 remained flat. Its public postprocess flag was `finalBlitToCameraTarget=False`;
 cached command-buffer destinations were not observed and are not a confirmed cause.
-The replacement baseline path reads the original game window using installed
-Pillow `ImageGrab.grab(window=HWND)`. It performs no extra camera render, target
+The replacement baseline path reads the original owned game client on screen using
+installed Pillow `ImageGrab.grab(bbox=verified_bounds, all_screens=True)`. It performs no extra camera render, target
 swap, postprocess mutation, game input, display change or simulation pause.
 
 Supply `Run-Autopilot.ps1 -VisibleWindow -WindowCapturePython <installed-python>`
 alongside the existing stage/owner/reservation/lease arguments. That Python must
-already have Pillow with Windows HWND support and pywin32. The launcher owns the
+already have Pillow and pywin32. The launcher owns the
 helper PID, starts it hidden, captures its full stdout/stderr, and restores the
 child-only `AH64_AUTOPILOT_WINDOW_CAPTURE` environment gate. The previous
 `AH64_AUTOPILOT_WINDOW_COMPARE`/OnGUI diagnostic marker is retired.
@@ -312,7 +312,12 @@ child-only `AH64_AUTOPILOT_WINDOW_CAPTURE` environment gate. The previous
 Each of the five unchanged checkpoints publishes a fresh GUID token, run/body,
 Body and Weapon2 state, scenario phase, request frame/fixed/realtime/UTC, candidate,
 PID/executable and canonical lease identity. The helper verifies stage/request/
-lease and the unique visible owned HWND before and after reading window pixels.
+lease and the unique visible owned HWND before and after reading screen pixels.
+The owned game must remain foreground and unobstructed: visible, uncloaked windows
+above its client reject capture before pixels are read, including layered windows
+whose transparency is not established. Nine interior hit tests must resolve to the
+game. Physical client-to-screen bounds, monitor offset, virtual screen bounds and
+a thread-only DPI context are recorded; the prior thread context is restored.
 It records actual capture start/end UTC, original client dimensions, RGB extrema
 and PNG hash, then atomically publishes the matching acknowledgement. Game-side
 frame/physics observations must retain the requested body/states/phase through
@@ -342,3 +347,14 @@ later phase label. Its helper also writes an explicit terminal record, avoiding
 reliance on a missing Process-wrapper exit code; an observed nonzero exit remains
 blocking. The first launcher reported helper failure with empty stderr. This refinement
 has offline checks; it is not evidence of a subsequent successful game trial.
+
+A subsequent direct-screen diagnostic on the unchanged `d1f1fd7` control, after
+the user explicitly approved temporarily disabling Discord's overlay, produced
+two distinct native 2560x1440 images within one roll. Visual review confirmed
+an advancing HUD clock (00:04.30 to 00:04.68), changing airframe pose and world view,
+with foreground/physical bounds and unobstructed checks passing. Discord's original
+ON setting was restored through its normal UI in finally. This diagnostic deliberately
+sent no phase acknowledgement and therefore did not complete the 12-assertion suite.
+The integrated screen source now rejects the earlier cached HWND provenance and
+requires owned foreground/physical-client metadata. A full new run is still needed
+to qualify five checkpoints; this diagnostic alone is not that baseline verdict.

@@ -14,9 +14,10 @@ namespace AH64
             owner, reservation, lockPath, requestedUtc;
     }
     [Serializable] internal sealed class WindowCaptureAck {
-        public int schema, pid, bodyId, width, height;
-        public long hwnd;
-        public bool nonflat;
+        public int schema, pid, bodyId, width, height, foregroundPid;
+        public long hwnd, foregroundHwnd;
+        public int[] screenBounds, virtualScreen;
+        public bool nonflat, foregroundIsOwned, unobstructed;
         public string status, runId, token, name, phase, bodyState, weaponState, executable, sourceSha,
             owner, reservation, startedUtc, finishedUtc, png, pngSha256, source;
     }
@@ -26,8 +27,17 @@ namespace AH64
         internal static void Validate(WindowCaptureRequest request, WindowCaptureAck ack, bool phaseInvalid,
             string actualHash, byte[] png, DateTime now)
         {
-            if (ack==null || ack.schema!=1 || ack.status!="captured" || ack.source!="Pillow.ImageGrab.grab(window=observed-owned-HWND)")
+            if (ack==null || ack.schema!=1 || ack.status!="captured" ||
+                ack.source!="Pillow.ImageGrab.grab(bbox=verified-owned-client-screen-bounds,all_screens=True)")
                 throw new InvalidDataException("Missing/invalid window capture acknowledgement.");
+            if (!ack.foregroundIsOwned || !ack.unobstructed || ack.foregroundHwnd!=ack.hwnd || ack.foregroundPid!=ack.pid ||
+                ack.screenBounds==null || ack.screenBounds.Length!=4 || ack.virtualScreen==null || ack.virtualScreen.Length!=4 ||
+                ack.virtualScreen[2]<=0 || ack.virtualScreen[3]<=0 || ack.width<=0 || ack.height<=0 ||
+                (long)ack.screenBounds[2]-ack.screenBounds[0]!=ack.width || (long)ack.screenBounds[3]-ack.screenBounds[1]!=ack.height ||
+                ack.screenBounds[0]<ack.virtualScreen[0] || ack.screenBounds[1]<ack.virtualScreen[1] ||
+                ack.screenBounds[2]>(long)ack.virtualScreen[0]+ack.virtualScreen[2] ||
+                ack.screenBounds[3]>(long)ack.virtualScreen[1]+ack.virtualScreen[3])
+                throw new InvalidDataException("Missing/wrong owned foreground or unobstructed physical client bounds.");
             if (ack.runId!=request.runId || ack.token!=request.token || ack.name!=request.name || ack.pid!=request.pid ||
                 ack.hwnd<=0 || !string.Equals(ack.executable,request.executable,StringComparison.OrdinalIgnoreCase) ||
                 ack.sourceSha!=request.sourceSha || ack.owner!=request.owner || ack.reservation!=request.reservation)
