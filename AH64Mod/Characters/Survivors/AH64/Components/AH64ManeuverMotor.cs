@@ -39,6 +39,14 @@ namespace AH64.Survivors.Components
             // Deliberately no entry velocity write: first step begins at the captured world momentum.
         }
 
+        public void CheckAuthority(object state, bool stateAuthority)
+        {
+            if (state != owner) return;
+            if (stateAuthority && motor && motor.hasEffectiveAuthority) return;
+            Yield();
+            Release(state);
+        }
+
         public void Step(object state, Vector3 direction, float age, float dt)
         {
             if (state != owner || yielding || !motor) return;
@@ -61,11 +69,12 @@ namespace AH64.Survivors.Components
 
         private void OnPreMove(On.RoR2.CharacterMotor.orig_PreMove orig, CharacterMotor self, float dt)
         {
-            if (self != motor || !hooked || yielding || !self.hasEffectiveAuthority)
+            if (self != motor || !hooked || yielding)
             {
                 orig(self, dt);
                 return;
             }
+            if (!self.hasEffectiveAuthority) { Yield(); orig(self, dt); return; }
             if (ExternalMotion()) { Yield(); orig(self, dt); return; }
             // KCC calls BeforeCharacterUpdate/PreMove BEFORE consuming ForceUnground. While
             // grounded, airControl=0 alone does not suspend acceleration. Use the existing air

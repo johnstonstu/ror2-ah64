@@ -18,6 +18,7 @@ internal static partial class MovementChecks
     private static void ReviewRegressionChecks()
     {
         GroundRecoveryChecks();
+        StateAuthorityLossChecks();
         foreach(bool flip in new[]{false,true})
         {
             NetworkServer.active=true;
@@ -52,6 +53,43 @@ internal static partial class MovementChecks
             EntityStates.Headstompers.BaseHeadstompersState.current=null;
         }
         NetworkServer.active=false;
+    }
+
+    private static void StateAuthorityLossChecks()
+    {
+        foreach(bool flip in new[]{false,true})
+        foreach(int authorityLoss in new[]{0,1,2})
+        {
+            var g=Body(new Vector3(4,2,9));var motor=g.GetComponent<CharacterMotor>();
+            motor.airControl=.75f;
+            var state=State(g,flip);state.isAuthority=true;state.OnEnter();
+            Check(motor.airControl==0 && motor.HitSubscribers==1
+                && On.RoR2.CharacterMotor.Subscribers==1 && On.RoR2.CharacterMotor.PreMoveSubscribers==1,
+                "active state owns controls and all motor subscriptions before authority loss");
+            // Loss 0 drops BOTH flags: the previously missed observer FixedUpdate path.
+            // Loss 1/2 also cover temporary disagreement between state and motor authority.
+            state.isAuthority=authorityLoss==2;
+            motor.hasEffectiveAuthority=authorityLoss==1;
+            var velocity=motor.velocity;
+            state.FixedUpdate(); // Exercise actual ServoDash/SmokeBackflip, never direct Step.
+            Near(motor.airControl,.75f,"state tick restores original air control after authority loss");
+            Check(motor.HitSubscribers==0 && On.RoR2.CharacterMotor.Subscribers==0
+                && On.RoR2.CharacterMotor.PreMoveSubscribers==0,
+                "state tick removes collision/force/PreMove subscriptions after authority loss");
+            Check(motor.velocity==velocity,"authority-loss cleanup preserves replicated/replacing velocity");
+            Check(!state.outer.main,"authority-loss cleanup does not request an unrelated state transition");
+            state.FixedUpdate();state.OnExit();
+            Near(motor.airControl,.75f,"later observer tick and exit leave restored controls alone");
+        }
+        // PreMove is a fallback if the motor loses authority before the next state tick.
+        var fallback=Body(Vector3.forward*12);var fallbackMotor=fallback.GetComponent<CharacterMotor>();
+        var lease=fallback.AddComponent<AH64ManeuverMotor>();var owner=new object();
+        lease.Begin(owner,Capture(fallbackMotor.velocity));fallbackMotor.hasEffectiveAuthority=false;
+        On.RoR2.CharacterMotor.RunPreMove(fallbackMotor,.02f);
+        Near(fallbackMotor.airControl,1,"PreMove authority-loss fallback restores controls");
+        Check(fallbackMotor.HitSubscribers==0 && On.RoR2.CharacterMotor.Subscribers==0
+            && On.RoR2.CharacterMotor.PreMoveSubscribers==0,"PreMove authority-loss fallback removes subscriptions");
+        lease.Release(owner);
     }
 
     private static void GroundRecoveryChecks()

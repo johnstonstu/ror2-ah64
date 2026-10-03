@@ -111,3 +111,43 @@ Logs: `correction-build.log`, `correction-movement.log`, `correction-feedback.lo
 
 Foundation and unedited-baseline runtime gates still precede integration/deployment.
 No game, profile, Unity, Wwise, install, push, PR, merge or publication occurred.
+
+## Focused authority-loss lifecycle correction
+
+Follow-up to `e1f86b24001129354ba1a4c45a576c6c17578d9f`, after source rereview
+cleared the prior re-unground/PreMove, FOV, priority and H3AD-5T corrections.
+The remaining conditional defect was that losing both state and motor authority
+skipped the authority-only Step branch which previously performed lease cleanup.
+
+- Both states now call the owned lease's CheckAuthority immediately after base
+  FixedUpdate, outside the movement authority branch and before the capture guard.
+  Loss of either authority flag yields/releases the lease, restores prior air
+  control and removes collision, force and PreMove subscriptions. Velocity and
+  visual progress remain untouched by this cleanup; no unrelated state transition
+  or recapture is requested.
+- PreMove also yields before calling orig when motor authority is lost, providing
+  a fallback wherever that hook is invoked before the next state tick.
+- The regression loses BOTH flags and ticks the actual ServoDash/SmokeBackflip
+  FixedUpdate paths. It asserts restored non-default air control, removal of all
+  three subscription types, retained velocity and safe later observer tick/exit.
+  It additionally covers temporary disagreement between authority flags and the
+  PreMove fallback. No direct Step call stands in for the state-path regression.
+- A generated mutant removing Roll's outer CheckAuthority call fails at the
+  expected state-tick air-control restoration assertion. The mutant is ignored
+  evidence under dist/bootstrap/authority-cleanup-mutation; production files were
+  not mutated for this negative-control run.
+
+Affected checks were rerun with the README.md isolated environment and commands:
+movement/state checks passed **3,905 assertions**; visual-source checks passed
+**37 assertions**; deployment-disabled Release build passed **zero errors and
+23 obsolete warnings**, unchanged from the prior corrective candidate. Unchanged
+feedback/weapon checks retain their prior verified 34/1,978 results and were not
+rerun for this lifecycle-only change.
+
+Evidence under ignored dist/bootstrap: authority-cleanup-movement.log,
+authority-cleanup-build.log, authority-cleanup-mutation/output.log/result.json and
+post-commit authority-cleanup-result.json. All documented runtime gates above
+remain: this source/double regression does not establish actual network authority
+notification/tick order, mid-cast authority gain, KCC/item/controller acceptance,
+private hook access, low-FPS visuals or multiplayer. Candidate peers still require
+identical DLL hashes while version remains 1.2.1. No integration/runtime work.

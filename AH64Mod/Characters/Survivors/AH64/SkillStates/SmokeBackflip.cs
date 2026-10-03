@@ -106,6 +106,9 @@ namespace AH64.Survivors.SkillStates
         public override void FixedUpdate()
         {
             base.FixedUpdate();
+            // Observers still tick the state after authority loss, but skip the movement branch.
+            // Release the old motor lease here instead of relying on an authority-only Step.
+            if (motion) motion.CheckAuthority(this, isAuthority);
             if (!hasCapture) return;
 
             smokeTimer -= GetDeltaTime();
