@@ -113,6 +113,10 @@ The tuning menu needs [Risk of Options](https://thunderstore.io/c/riskofrain2/p/
 - Deep drops beyond the ground sensor use normal falling physics. Jump-pad and lift handling has been improved; report any remaining stage-specific problems.
 - Laser-guided Hellfire is deferred. The current Hellfire variant is unguided; Longbow supplies radar-guided fire.
 
+## More mods by JohnstonStu
+
+**[Hollow Saint](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/Hollow_Saint/)**: my other Risk of Rain 2 survivor mod.
+
 ## Credits and license
 
 - Built with R2API and the Risk of Rain 2 modding community's survivor framework.
