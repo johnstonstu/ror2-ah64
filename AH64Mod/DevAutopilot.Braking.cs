@@ -49,9 +49,19 @@ namespace AH64
             brakingComplete = true;
         }
 
+        private IEnumerator ResetBrakingCase(string name)
+        {
+            brakingCollective = false; prototypeAim = Vector3.zero; move = Vector3.zero;
+            // TeleportHelper alone preserves modern held altitude. Reuse the same
+            // body-owned reset as a MapZone teleport so each fixture starts at rest.
+            pilot.GetComponent<AH64HoverController>().ResetAfterTeleport();
+            yield return ResetCase(name);
+            Event("braking-fixture", "teleport plus body-owned hover reset; no private stat writes or airtime restoration");
+        }
+
         private IEnumerator BrakingMotionCase(string name)
         {
-            yield return ResetCase("braking-" + name);
+            yield return ResetBrakingCase("braking-" + name);
             var slot = pilot.skillLocator.utility;
             var skill = Variant(slot, typeof(BrakingTurn));
             var hover = pilot.GetComponent<AH64HoverController>();
@@ -146,7 +156,7 @@ namespace AH64
 
         private IEnumerator BrakingGuidanceCase()
         {
-            yield return ResetCase("braking-guidance");
+            yield return ResetBrakingCase("braking-guidance");
             var utility = pilot.skillLocator.utility; var special = pilot.skillLocator.special;
             var brake = Variant(utility, typeof(BrakingTurn)); var hellfire = Variant(special, typeof(FireHellfire));
             utility.SetSkillOverride(this, brake, GenericSkill.SkillOverridePriority.Contextual);

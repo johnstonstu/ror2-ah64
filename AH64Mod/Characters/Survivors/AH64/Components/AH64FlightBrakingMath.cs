@@ -6,6 +6,17 @@ namespace AH64.Survivors.Components
     // World-space presentation only. The caller retains the sole model transform write.
     internal static class AH64FlightBrakingMath
     {
+        internal static Quaternion Blend(Quaternion previous, Quaternion target, float deltaTime)
+        {
+            float dt = Mathf.Max(deltaTime, 0f);
+            Quaternion smoothed = Quaternion.Slerp(previous, target,
+                1f - Mathf.Exp(-AH64StaticValues.leanSmoothing * dt));
+            float angle = Quaternion.Angle(previous, smoothed);
+            float maximum = AH64BrakingTurnStaticValues.TurnDegreesPerSecond * dt;
+            return angle > maximum && angle > 0f
+                ? Quaternion.Slerp(previous, smoothed, maximum / angle) : smoothed;
+        }
+
         internal static Quaternion Target(AH64BrakingTurnFrame frame,
             Quaternion entryWorld, Quaternion ordinaryWorld)
         {

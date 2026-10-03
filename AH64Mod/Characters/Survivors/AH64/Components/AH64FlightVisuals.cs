@@ -335,8 +335,8 @@ namespace AH64.Survivors.Components
                 }
                 Quaternion target = AH64FlightBrakingMath.Target(brakingFrame,
                     brakingEntryWorld, yaw * EvaluateFlightLean(false));
-                Quaternion world = Quaternion.Slerp(hasRenderedBaseWorld ? lastRenderedBaseWorld
-                    : brakingEntryWorld, target, 1f - Mathf.Exp(-AH64StaticValues.leanSmoothing * Time.deltaTime));
+                Quaternion world = AH64FlightBrakingMath.Blend(hasRenderedBaseWorld ? lastRenderedBaseWorld
+                    : brakingEntryWorld, target, Time.deltaTime);
                 leanLocal = Quaternion.Inverse(yaw) * world;
             }
             else if (backflipTimer > 0f)
@@ -352,10 +352,11 @@ namespace AH64.Survivors.Components
             else if (brakingRecovering && hasRenderedBaseWorld)
             {
                 Quaternion target = yaw * EvaluateFlightLean(false);
-                Quaternion world = Quaternion.Slerp(lastRenderedBaseWorld, target,
-                    1f - Mathf.Exp(-AH64StaticValues.leanSmoothing * Time.deltaTime));
+                Quaternion world = AH64FlightBrakingMath.Blend(lastRenderedBaseWorld, target, Time.deltaTime);
                 leanLocal = Quaternion.Inverse(yaw) * world;
-                if (Quaternion.Angle(world, target) < 0.1f) brakingRecovering = false;
+                // Ordinary hover/sway keeps moving the target. Join its existing local
+                // smoothing within one degree instead of waiting for exact convergence.
+                if (Quaternion.Angle(world, target) < 1f) brakingRecovering = false;
             }
             else
                 leanLocal = EvaluateFlightLean();

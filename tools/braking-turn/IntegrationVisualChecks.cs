@@ -75,5 +75,34 @@ internal static partial class VisualChecks
         Check(Angle(AH64FlightBrakingMath.Target(frame,entry,ordinary),entry)<.06f,"visual math brake begins at actual displayed world basis");
         frame.Phase=AH64BrakingTurnPhase.Exit;frame.PhaseProgress=1;
         Check(Angle(AH64FlightBrakingMath.Target(frame,entry,ordinary),ordinary)<.06f,"visual math exit ends at ordinary world basis");
+
+        // Native 180-degree exits exposed a faster return than the commanded turn.
+        // Exercise the actual central writer with changing hover/sway targets.
+        foreach(float fps in new[]{30f,60f,144f})
+        {
+            var g=Body();var visuals=g.GetComponent<AH64FlightVisuals>();var locator=g.GetComponent<ModelLocator>();
+            var machine=g.AddComponent<EntityStateMachine>();var state=g.AddComponent<BrakingTurn>();
+            Call(visuals,"Start");float saved=Time.deltaTime;Time.deltaTime=1f/fps;
+            var capture=AH64BrakingTurnCapture.Create(new Vector3(0,0,17),-Vector3.forward,
+                Vector3.forward,Vector3.forward,Quaternion.identity,8.5f);
+            var presentation=g.AddComponent<AH64BrakingTurnPresentation>();machine.state=state;presentation.Begin(state,capture);
+            Quaternion previous=locator.modelTransform.rotation;
+            for(int i=0;i<(int)fps;i++)
+            {
+                Time.time+=Time.deltaTime;presentation.Progress(state,i/fps);
+                Call(visuals,"LateUpdate");Quaternion now=locator.modelTransform.rotation;
+                Check(Angle(previous,now)<=360f*Time.deltaTime+.08f,"180-degree braking presentation obeys rendered angular rate");previous=now;
+            }
+            presentation.End(state);machine.state=new OtherBodyState{minimum=InterruptPriority.Stun};
+            for(int i=0;i<(int)(fps*1.4f);i++)
+            {
+                Time.time+=Time.deltaTime;
+                g.GetComponent<CharacterMotor>().velocity=new Vector3(0,(i%2==0 ? 1f : -1f),0);
+                Call(visuals,"LateUpdate");Quaternion now=locator.modelTransform.rotation;
+                Check(Angle(previous,now)<=360f*Time.deltaTime+.08f,"changing native hover target has bounded recovery");previous=now;
+            }
+            Check(!visuals.IsBrakingRecovering && !visuals.HasBrakingOwner,"hover/sway recovery releases bookkeeping within fixture window");
+            Call(visuals,"OnDestroy");Time.deltaTime=saved;
+        }
     }
 }

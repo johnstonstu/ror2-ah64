@@ -132,7 +132,7 @@ namespace AH64.Survivors.Components
             ResetAfterTeleport();
         }
 
-        private void ResetAfterTeleport()
+        internal void ResetAfterTeleport()
         {
             timeWithoutGround = 0f;
             probeMissTimer = 0f;
