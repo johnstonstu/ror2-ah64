@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param([string]$StageRecord, [string]$RuntimeReservation, [string]$RuntimeOwner, [string]$RuntimeLockPath, [int]$TimeoutSeconds = 300, [switch]$ValidateOnly)
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'Stage-Build.ps1')
+. (Join-Path $PSScriptRoot 'Stage-Build.ps1') -RuntimeReservation $RuntimeReservation -RuntimeOwner $RuntimeOwner -RuntimeLockPath $RuntimeLockPath
 
 function Test-AutopilotEvidence([string]$Directory, [int]$ProcessExit, [bool]$TimedOut) {
     $problems = [Collections.Generic.List[string]]::new()

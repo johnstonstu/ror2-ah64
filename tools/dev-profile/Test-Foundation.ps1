@@ -66,6 +66,13 @@ RejectFixture { param($d) Get-Content (Join-Path $d 'telemetry.jsonl') | Where-O
 MustThrow { Get-ProfilePath 'demo time' } 'production profile rejected'
 MustThrow { Get-TreeIdentity (Join-Path $root 'absent') '*.dll' } 'missing dependency directory rejected'
 MustThrow { Assert-DependencyLock @{ packages = @() } @{ dependencies = @('Required-Package-1.0.0') } $root } 'missing dependency package rejected'
+$invalidStage = Join-Path $root 'invalid-stage.json'
+'{}' | Set-Content -LiteralPath $invalidStage
+$launcherFailure = ''
+try {
+    & (Join-Path $PSScriptRoot 'Run-Autopilot.ps1') -StageRecord $invalidStage -RuntimeOwner 'fixture-owner' -RuntimeReservation 'fixture-token' -RuntimeLockPath (Join-Path $root 'never-created.lock') -ValidateOnly
+} catch { $launcherFailure = $_.Exception.Message }
+Check ($launcherFailure -eq 'Stage/reservation mismatch.') 'launcher preserves lease arguments when importing staging helpers'
 $lock = Join-Path $root 'runtime.lock' # LOCAL FIXTURE, never the canonical integration lease
 New-RuntimeLease $lock 'fixture-owner' 'fixture-token' 'fixture-profile' ('a' * 40)
 Check ((Assert-RuntimeLease $lock 'fixture-owner' 'fixture-token').owner -eq 'fixture-owner') 'lease identity roundtrip'
