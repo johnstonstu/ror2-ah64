@@ -67,7 +67,7 @@ namespace AH64
                 BalanceCheck("m230.native-fire-entries",nativeEntries.Count==20,"actual FireChaingun state entries="+nativeEntries.Count);
                 var intervals=nativeEntries.Skip(1).Select((time,index)=>time-nativeEntries[index]).ToArray();
                 float nominal=FireChaingun.baseDuration/attackSpeed;
-                bool cadence=intervals.Length==23 && intervals.All(dt=>dt>=nominal-0.001f && dt<=nominal+Time.fixedDeltaTime*3f+0.001f);
+                bool cadence=intervals.Length==19 && intervals.All(dt=>dt>=nominal-0.001f && dt<=nominal+Time.fixedDeltaTime*3f+0.001f);
                 BalanceCheck("m230.native-cadence",cadence,"nominal="+nominal+" observed min="+(intervals.Length>0 ? intervals.Min().ToString("R",Invariant) : "none")+" max="+(intervals.Length>0 ? intervals.Max().ToString("R",Invariant) : "none")+" intervals="+intervals.Length+"; fixed-tick request/state scheduling, not nominal RPM measurement");
                 bool emptyAccepted=slot.ExecuteIfReady();
                 BalanceCheck("m230.empty-blocked",!emptyAccepted && slot.stock==0,"empty ExecuteIfReady="+emptyAccepted+" stock="+slot.stock);
