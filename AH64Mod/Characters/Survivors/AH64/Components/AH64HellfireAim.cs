@@ -52,16 +52,37 @@ namespace AH64.Survivors.Components
         }
 
         public static Vector3 Turn(Vector3 heading, Vector3 desired, float dt,
-            ref float rate, ref float remainingDegrees)
+            ref Vector3 angularVelocity, ref float remainingDegrees)
         {
             if (desired.sqrMagnitude < 0.0001f || dt <= 0f || remainingDegrees <= 0f)
+            {
+                angularVelocity = Vector3.zero;
                 return heading;
-            rate = Mathf.MoveTowards(rate, AH64HellfirePrototype.TurnDegreesPerSecond,
+            }
+            heading = heading.normalized;
+            desired = desired.normalized;
+            Vector3 axis = Vector3.Cross(heading, desired);
+            float angle = Mathf.Atan2(axis.magnitude, Vector3.Dot(heading, desired)) * Mathf.Rad2Deg;
+            // Braking speed approaches zero near alignment; straight travel cannot precharge a turn.
+            float neededSpeed = Mathf.Min(AH64HellfirePrototype.TurnDegreesPerSecond,
+                Mathf.Min(angle / dt, Mathf.Sqrt(2f * AH64HellfirePrototype.TurnAcceleration * angle)));
+            if (axis.sqrMagnitude < 0.00000001f && angle > 90f)
+            {
+                axis = Vector3.Cross(heading, Vector3.up);
+                if (axis.sqrMagnitude < 0.00000001f)
+                    axis = Vector3.Cross(heading, Vector3.forward);
+            }
+            Vector3 neededVelocity = axis.normalized * neededSpeed;
+            // Bound the vector change too: a designation reversal cannot flip a full-rate turn.
+            angularVelocity = Vector3.MoveTowards(angularVelocity, neededVelocity,
                 AH64HellfirePrototype.TurnAcceleration * dt);
-            float allowed = Mathf.Min(rate * dt, remainingDegrees);
-            Vector3 next = Vector3.RotateTowards(heading.normalized, desired.normalized,
-                allowed * Mathf.Deg2Rad, 0f).normalized;
-            remainingDegrees = Mathf.Max(0f, remainingDegrees - Vector3.Angle(heading, next));
+            float allowed = Mathf.Min(angularVelocity.magnitude * dt, remainingDegrees);
+            Vector3 next = (Quaternion.AngleAxis(allowed, angularVelocity.normalized) * heading).normalized;
+            Vector3 appliedAxis = Vector3.Cross(heading, next);
+            float used = Mathf.Atan2(appliedAxis.magnitude, Vector3.Dot(heading, next)) * Mathf.Rad2Deg;
+            // Retain the actually applied turning, including the terminal budget clamp.
+            angularVelocity = used > 0f ? appliedAxis / appliedAxis.magnitude * (used / dt) : Vector3.zero;
+            remainingDegrees = Mathf.Max(0f, remainingDegrees - used);
             return next;
         }
     }

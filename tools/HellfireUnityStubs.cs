@@ -61,6 +61,11 @@ namespace UnityEngine
             if (axis.sqrMagnitude < 0.001f) axis=Cross(current, MathF.Abs(current.y)<0.9f?up:new Vector3(1,0,0)).normalized;
             return Quaternion.AngleAxis(radians*180/MathF.PI,axis)*current;
         }
+        public static Vector3 MoveTowards(Vector3 current,Vector3 target,float distance)
+        {
+            Vector3 delta=target-current;
+            return delta.magnitude<=distance?target:current+delta/delta.magnitude*distance;
+        }
     }
     public struct Quaternion
     {
@@ -81,6 +86,9 @@ namespace UnityEngine
     public static class Mathf
     {
         public const float Deg2Rad = MathF.PI/180;
+        public const float Rad2Deg = 180/MathF.PI;
+        public static float Atan2(float y,float x)=>MathF.Atan2(y,x);
+        public static float Sqrt(float value)=>MathF.Sqrt(value);
         public static float Min(float a,float b) => MathF.Min(a,b);
         public static float Max(float a,float b) => MathF.Max(a,b);
         public static float MoveTowards(float a,float b,float delta) => MathF.Abs(b-a)<=delta?b:a+MathF.Sign(b-a)*delta;
@@ -99,13 +107,16 @@ namespace UnityEngine
     {
         public static RaycastHit[] Hits = Array.Empty<RaycastHit>();
         public static int Queries,Ignored;
+        public static int CollisionQueries;
         public static Collider[] Overlaps=Array.Empty<Collider>();
         public static RaycastHit[] Sweeps=Array.Empty<RaycastHit>();
         public static RaycastHit[] RaycastAll(Ray ray,float distance,int mask,QueryTriggerInteraction triggers)
         { Queries++;return Hits; }
         public static void IgnoreCollision(Collider a,Collider b,bool ignore) { if(ignore) Ignored++; }
-        public static Collider[] OverlapSphere(Vector3 position,float radius,int mask,QueryTriggerInteraction query)=>Overlaps;
-        public static RaycastHit[] SphereCastAll(Vector3 position,float radius,Vector3 direction,float distance,int mask,QueryTriggerInteraction query)=>Sweeps;
+        public static Collider[] OverlapSphere(Vector3 position,float radius,int mask,QueryTriggerInteraction query)
+        { CollisionQueries++;return Overlaps; }
+        public static RaycastHit[] SphereCastAll(Vector3 position,float radius,Vector3 direction,float distance,int mask,QueryTriggerInteraction query)
+        { CollisionQueries++;return Sweeps; }
     }
     public static class Time { public static float fixedTime; public static float fixedDeltaTime=0.02f; }
     [AttributeUsage(AttributeTargets.Class)] public class DefaultExecutionOrderAttribute : Attribute
@@ -179,6 +190,12 @@ namespace RoR2.Projectile
         public byte combo;
         public event Action<ProjectileController> onInitialized;
         public void Initialize() => onInitialized?.Invoke(this);
+        public void NativeImpact(ProjectileImpactInfo impact)
+        {
+            foreach(var filter in GetComponents<IProjectileImpactFilter>())
+                if(!filter.PassesFilters(impact))return;
+            foreach(var behavior in GetComponents<IProjectileImpactBehavior>())behavior.OnProjectileImpact(impact);
+        }
     }
     public class ProjectileSimple : MonoBehaviour { public float desiredForwardSpeed=140; }
     public class ProjectileNetworkTransform : Component

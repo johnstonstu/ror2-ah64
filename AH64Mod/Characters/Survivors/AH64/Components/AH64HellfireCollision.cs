@@ -8,7 +8,7 @@ namespace AH64.Survivors.Components
     // Supplement stock physical collisions for rail overlap and hurtboxes crossed in a fast tick.
     // Forward one impact through the same filters/behaviors as ProjectileController; never deal damage.
     [DefaultExecutionOrder(-190)]
-    public sealed class AH64HellfireCollision : MonoBehaviour
+    public sealed class AH64HellfireCollision : MonoBehaviour, IProjectileImpactBehavior
     {
         private ProjectileController controller;
         private ProjectileSimple flight;
@@ -29,6 +29,19 @@ namespace AH64.Survivors.Components
         private bool Eligible(Collider candidate)
         {
             return candidate && candidate != shape && !AH64HellfireAim.IsOwner(candidate, owner);
+        }
+
+        public void OnProjectileImpact(ProjectileImpactInfo impact)
+        {
+            if (!NetworkServer.active || !controller)
+                return;
+            if (!owner && controller.owner)
+                owner = controller.owner.GetComponent<CharacterBody>();
+            // This Hellfire warhead destroys on both enemy and world contact. Native controller
+            // dispatch reaches us after its filters pass, even if detonation waits until next tick.
+            // Never sweep/reposition that pending native impact when its collider moves away.
+            if (Eligible(impact.collider))
+                stopped = true;
         }
 
         private void FixedUpdate()

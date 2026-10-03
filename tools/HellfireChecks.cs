@@ -109,7 +109,8 @@ internal static partial class HellfireChecks
         Check(!AH64HellfireAim.ValidRay(body,new Ray(new Vector3(9,0,0),Vector3.forward)),"out-of-range aim origin");
         Check(!AH64HellfireAim.ValidRay(body,new Ray(Vector3.zero,Vector3.zero)),"zero direction");
         Check(!AH64HellfireAim.Finite(float.PositiveInfinity),"infinite component");
-        float rate=0,budget=240,total=0;
+        float budget=240,total=0;
+        Vector3 rate=Vector3.zero;
         heading=Vector3.forward;
         for(int i=0;i<400;i++)
         {
@@ -118,12 +119,13 @@ internal static partial class HellfireChecks
             float turned=Angle(heading,next);total+=turned;
             Check(turned<=2.401f,"per-tick angular cap");
             Near(next.magnitude,1,0.0001f,"normalized flight direction");
-            Check(rate<=120.001f && budget>=0,"bounded rate and budget");
+            Check(rate.magnitude<=120.001f && budget>=0,"bounded rate and budget");
             if(i==0)Check(turned<=0.289f,"angular acceleration starts bounded");
             heading=next;
         }
         Check(total<=240.5f,"whole-life turn budget");
-        float stoppedRate=0,stoppedBudget=240;
+        float stoppedBudget=240;
+        Vector3 stoppedRate=Vector3.zero;
         Point(AH64HellfireAim.Turn(heading,Vector3.zero,0.02f,ref stoppedRate,ref stoppedBudget),heading,"point reached coasts");
     }
 
@@ -171,7 +173,7 @@ internal static partial class HellfireChecks
     }
     public static void Main()
     {
-        Policy();Geometry();LifecycleAndNetwork();Collision();LaunchAndPayload();
+        Policy();Geometry();SteeringRegressions();LifecycleAndNetwork();Collision();NativeDeferredImpact();LaunchAndPayload();
         Console.WriteLine($"Hellfire checks passed: {assertions} assertions (API/physics doubles; runtime unverified).");
     }
 }

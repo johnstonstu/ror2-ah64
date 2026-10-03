@@ -13,7 +13,7 @@ namespace AH64.Survivors.Components
         private Rigidbody physicsBody;
         private AH64HellfireOwner owner;
         private uint token;
-        private float turnRate;
+        private Vector3 turnVelocity;
         private float remainingTurn = AH64HellfirePrototype.TotalTurnDegrees;
         internal uint Token => token;
         internal float LastTurnDegrees { get; private set; }
@@ -83,13 +83,13 @@ namespace AH64.Survivors.Components
                 return;
             if (!owner.Alive || !owner.Policy.CanGuide(token, Time.fixedTime))
             {
-                turnRate = 0f;
+                turnVelocity = Vector3.zero;
                 return; // ProjectileSimple retains the last heading and the existing lifetime.
             }
             Vector3 desired = owner.Point - transform.position;
             Vector3 heading = AH64HellfireAim.Turn(transform.forward, desired, Time.fixedDeltaTime,
-                ref turnRate, ref remainingTurn);
-            LastTurnDegrees = Vector3.Angle(transform.forward, heading);
+                ref turnVelocity, ref remainingTurn);
+            LastTurnDegrees = turnVelocity.magnitude * Time.fixedDeltaTime;
             transform.rotation = Util.QuaternionSafeLookRotation(heading);
             physicsBody.velocity = heading * flight.desiredForwardSpeed;
             // No target, translation, explosion or damage writer here. Stock physics and impact

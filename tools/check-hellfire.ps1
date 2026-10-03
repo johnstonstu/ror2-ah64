@@ -4,6 +4,7 @@ $output = Join-Path $repo 'dist/hellfire-checks'
 New-Item -ItemType Directory -Force -Path $output | Out-Null
 $sources = @('tools/HellfireUnityStubs.cs', 'tools/HellfireNetworkStubs.cs', 'tools/HellfireChecks.cs',
     'tools/HellfireLifecycleChecks.cs',
+    'tools/HellfireRegressionChecks.cs',
     'AH64Mod/Characters/Survivors/AH64/SkillStates/FireHellfire.cs')
 $sources += Get-ChildItem (Join-Path $repo 'AH64Mod/Characters/Survivors/AH64/Components') -Filter 'AH64Hellfire*.cs' |
     ForEach-Object { $_.FullName }

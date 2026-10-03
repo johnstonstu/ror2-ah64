@@ -88,13 +88,33 @@ dotnet build AH64Mod/AH64.csproj -c Release --no-restore --disable-build-servers
 
 Bootstrap environment helper/caches and logs are ignored worktree artifacts, not new tracked
 foundation tooling. Compilation stages only Build/plugins; no player profile is touched.
-Final offline candidate: Release build passed with zero errors and the 22 existing warnings;
+Initial offline candidate: Release build passed with zero errors and the 22 existing warnings;
 Hellfire checks passed 1,320 assertions; feedback passed 34 controls; weapon previews passed
 1,978 assertions. Logs are `dist/bootstrap/hellfire-{restore,build,checks,feedback,previews}.log`.
 Foundation telemetry can read `AH64HellfireGuidance.Token`, `LastTurnDegrees`,
 `RemainingTurnDegrees`, owner `Policy.ActiveToken`/`CanGuide`/`Point`/`ServerRequest` inside this
 assembly. It can identify lead/extra through ProjectileController.combo. Emitting JSONL is owned
 by the foundation; this branch adds no independently competing logging system.
+
+### Independent-review corrections
+
+The corrective candidate replaces the precharged scalar turn rate with actual applied angular
+velocity. Alignment requests zero velocity; braking speed approaches zero as angular error shrinks.
+Vector acceleration is bounded across steering reversals, so a long straight flight cannot preload
+a 120-degree/s sideways correction. The hard terminal budget clamp still takes priority over smooth
+deceleration. Diagnostic LastTurnDegrees uses the actual applied velocity from this computation.
+
+AH64HellfireCollision now also implements IProjectileImpactBehavior. Native accepted impact marks
+its guard stopped immediately, before stock deferred detonation. Because this Hellfire warhead
+destroys on world and enemy contact, subsequent guard ticks must not query, sweep or relocate it.
+This uses the existing public impact callback, without reading the native protected alive field.
+The new stub regression models native callback dispatch, terminal-before-detonation state, an
+original collider moving away, another candidate obstruction and the following stock detonation.
+
+Corrective checks pass 7,549 assertions, including aligned-then-sideways turns, actual angular
+acceleration across direction changes, and 5/20/50 ms timestep budgets. Logs use
+`dist/bootstrap/hellfire-review-{build,checks}.log`. Runtime physics and network presentation remain
+unverified. No damage, network protocol, shared registration or configuration changes are included.
 
 ## Reserved runtime acceptance cases (all unverified)
 
