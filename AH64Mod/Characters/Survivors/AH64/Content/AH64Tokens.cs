@@ -113,9 +113,9 @@ namespace AH64.Survivors
                 $"Kick into an aerobatic {Tokens.UtilityText("backflip")} - surge rearward and climb through a pitch loop while dumping smoke. " +
                 $"{Tokens.UtilityText("Cloak")} briefly as you fade back into the fight.");
 
-            Language.Add(prefix + "UTILITY_BRAKING_TURN_NAME", "Braking Turn");
+            Language.Add(prefix + "UTILITY_BRAKING_TURN_NAME", "Banked Break");
             Language.Add(prefix + "UTILITY_BRAKING_TURN_DESCRIPTION",
-                "Brake your momentum, turn toward your chosen direction, then regain controlled speed. Aim and fire while turning.");
+                "Bank through a sweeping 90-degree turn while maintaining flight. Choose left or right with movement input; neutral input turns right. Aim and fire throughout.");
             #endregion
 
             #region Special

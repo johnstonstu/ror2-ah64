@@ -134,6 +134,8 @@ namespace AH64.Survivors.Components
 
         internal void ResetAfterTeleport()
         {
+            AH64BrakingTurnMotor bankedMotor = GetComponent<AH64BrakingTurnMotor>();
+            if (bankedMotor) bankedMotor.CancelForTeleport();
             timeWithoutGround = 0f;
             probeMissTimer = 0f;
             externalLaunchActive = false;
@@ -558,6 +560,20 @@ namespace AH64.Survivors.Components
                 ? Mathf.Max(anchorGroundY + GetCeiling() - groundY, rest)
                 : GetAnchoredCeiling();
             float lead = GroundDistance + AH64StaticValues.collectiveLead;
+
+            // Consume only inside the existing resource/terrain/ceiling path, after external handoffs.
+            AH64BankedBreakAltitude bankedHold = GetComponent<AH64BankedBreakAltitude>();
+            float requestedBodyAltitude;
+            if (bankedHold && bankedHold.TryGetBodyAltitude(jumpHeld, descendHeld,
+                hasGround, climbLocked || Airtime <= 0f, classic, out requestedBodyAltitude))
+            {
+                float requestedFeetAltitude = requestedBodyAltitude + FeetY() - transform.position.y;
+                pilotHeight = Mathf.Clamp(requestedFeetAltitude - groundY, rest, ceiling);
+                pilotAltitude = groundY + pilotHeight;
+                pilotAltitudeValid = true;
+                holdingAltitude = true;
+                bumpHeight = Mathf.Min(bumpHeight, pilotHeight);
+            }
 
             if (worldHold)
             {
