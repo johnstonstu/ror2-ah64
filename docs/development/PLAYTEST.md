@@ -203,3 +203,44 @@ terrain selection before expanding scenarios or comparing feature branches. Then
 repeat the same suite/artifact/config identities for a before/after trace. Normal
 controller play, multiplayer owner/observer tests and exact-ZIP clean acceptance
 remain separate reserved trials. No main merge or publication is authorized.
+
+## Bootstrap lifecycle and first-trial diagnosis
+
+The first trial at integration SHA `c9e5302` failed before scenarios: 0/12
+assertions, zero physics samples/captures, and a generic body prerequisite error.
+Its archived execution is
+`dist/autopilot/20261003-034518-28e98ac65375452182d7ff794876a8cf/execution-cf98ee6162a14ef498867c83a7a46577`.
+The null `survivorDef` exception comes from installed `RoR2.NetworkUser.Start`,
+which links the local user before reading `userProfile.GetSurvivorPreference()`.
+It interrupts startup before `onPostNetworkUserStart`. Merely seeing a linked
+network user was therefore insufficient readiness proof. The later generic body
+failure did not identify which prerequisite was missing; its precise cause remains
+unproven by that trace.
+
+The corrected bootstrap waits for onLoad/title/local user and the canonical AH64
+catalog entry. It disables saving first, sets the loaded profile's AH64 preference
+in memory **before hosting**, waits for the actual local network user's completed
+startup event, and requires the server-observed body preference before launch.
+Bootstrap phase events include scene, user counts, client/server status, expected
+and actual body index/name, authority, and specific missing component/control-chain
+or state-machine prerequisites. Body initialization waits remain bounded and strict.
+A stage change also requires a different cached body before using the fixed arena.
+No saved survivor preference or gameplay defaults are changed on disk.
+
+Run `tools/dev-profile/Test-Bootstrap.ps1` alongside the existing offline protocol
+and access checks. It compiles the real bootstrap coroutine against local doubles
+and covers null/stale preferences, delayed/missing catalog, linked but unfinished
+network startup, delayed/missing selection acknowledgment, each body prerequisite,
+and stale versus freshly rebuilt stage bodies. It never loads or executes RoR2.
+
+Log classification remains separate from fixing bootstrap. The installed
+`NetworkManagerSystem.ClientAddPlayer` explicitly logs "already added, aborting"
+and returns when a valid player controller already exists; those lines alone do
+not prove a second player. `ClientSetPlayers` also emits "For iteration" at Unity
+error severity in normal enumeration. BepInEx debug lines naming exception-hook
+types are handler-registration text, which the launcher's word-based exception
+detector currently overcounts. These are source-backed classification findings,
+**not exclusions**: the failed run is still failed and all original evidence is
+preserved. Actual null-survivor exceptions, cursor confinement errors, shader/
+addressable failures, startup warnings and visual flags remain blocking and need
+individual review. A successful bootstrap does not imply a clean suite result.

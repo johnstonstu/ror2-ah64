@@ -46,6 +46,7 @@ namespace AH64
         private void InstallHooks()
         {
             RoR2Application.onLoad += OnLoaded;
+            NetworkUser.onPostNetworkUserStart += OnNetworkStarted;
             Application.logMessageReceived += OnLog;
             On.RoR2.PlayerCharacterMasterController.FixedUpdate += AfterInput;
             On.RoR2.PlayerCharacterMasterController.Update += AfterAim;
@@ -55,6 +56,7 @@ namespace AH64
         private void OnDestroy()
         {
             RoR2Application.onLoad -= OnLoaded;
+            NetworkUser.onPostNetworkUserStart -= OnNetworkStarted;
             Application.logMessageReceived -= OnLog;
             On.RoR2.PlayerCharacterMasterController.FixedUpdate -= AfterInput;
             On.RoR2.PlayerCharacterMasterController.Update -= AfterAim;
@@ -101,42 +103,7 @@ namespace AH64
 
         private IEnumerator Script()
         {
-            yield return Until(() => {
-                if (gameLoaded && SceneManager.GetActiveScene().name != "title" && SceneManager.GetActiveScene().name != "splash")
-                    IntroCutsceneController.shouldSkip = true; // runtime-only; no archived intro_skip setting
-                return SceneManager.GetActiveScene().name == "title" && LocalUserManager.GetFirstLocalUser() != null;
-            }, 90f, "title/local user");
-            // A mod-manager profile does not isolate Steam's player save. Keep this
-            // diagnostic's progress in memory, including the blocking logout save.
-            var diagnosticProfile = LocalUserManager.GetFirstLocalUser().userProfile;
-            if (diagnosticProfile == null) throw new InvalidOperationException("No player profile for save protection.");
-            diagnosticProfile.canSave = false;
-            diagnosticProfile.saveRequestPending = false;
-            Event("save-protection", "loaded player profile canSave=false for this diagnostic process; no disk save changes");
-            yield return new WaitForSecondsRealtime(2f);
-            RoR2.Console.instance.SubmitCmd((NetworkUser)null, "transition_command \"gamemode ClassicRun; host 0;\"", false);
-            yield return Until(() => PreGameController.instance && LocalUserManager.GetFirstLocalUser().currentNetworkUser, 45f, "solo lobby");
-            if (!NetworkServer.active || NetworkUser.readOnlyInstancesList.Count != 1) throw new InvalidOperationException("Not a solo authority lobby.");
-            var user = LocalUserManager.GetFirstLocalUser();
-            var survivor = SurvivorCatalog.GetSurvivorDef(SurvivorCatalog.GetSurvivorIndexFromBodyIndex(BodyCatalog.FindBodyIndex("AH64Body")));
-            if (!survivor) throw new InvalidOperationException("AH64 survivor missing.");
-            user.currentNetworkUser.SetSurvivorPreferenceClient(survivor);
-            PreGameController.instance.runSeed = 1301UL;
-            UnityEngine.Random.InitState(1301);
-            yield return new WaitForSecondsRealtime(2f);
-            if (!PreGameController.instance) throw new InvalidOperationException("Lobby launched before explicit launch.");
-            PreGameController.instance.StartLaunch();
-            yield return Until(() => Run.instance && user.cachedBody, 60f, "AH64 body");
-            var arena = SceneCatalog.FindSceneDef("golemplains");
-            if (!arena) throw new InvalidOperationException("Fixed arena missing.");
-            if (SceneManager.GetActiveScene().name != "golemplains") {
-                Run.instance.AdvanceStage(arena);
-                yield return Until(() => SceneManager.GetActiveScene().name == "golemplains" && user.cachedBody, 60f, "fixed arena");
-            }
-            yield return new WaitForSecondsRealtime(2f);
-            pilot = user.cachedBody;
-            if (!pilot || pilot.bodyIndex != BodyCatalog.FindBodyIndex("AH64Body") || !pilot.hasAuthority || !pilot.characterMotor || !pilot.inputBank || !pilot.modelLocator || !pilot.modelLocator.modelTransform)
-                throw new InvalidOperationException("AH64 authority/motor/aim/model prerequisite missing.");
+            yield return Bootstrap();
             foreach (var director in CombatDirector.instancesList) if (director) director.enabled = false;
             pilot.AddBuff(RoR2Content.Buffs.HiddenInvincibility);
             // Fixed world mark borrowed as terrain coordinates only; no humanoid poses/camera work.
