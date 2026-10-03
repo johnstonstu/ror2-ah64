@@ -197,7 +197,7 @@ namespace AH64
             Write(new BrakingSample { recordType = "braking-sample", runId = Path.GetFileName(output), scenario = segment,
                 tick = tick, simulationTime = Time.fixedTime, capture = state != null ? JsonUtility.ToJson(state.EntrySnapshot) : "none",
                 phase = hasPhase ? frame.Phase.ToString() : "inactive", progress = state != null ? state.ManeuverProgress : 0f,
-                commandedHeading = frame.CommandedHeading, position = pilot.transform.position, velocity = pilot.characterMotor.velocity,
+                commandedHeading = frame.CommandedHeading, position = pilot.gameObject.transform.position, velocity = pilot.characterMotor.velocity,
                 nativeAim = pilot.inputBank.aimDirection, targetHeight = hover.TargetHeight, airtime = hover.Airtime,
                 groundDistance = hover.GroundDistance, ascending = hover.IsAscending, appliedAge = motor ? motor.AppliedAge : 0f,
                 appliedSteps = motor ? motor.AppliedSteps : 0, nativeVelocity = motor ? motor.LastNativeVelocity : Vector3.zero,
