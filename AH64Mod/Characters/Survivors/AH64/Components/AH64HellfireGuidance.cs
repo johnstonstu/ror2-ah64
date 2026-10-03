@@ -13,6 +13,8 @@ namespace AH64.Survivors.Components
         private Rigidbody physicsBody;
         private AH64HellfireOwner owner;
         private uint token;
+        private bool leadProfile, terminal;
+        private float currentSpeed = AH64HellfireFeedbackValues.CrawlSpeed;
         private Vector3 turnVelocity;
         private float remainingTurn = AH64HellfirePrototype.TotalTurnDegrees;
         internal uint Token => token;
@@ -58,6 +60,11 @@ namespace AH64.Survivors.Components
             // combo 0 is the lead; 1/2 are the deliberately unguided I.C.B.M. fan shots.
             if (initialized.combo != 0)
                 return;
+            leadProfile = true;
+            if (flight)
+                flight.desiredForwardSpeed = currentSpeed;
+            if (physicsBody)
+                physicsBody.velocity = transform.forward * currentSpeed;
             owner = AH64HellfireOwner.GetOrAdd(initialized.owner);
             token = owner.RegisterLead();
         }
@@ -79,28 +86,36 @@ namespace AH64.Survivors.Components
         private void FixedUpdate()
         {
             LastTurnDegrees = 0f;
-            if (!NetworkServer.active || !owner || !flight || !physicsBody)
+            if (!NetworkServer.active || !leadProfile || terminal || !flight || !physicsBody)
                 return;
-            if (!owner.Alive || !owner.Policy.CanGuide(token, Time.fixedTime))
+            bool guiding = owner && owner.Eligible && owner.Policy.CanGuide(token, Time.fixedTime);
+            currentSpeed = AH64HellfireFeedbackValues.StepSpeed(currentSpeed, guiding, Time.fixedDeltaTime);
+            flight.desiredForwardSpeed = currentSpeed;
+            Vector3 heading = transform.forward;
+            if (guiding)
             {
-                turnVelocity = Vector3.zero;
-                return; // ProjectileSimple retains the last heading and the existing lifetime.
+                Vector3 desired = owner.Point - transform.position;
+                heading = AH64HellfireAim.Turn(heading, desired, Time.fixedDeltaTime,
+                    ref turnVelocity, ref remainingTurn);
+                LastTurnDegrees = turnVelocity.magnitude * Time.fixedDeltaTime;
+                transform.rotation = Util.QuaternionSafeLookRotation(heading);
             }
-            Vector3 desired = owner.Point - transform.position;
-            Vector3 heading = AH64HellfireAim.Turn(transform.forward, desired, Time.fixedDeltaTime,
-                ref turnVelocity, ref remainingTurn);
-            LastTurnDegrees = turnVelocity.magnitude * Time.fixedDeltaTime;
-            transform.rotation = Util.QuaternionSafeLookRotation(heading);
-            physicsBody.velocity = heading * flight.desiredForwardSpeed;
+            else
+                turnVelocity = Vector3.zero;
+            physicsBody.velocity = heading * currentSpeed;
             // No target, translation, explosion or damage writer here. Stock physics and impact
             // components resolve collisions; bounded turning cannot jump through a wall/ceiling.
         }
 
         public void OnProjectileImpact(ProjectileImpactInfo impact)
         {
-            if (NetworkServer.active && owner && impact.collider
-                && !AH64HellfireAim.IsOwner(impact.collider, owner.GetComponent<CharacterBody>()))
-                owner.EndLead(token);
+            if (NetworkServer.active && impact.collider
+                && (!owner || !AH64HellfireAim.IsOwner(impact.collider, owner.Body)))
+            {
+                terminal = true; // Never restore motion while the stock impact awaits detonation.
+                if (owner)
+                    owner.EndLead(token);
+            }
         }
 
         private void OnDisable()
@@ -108,7 +123,11 @@ namespace AH64.Survivors.Components
             if (controller)
                 controller.onInitialized -= Initialized;
             if (NetworkServer.active && owner)
-                owner.EndLead(token);
+            {
+                terminal = true; // Never restore motion while the stock impact awaits detonation.
+                if (owner)
+                    owner.EndLead(token);
+            }
             owner = null;
             token = 0;
         }

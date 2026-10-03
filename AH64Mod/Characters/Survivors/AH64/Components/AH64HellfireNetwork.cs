@@ -61,12 +61,12 @@ namespace AH64.Survivors.Components
             client.RegisterHandler(AckMessageId, ReceiveAck);
         }
 
-        internal static void SendAim(AH64HellfireOwner owner, uint token, uint sequence, bool held, Ray ray)
+        internal static void SendAim(AH64HellfireOwner owner, uint token, uint sequence, bool held, Ray ray, bool cancel = false)
         {
             if (NetworkServer.active)
             {
                 if (Util.HasEffectiveAuthority(owner.gameObject))
-                    owner.Accept(token, sequence, held, ray);
+                    owner.Accept(token, sequence, held, ray, cancel: cancel);
                 return;
             }
             NetworkIdentity identity = owner.GetComponent<NetworkIdentity>();
@@ -75,7 +75,7 @@ namespace AH64.Survivors.Components
                 client.SendByChannel(AimMessageId, new AimMessage
                 {
                     bodyId = identity.netId, token = token, sequence = sequence,
-                    held = held, origin = ray.origin, direction = ray.direction
+                    held = held, origin = ray.origin, direction = ray.direction, cancel = cancel
                 }, QosChannelIndex.defaultReliable.intVal);
         }
 
@@ -131,7 +131,7 @@ namespace AH64.Survivors.Components
                 // Unity's Ray constructor normalizes direction, so validate the wire vector first.
                 bool valid = AH64HellfireAim.Finite(aim.direction)
                     && aim.direction.sqrMagnitude >= 0.9f && aim.direction.sqrMagnitude <= 1.1f;
-                owner.Accept(aim.token, aim.sequence, aim.held, new Ray(aim.origin, aim.direction), valid);
+                owner.Accept(aim.token, aim.sequence, aim.held, new Ray(aim.origin, aim.direction), valid, aim.cancel);
             }
         }
 
@@ -150,18 +150,18 @@ namespace AH64.Survivors.Components
             public uint token, sequence;
             public uint request;
             public bool begin;
-            public bool held;
+            public bool held, cancel;
             public Vector3 origin, direction;
             public override void Serialize(NetworkWriter writer)
             {
                 writer.Write(bodyId); writer.Write(token); writer.Write(sequence);
-                writer.Write(held); writer.Write(origin); writer.Write(direction); writer.Write(begin); writer.Write(request);
+                writer.Write(held); writer.Write(origin); writer.Write(direction); writer.Write(begin); writer.Write(request); writer.Write(cancel);
             }
             public override void Deserialize(NetworkReader reader)
             {
                 bodyId = reader.ReadNetworkId(); token = reader.ReadUInt32(); sequence = reader.ReadUInt32();
                 held = reader.ReadBoolean(); origin = reader.ReadVector3(); direction = reader.ReadVector3();
-                begin = reader.ReadBoolean(); request = reader.ReadUInt32();
+                begin = reader.ReadBoolean(); request = reader.ReadUInt32(); cancel = reader.ReadBoolean();
             }
         }
 

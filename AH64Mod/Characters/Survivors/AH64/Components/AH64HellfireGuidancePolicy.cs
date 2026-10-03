@@ -2,14 +2,11 @@ using System;
 
 namespace AH64.Survivors.Components
 {
-    // One instance per body lifetime. No static owner registry, token reuse or fallback to older shots.
+    // One instance per body lifetime; release pauses this identity, only Clear/Cancel retires it.
     internal sealed class AH64HellfireGuidancePolicy
     {
-        private uint issued;
-        private uint sequence;
-        private float nextUpdate;
-        private float lastUpdate;
-        private bool released;
+        private uint issued, sequence;
+        private float nextUpdate, lastUpdate;
         private bool hasPoint;
         public uint ActiveToken { get; private set; }
 
@@ -20,21 +17,20 @@ namespace AH64.Survivors.Components
             ActiveToken = ++issued;
             sequence = 0;
             nextUpdate = float.NegativeInfinity;
-            released = hasPoint = false;
+            hasPoint = false;
             return ActiveToken;
         }
 
         public bool Update(uint token, uint incomingSequence, float now, bool held, bool valid)
         {
-            if (token == 0 || token != ActiveToken || incomingSequence <= sequence || released)
+            if (token == 0 || token != ActiveToken || incomingSequence <= sequence)
                 return false;
-            // Release bypasses rate limiting and permanently closes this missile's designation.
+            // A pause bypasses rate limiting but preserves identity, lifetime and turn budget.
+            // Its newer sequence rejects held packets that were sent before the pause.
             if (!held)
             {
                 sequence = incomingSequence;
-                released = true;
                 hasPoint = false;
-                ActiveToken = 0;
                 return true;
             }
             if (now < nextUpdate)
@@ -46,9 +42,18 @@ namespace AH64.Survivors.Components
             return true;
         }
 
+        public bool Cancel(uint token, uint incomingSequence)
+        {
+            if (token == 0 || token != ActiveToken || incomingSequence <= sequence)
+                return false;
+            sequence = incomingSequence;
+            Clear(token);
+            return true;
+        }
+
         public bool CanGuide(uint token, float now)
         {
-            return token != 0 && token == ActiveToken && !released && hasPoint
+            return token != 0 && token == ActiveToken && hasPoint
                 && now >= lastUpdate && now - lastUpdate <= AH64HellfirePrototype.StaleAfter;
         }
 
@@ -58,7 +63,6 @@ namespace AH64.Survivors.Components
             {
                 ActiveToken = 0;
                 hasPoint = false;
-                released = true;
             }
         }
     }

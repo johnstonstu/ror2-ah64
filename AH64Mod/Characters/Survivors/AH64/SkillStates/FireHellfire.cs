@@ -11,7 +11,7 @@ namespace AH64.Survivors.SkillStates
     /// without ever dropping chain gun fire.
     ///
     /// <para>Press launches immediately; held special designates the latest lead with native aim.
-    /// Release coasts. Guidance lives on the owner/projectile, so this state never holds other guns.</para>
+    /// Release slows; holding again resumes the live lead. Guidance lives on the owner/projectile, so this state never holds other guns.</para>
     /// </summary>
     public class FireHellfire : GenericProjectileBaseState
     {
@@ -97,6 +97,7 @@ namespace AH64.Survivors.SkillStates
 
             if (isAuthority && projectilePrefab)
             {
+                Components.AH64HellfireOwner.Install(gameObject);
                 designation = Components.AH64HellfireOwner.GetOrAdd(gameObject);
                 designation.BeginLaunch();
             }

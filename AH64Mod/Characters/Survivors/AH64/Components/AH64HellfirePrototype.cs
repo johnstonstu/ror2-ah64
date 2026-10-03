@@ -1,7 +1,7 @@
 namespace AH64.Survivors.Components
 {
     // Integrator tuning contract: move these reversible guidance-only defaults to shared
-    // StaticValues/config after the first measured run. Warhead/speed/cooldown stay baseline.
+    // StaticValues/config after the first measured run. Warhead/cooldown stay baseline; lead speed is in AH64HellfireFeedbackValues.
     internal static class AH64HellfirePrototype
     {
         public const float DesignationRange = 500f;
