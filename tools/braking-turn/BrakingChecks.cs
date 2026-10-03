@@ -32,6 +32,20 @@ internal static class BrakingChecks
 
     static void MathChecks()
     {
+        Assert(AH64BrakingTurnAcceptance.Priority(InterruptPriority.PrioritySkill),"native PrioritySkill accepted");
+        Assert(!AH64BrakingTurnAcceptance.Priority(InterruptPriority.Skill),"wrong native Skill priority rejected");
+        foreach(float correction in new[]{30f,180f,-30f,-180f})
+        {
+            var observedCapture=Capture(17f,correction);var observed=observedCapture.EntryVelocity;
+            for(int i=0;i<50;i++)
+            {
+                observed=AH64BrakingTurnMath.Step(observedCapture,observed,i*.02f,.02f);
+                if(i==18)Assert(AH64BrakingTurnAcceptance.Turned(observedCapture,observed,false),"actual velocity signed turn progress");
+            }
+            Assert(AH64BrakingTurnAcceptance.Turned(observedCapture,observed,true),"actual velocity final requested alignment");
+            Assert(!AH64BrakingTurnAcceptance.Turned(observedCapture,observedCapture.EntryVelocity,true),"unturned actual velocity rejected");
+            Assert(!AH64BrakingTurnAcceptance.Turned(observedCapture,Heading(-Math.Sign(observedCapture.SignedCorrection)*10f),false),"wrong direction actual velocity rejected");
+        }
         var c=Capture(8.5f);
         Near(c.Duration,1,"duration");Near(c.BrakeSpeed,2.125f,"brake ratio");
         Near(Capture(30).BrakeSpeed,2.975f,"brake cap");Near(c.ExitAcceleration,25.5f,"exit acceleration");

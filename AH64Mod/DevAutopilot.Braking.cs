@@ -41,9 +41,9 @@ namespace AH64
                 && variants[1].skillDef.activationState.stateType == typeof(SmokeBackflip) && variants[2].skillDef == skill,
                 string.Join(",", variants.Select(v => v.skillDef.activationState.stateType.Name)) + "; current default=" + utility.skillDef.skillName);
             BrakingCheck("catalog.definition", skill.activationStateMachineName == "Body" && skill.baseMaxStock == 1
-                && skill.baseRechargeInterval == 4f && skill.stockToConsume == 1 && skill.interruptPriority == InterruptPriority.Skill
+                && skill.baseRechargeInterval == 4f && skill.stockToConsume == 1 && AH64BrakingTurnAcceptance.Priority(skill.interruptPriority)
                 && skill.mustKeyPress && skill.icon,
-                "machine=" + skill.activationStateMachineName + " stock=" + skill.baseMaxStock + " recharge=" + skill.baseRechargeInterval + "; placeholder icon=" + (skill.icon ? skill.icon.name : "missing"));
+                "machine=" + skill.activationStateMachineName + " stock=" + skill.baseMaxStock + " recharge=" + skill.baseRechargeInterval + " priority=" + skill.interruptPriority + "; placeholder icon=" + (skill.icon ? skill.icon.name : "missing"));
             foreach (string name in BrakingCaseNames) yield return BrakingMotionCase(name);
             yield return BrakingGuidanceCase();
             brakingComplete = true;
@@ -102,13 +102,15 @@ namespace AH64
                 bool late = spare && slot.ExecuteIfReady();
                 bool middle = active && !state.MotionYielded && motor.HasActiveLease
                     && Vector3.Angle(state.EntrySnapshot.RequestedHeading, requested) < 0.1f;
+                bool checkTurn = name == "small" || name == "fast";
+                if (checkTurn) middle &= AH64BrakingTurnAcceptance.Turned(capture, motor.LastAppliedVelocity, false);
                 if (spare) middle &= spareStock >= 1 && !early && !late && slot.stock == spareStock
                     && !pilot.HasBuff(RoR2Content.Buffs.HiddenInvincibility) && !pilot.HasBuff(RoR2Content.Buffs.Cloak);
                 if (collective) middle &= hover.TargetHeight >= targetBefore && hover.IsAscending && hover.Airtime > 0f
                     && hover.Airtime <= airtimeBefore + Time.fixedDeltaTime * 2f;
                 BrakingCheck(name + ".midflight", middle, "active=" + active + " yielded=" + state.MotionYielded
                     + " age=" + motor.AppliedAge + " reentry=" + early + "," + late + " target=" + targetBefore + "->" + hover.TargetHeight
-                    + " airtime=" + airtimeBefore + "->" + hover.Airtime);
+                    + " airtime=" + airtimeBefore + "->" + hover.Airtime + " actual directed turn=" + AH64BrakingTurnAcceptance.SignedProgress(capture, motor.LastAppliedVelocity));
                 bool interruptAccepted = true;
                 if (interruption) interruptAccepted = Machine("Body").SetInterruptState(new AH64Main(), InterruptPriority.Stun);
                 yield return Until(() => Machine("Body").state != state, 3f, "braking exit");
@@ -118,9 +120,11 @@ namespace AH64
                     && lastSpeed <= Mathf.Max(capturedSpeed, capture.ExitSpeed) + 0.1f;
                 if (name == "stationary") motion &= lastSpeed < 0.2f;
                 if (name == "fast") motion &= motor.AppliedAge >= 0.95f && lastSpeed <= capture.MoveSpeed + 0.1f && lastSpeed > 0.1f;
+                if (checkTurn) motion &= AH64BrakingTurnAcceptance.Turned(capture, motor.LastAppliedVelocity, true);
                 BrakingCheck(name + ".motion", motion, "steps=" + motor.AppliedSteps + " last age=" + motor.AppliedAge
                     + " native=" + motor.LastNativeVelocity + " applied=" + motor.LastAppliedVelocity + " final active speed=" + lastSpeed
-                    + " exit ceiling=" + capture.ExitSpeed + "; post-Main velocity is not used as exit carry");
+                    + " exit ceiling=" + capture.ExitSpeed + " actual directed turn=" + AH64BrakingTurnAcceptance.SignedProgress(capture, motor.LastAppliedVelocity)
+                    + " final alignment=" + AH64BrakingTurnAcceptance.Alignment(capture, motor.LastAppliedVelocity) + "; post-Main velocity is not used as exit carry");
                 BrakingCheck(name + ".exit", interruptAccepted && Machine("Body").state is AH64Main
                     && !(Machine("Body").state is BrakingTurn) && !motor.HasActiveLease && !presentation.HasActiveOwner
                     && (interruption || motor.AppliedAge >= 0.95f),
@@ -236,12 +240,13 @@ namespace AH64
                 dllSha256 = Hash(typeof(AH64Plugin).Assembly.Location), suite = "braking-solo-v1", status = passed ? "passed" : "failed",
                 complete = brakingComplete, expectedChecks = ids.Length, expectedIds = ids, checks = brakingChecks.ToArray(),
                 renderSamples = brakingRenderSamples, renderViolations = brakingRenderViolations,
+                utilityInterruptPriority = Variant(pilot.skillLocator.utility, typeof(BrakingTurn)).interruptPriority.ToString(),
                 limitation = "SOLO scripted input, initial velocity and isolated inventory/overrides. No new braking screenshots. The five baseline images do not show braking. Physical modern descend, native geometry/force/item edge fixtures, targeted hits/audio, controller feel, peers and long sessions remain unverified. Render bound is a coarse alarm. Raw strict runtime failures retain independent blocking/classification." }, true));
             return passed;
         }
 
         [Serializable] private sealed class BrakingResult { public int schema = 1, expectedChecks, renderSamples, renderViolations;
-            public string runId, sourceSha, dllSha256, suite, status, limitation; public bool complete; public string[] expectedIds; public Check[] checks; }
+            public string runId, sourceSha, dllSha256, suite, status, limitation, utilityInterruptPriority; public bool complete; public string[] expectedIds; public Check[] checks; }
         [Serializable] private sealed class BrakingSample : Record { public int tick, appliedSteps; public float simulationTime, progress, appliedAge, targetHeight, airtime, groundDistance;
             public string capture, phase, yieldReason; public Vector3 commandedHeading, position, velocity, nativeAim, nativeVelocity, appliedVelocity;
             public Quaternion displayedBaseWorld; public bool ascending, lease, visualOwner, visualRecovery; }

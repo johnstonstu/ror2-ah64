@@ -9,6 +9,10 @@ $files = @("$basePath/SkillStates/AH64Main.cs", "$basePath/SkillStates/BrakingTu
 $files += Get-ChildItem (Join-Path $brakingRoot "$basePath/Components/AH64BrakingTurn*.cs") |
     ForEach-Object { "$basePath/Components/" + $_.Name }
 $mutants = @(
+    @{ Name='wrong-native-priority'; File="$basePath/Components/AH64BrakingTurnAcceptance.cs";
+       From='actual == InterruptPriority.PrioritySkill'; To='actual == InterruptPriority.Skill'; Expected='native PrioritySkill accepted' },
+    @{ Name='disable-horizontal-turn'; File="$basePath/Components/AH64BrakingTurnCapture.cs";
+       From='horizontal = Quaternion.AngleAxis(angle, Vector3.up) * horizontal;'; To='// mutant: retain incoming horizontal direction'; Expected='actual velocity signed turn progress' },
     @{ Name='discard-native-y'; File="$basePath/Components/AH64BrakingTurnMotor.cs";
        From='next.y = self.velocity.y;'; To='next.y = before.y;'; Expected='native vertical retained' },
     @{ Name='skip-post-authority'; File="$basePath/Components/AH64BrakingTurnMotor.cs";

@@ -13,6 +13,14 @@ Missing cases, duplicate IDs, incomplete execution and failed assertions fail
 the extension. Existing baseline 12, prototype 36 and M230 9 contracts retain
 their counts and evidence identities.
 
+Native utility priority is `PrioritySkill` (enum value 2), distinct from `Skill`
+(value 1). Small and opposite-motion cases require signed progress from actual
+horizontal motor velocity at mid-turn and final alignment within 3 degrees.
+Commanded presentation heading cannot satisfy these assertions. Isolated
+source-copy mutants selecting the wrong priority and removing horizontal turn
+must fail the actual diagnostic acceptance checks. The evidence auditor repeats
+the measured-vector checks and includes six explicit-reason data controls.
+
 Actual capture and last active motor step are observed, rather than treating
 assigned setup velocity or resumed Main acceleration as braking carry. Native
 PreMove output and applied velocity, phase, age, lease, yield reason, hover
