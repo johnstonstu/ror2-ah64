@@ -40,6 +40,13 @@ namespace AH64.Survivors.Components
         private float blurEffort;
 
         //procedural barrel roll from Evasive Roll — overrides normal lean while active
+        private object maneuverOwner;
+        private float maneuverAge;
+        private float maneuverSampleTime;
+        private Quaternion maneuverEntry;
+        private CameraTargetParams maneuverCamera;
+        private float priorFov;
+        private bool travelAudio;
         private float barrelRollSign;
         private float barrelRollTimer;
         private float barrelRollDuration;
@@ -97,6 +104,7 @@ namespace AH64.Survivors.Components
         {
             EnsureModelRefs();
 
+            EndManeuver(maneuverOwner);
             crashing = true;
             crashAge = 0f;
             crashYaw = 0f;
@@ -125,28 +133,85 @@ namespace AH64.Survivors.Components
         /// <summary>
         /// Full ~360° barrel roll for Evasive Roll. <paramref name="rollSign"/> is ±1 (left / right).
         /// </summary>
-        public void PlayBarrelRoll(float rollSign, float duration)
+        public void PlayBarrelRoll(object owner, float rollSign, float duration, Quaternion entryAttitude)
         {
             EnsureModelRefs();
 
+            EndManeuver(maneuverOwner);
             backflipTimer = 0f;
             barrelRollSign = Mathf.Sign(rollSign) >= 0f ? 1f : -1f;
             barrelRollDuration = Mathf.Max(duration, 0.01f);
             barrelRollTimer = barrelRollDuration;
-            leanLocal = Quaternion.identity;
+            BeginManeuver(owner, entryAttitude);
         }
 
         /// <summary>
         /// Full ~360° pitch backflip for the Smoke Backflip utility variant.
         /// </summary>
-        public void PlayBackflip(float duration)
+        public void PlayBackflip(object owner, float duration, Quaternion entryAttitude)
         {
             EnsureModelRefs();
 
+            EndManeuver(maneuverOwner);
             barrelRollTimer = 0f;
             backflipDuration = Mathf.Max(duration, 0.01f);
             backflipTimer = backflipDuration;
-            leanLocal = Quaternion.identity;
+            BeginManeuver(owner, entryAttitude);
+        }
+
+        // Capture the base attitude, keeping weapon recoil/hit jolts in their separate kick layer.
+        public Quaternion CaptureAttitude() { return leanLocal; }
+
+        private void BeginManeuver(object owner, Quaternion entryAttitude)
+        {
+            maneuverOwner = owner;
+            maneuverEntry = entryAttitude;
+            leanLocal = entryAttitude;
+            maneuverAge = 0f;
+            maneuverSampleTime = Time.time;
+            maneuverCamera = GetComponent<CameraTargetParams>();
+            priorFov = maneuverCamera ? maneuverCamera.fovOverride : -1f;
+            Util.PlaySound("Play_loader_m2_travel_loop", gameObject);
+            travelAudio = true;
+        }
+
+        public void SetManeuverProgress(object owner, float age)
+        {
+            if (owner != maneuverOwner) return;
+            maneuverAge = age;
+            maneuverSampleTime = Time.time;
+        }
+
+        public void EndManeuver(object owner)
+        {
+            if (maneuverOwner == null || owner != maneuverOwner) return;
+            if (travelAudio) Util.PlaySound("Stop_loader_m2_travel_loop", gameObject);
+            if (maneuverCamera) maneuverCamera.fovOverride = priorFov;
+            travelAudio = false;
+            maneuverOwner = null;
+            barrelRollTimer = backflipTimer = 0f;
+            // Recovery starts from the last rendered attitude, including interrupted partial flips.
+        }
+
+        private float ManeuverProgress(float duration)
+        {
+            float age = maneuverAge + Mathf.Max(0f, Time.time - maneuverSampleTime);
+            float t = Mathf.Clamp01(age / duration);
+            if (maneuverCamera) maneuverCamera.fovOverride = Mathf.Lerp(
+                global::EntityStates.Commando.DodgeState.dodgeFOV, 60f, t);
+            return t;
+        }
+
+        private void OnEnable()
+        {
+            EnsureModelRefs();
+            if (modelLocator) modelLocator.autoUpdateModelTransform = false;
+        }
+
+        private void OnDisable()
+        {
+            EndManeuver(maneuverOwner);
+            if (modelLocator) modelLocator.autoUpdateModelTransform = true;
         }
 
         private void Start()
@@ -177,6 +242,7 @@ namespace AH64.Survivors.Components
 
         private void OnDestroy()
         {
+            EndManeuver(maneuverOwner);
             //hand the model back if we're torn down mid-run
             if (modelLocator)
                 modelLocator.autoUpdateModelTransform = true;
@@ -333,9 +399,8 @@ namespace AH64.Survivors.Components
 
         private Quaternion EvaluateBarrelRollLean()
         {
-            barrelRollTimer -= Time.deltaTime;
-            float t = 1f - Mathf.Clamp01(barrelRollTimer / barrelRollDuration);
-            float roll = barrelRollSign * AH64StaticValues.dashBarrelRollDegrees * t;
+            float t = ManeuverProgress(barrelRollDuration);
+            float roll = barrelRollSign * AH64ManeuverMath.Revolution(t, AH64StaticValues.dashBarrelRollDegrees);
 
             float pitch;
             if (t < 0.25f)
@@ -347,22 +412,23 @@ namespace AH64.Survivors.Components
             else
                 pitch = Mathf.Lerp(12f, 0f, (t - 0.85f) / 0.15f);
 
-            return Quaternion.Euler(pitch, 0f, roll);
+            Quaternion basis = Quaternion.Slerp(maneuverEntry, EvaluateFlightLean(false), AH64ManeuverMath.Smooth(t));
+            return basis * Quaternion.Euler(pitch, 0f, roll);
         }
 
         private Quaternion EvaluateBackflipLean()
         {
-            backflipTimer -= Time.deltaTime;
-            float raw = 1f - Mathf.Clamp01(backflipTimer / backflipDuration);
+            float raw = ManeuverProgress(backflipDuration);
             //Ease in/out so the long flip doesn't look like a linear spin scrub.
             float t = raw * raw * (3f - 2f * raw);
             //Nose-up through the loop so the airframe reads as a helicopter backflip, not a tumble.
             float pitch = AH64StaticValues.backflipPitchDegrees * t;
             float roll = Mathf.Sin(t * Mathf.PI) * 10f;
-            return Quaternion.Euler(pitch, 0f, roll);
+            Quaternion basis = Quaternion.Slerp(maneuverEntry, EvaluateFlightLean(false), t);
+            return basis * Quaternion.Euler(pitch, 0f, roll);
         }
 
-        private Quaternion EvaluateFlightLean()
+        private Quaternion EvaluateFlightLean(bool smooth = true)
         {
             Vector3 facing = characterDirection ? characterDirection.forward : transform.forward;
             facing.y = 0f;
@@ -452,6 +518,7 @@ namespace AH64.Survivors.Components
             }
 
             Quaternion target = Quaternion.Euler(pitch, 0f, roll);
+            if (!smooth) return target;
             return Quaternion.Slerp(
                 leanLocal,
                 target,

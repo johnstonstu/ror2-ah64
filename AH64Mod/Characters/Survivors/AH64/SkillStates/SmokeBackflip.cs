@@ -15,120 +15,64 @@ namespace AH64.Survivors.SkillStates
         public static float duration = AH64StaticValues.backflipDuration;
 
         private const string launchSound = "Play_loader_m2_launch";
-        private const string travelLoopPlay = "Play_loader_m2_travel_loop";
-        private const string travelLoopStop = "Stop_loader_m2_travel_loop";
-        private static readonly float dodgeFOV = global::EntityStates.Commando.DodgeState.dodgeFOV;
 
-        private float dashSpeed;
-        private float entrySpeed;
-        private float peakSpeed;
-        private float exitSpeed;
+        private AH64ManeuverCapture capture;
+        private bool hasCapture;
+        internal AH64ManeuverCapture EntrySnapshot => capture;
+        internal float ManeuverProgress => hasCapture ? Mathf.Clamp01(fixedAge / capture.Duration) : 0f;
+        internal bool MotionYielded => motion && motion.IsYielding;
+        private AH64ManeuverMotor motion;
+        private AH64FlightVisuals flightVisuals;
         private Vector3 rearwardDirection;
-        private Vector3 previousPosition;
         private float smokeTimer;
-        private float climbHeight;
 
         public override void OnEnter()
         {
             base.OnEnter();
 
-            if (isAuthority && characterDirection)
-                ResolveRearwardDirection();
-
-            CaptureEntrySpeed();
-            RecalculateDashSpeed();
-
+            flightVisuals = GetComponent<AH64FlightVisuals>();
             AH64HoverController hover = GetComponent<AH64HoverController>();
-            climbHeight = hover
-                ? hover.LimitUtilityClimb(AH64StaticValues.backflipClimbHeight)
-                : AH64StaticValues.backflipClimbHeight;
-
-            if (characterMotor)
+            if (isAuthority && !hasCapture)
             {
-                if (characterMotor.isGrounded)
-                    characterMotor.Motor.ForceUnground();
-
-                characterMotor.velocity = rearwardDirection * dashSpeed + Vector3.up * ClimbVelocityAt(0f);
+                Vector3 facing = characterDirection ? characterDirection.forward : transform.forward;
+                Vector3 input = inputBank ? inputBank.moveVector : Vector3.zero;
+                capture = new AH64ManeuverCapture
+                {
+                    EntryVelocity = characterMotor ? characterMotor.velocity : Vector3.zero,
+                    Facing = AH64ManeuverMath.Horizontal(facing).normalized,
+                    Direction = AH64ManeuverMath.Direction(facing, input, true, AH64StaticValues.dashDiagonalBlend),
+                    EntryAttitude = flightVisuals ? flightVisuals.CaptureAttitude() : Quaternion.identity,
+                    Sign = Vector3.Dot(input, Vector3.Cross(Vector3.up, facing)) < -0.1f ? -1f : 1f,
+                    Duration = Mathf.Max(duration, 0.01f),
+                    Ramp = Mathf.Clamp(AH64StaticValues.backflipRampFraction, 0.05f, 0.9f),
+                    Climb = hover ? hover.LimitUtilityClimb(AH64StaticValues.backflipClimbHeight) : 0f,
+                    StartY = transform.position.y
+                };
+                AH64ManeuverMath.Speeds(ref capture, moveSpeedStat,
+                    AH64StaticValues.backflipMinEntrySpeedFraction, AH64StaticValues.backflipPeakSpeedMult, AH64StaticValues.backflipExitCarry);
+                hasCapture = true;
             }
-
-            Vector3 startingVelocity = characterMotor ? characterMotor.velocity : Vector3.zero;
-            previousPosition = transform.position - startingVelocity;
-
+            // Remote OnDeserialize supplies the complete snapshot before OnEnter.
+            if (!hasCapture) return;
+            rearwardDirection = capture.Direction;
+            if (isAuthority && characterMotor)
+            {
+                motion = GetComponent<AH64ManeuverMotor>();
+                if (!motion) motion = gameObject.AddComponent<AH64ManeuverMotor>();
+                motion.Begin(this, capture);
+                if (hover && !motion.IsYielding) hover.BumpTargetHeight(capture.Climb);
+            }
             Util.PlaySound(launchSound, gameObject);
-            Util.PlaySound(travelLoopPlay, gameObject);
             PopSmokeBurst();
-
-            AH64FlightVisuals flightVisuals = GetComponent<AH64FlightVisuals>();
-            if (flightVisuals)
-                flightVisuals.PlayBackflip(AH64StaticValues.backflipDuration);
-
-            if (hover)
-                hover.BumpTargetHeight(climbHeight);
+            if (flightVisuals) flightVisuals.PlayBackflip(this, capture.Duration, capture.EntryAttitude);
 
             if (NetworkServer.active)
             {
                 characterBody.AddTimedBuff(RoR2Content.Buffs.Cloak, AH64StaticValues.backflipCloakDuration);
                 characterBody.AddTimedBuff(
                     RoR2Content.Buffs.HiddenInvincibility,
-                    AH64StaticValues.backflipInvincibilityDurationCoefficient * duration);
+                    AH64StaticValues.backflipInvincibilityDurationCoefficient * capture.Duration);
             }
-        }
-
-        private void ResolveRearwardDirection()
-        {
-            Vector3 facing = characterDirection.forward;
-            facing.y = 0f;
-            if (facing.sqrMagnitude < 0.0001f)
-                facing = transform.forward;
-            facing.Normalize();
-            rearwardDirection = -facing;
-        }
-
-        private void CaptureEntrySpeed()
-        {
-            float floor = moveSpeedStat * AH64StaticValues.backflipMinEntrySpeedFraction;
-            float horizontal = 0f;
-            if (characterMotor)
-            {
-                Vector3 v = characterMotor.velocity;
-                v.y = 0f;
-                horizontal = v.magnitude;
-            }
-
-            entrySpeed = Mathf.Max(horizontal, floor);
-            peakSpeed = entrySpeed * AH64StaticValues.backflipPeakSpeedMult;
-            exitSpeed = Mathf.Lerp(entrySpeed, peakSpeed, AH64StaticValues.backflipExitCarry);
-        }
-
-        private float ClimbVelocityAt(float age)
-        {
-            float t = Mathf.Clamp01(age / duration);
-            return climbHeight
-                * (Mathf.PI * 0.5f / duration)
-                * Mathf.Cos(Mathf.PI * 0.5f * t);
-        }
-
-        private void RecalculateDashSpeed()
-        {
-            float t = Mathf.Clamp01(fixedAge / duration);
-            float ramp = Mathf.Clamp(AH64StaticValues.backflipRampFraction, 0.05f, 0.9f);
-
-            if (t <= ramp)
-            {
-                float u = SmoothStep(t / ramp);
-                dashSpeed = Mathf.Lerp(entrySpeed, peakSpeed, u);
-            }
-            else
-            {
-                float u = SmoothStep((t - ramp) / (1f - ramp));
-                dashSpeed = Mathf.Lerp(peakSpeed, exitSpeed, u);
-            }
-        }
-
-        private static float SmoothStep(float x)
-        {
-            x = Mathf.Clamp01(x);
-            return x * x * (3f - 2f * x);
         }
 
         private void PopSmokeBurst()
@@ -162,7 +106,7 @@ namespace AH64.Survivors.SkillStates
         public override void FixedUpdate()
         {
             base.FixedUpdate();
-            RecalculateDashSpeed();
+            if (!hasCapture) return;
 
             smokeTimer -= GetDeltaTime();
             if (smokeTimer <= 0f)
@@ -171,24 +115,18 @@ namespace AH64.Survivors.SkillStates
                 PopSmokeBurst();
             }
 
-            //Keep facing forward while the body surges back — the flip is on the model, not the aim.
-            if (characterDirection && rearwardDirection.sqrMagnitude > 0.0001f)
-                characterDirection.forward = -rearwardDirection;
-
-            if (cameraTargetParams)
-                cameraTargetParams.fovOverride = Mathf.Lerp(dodgeFOV, 60f, fixedAge / duration);
-
-            float climbSpeed = ClimbVelocityAt(fixedAge);
-            if (characterMotor && rearwardDirection.sqrMagnitude > 0.0001f)
+            if (flightVisuals) flightVisuals.SetManeuverProgress(this, fixedAge);
+            if (isAuthority)
             {
-                Vector3 velocity = rearwardDirection * dashSpeed;
-                velocity.y = climbSpeed;
-                characterMotor.velocity = velocity;
+                // Native aim is independent of the roll and trajectory; never rewrite forward.
+                if (characterDirection && inputBank) characterDirection.moveVector = inputBank.aimDirection;
+                Vector3 input = inputBank ? inputBank.moveVector : Vector3.zero;
+                Vector3 target = AH64ManeuverMath.Direction(capture.Facing, input,
+                    true, AH64StaticValues.dashDiagonalBlend);
+                if (motion) motion.Step(this, target, fixedAge, GetDeltaTime());
             }
 
-            previousPosition = transform.position;
-
-            if (isAuthority && fixedAge >= duration)
+            if (isAuthority && fixedAge >= capture.Duration)
             {
                 outer.SetNextStateToMain();
                 return;
@@ -197,39 +135,22 @@ namespace AH64.Survivors.SkillStates
 
         public override void OnExit()
         {
-            Util.PlaySound(travelLoopStop, gameObject);
-            if (cameraTargetParams)
-                cameraTargetParams.fovOverride = -1f;
-
-            if (characterMotor && rearwardDirection.sqrMagnitude > 0.0001f)
-            {
-                Vector3 carry = rearwardDirection.normalized * exitSpeed;
-                carry.y = characterMotor.velocity.y;
-                characterMotor.velocity = carry;
-            }
-
+            if (motion) motion.Release(this);
+            if (flightVisuals) flightVisuals.EndManeuver(this);
             base.OnExit();
-
-            if (characterMotor)
-                characterMotor.disableAirControlUntilCollision = false;
         }
 
         public override void OnSerialize(NetworkWriter writer)
         {
             base.OnSerialize(writer);
-            writer.Write(rearwardDirection);
-            writer.Write(entrySpeed);
-            writer.Write(peakSpeed);
-            writer.Write(exitSpeed);
+            capture.Write(writer);
         }
 
         public override void OnDeserialize(NetworkReader reader)
         {
             base.OnDeserialize(reader);
-            rearwardDirection = reader.ReadVector3();
-            entrySpeed = reader.ReadSingle();
-            peakSpeed = reader.ReadSingle();
-            exitSpeed = reader.ReadSingle();
+            capture = AH64ManeuverCapture.Read(reader);
+            hasCapture = true;
         }
 
         public override InterruptPriority GetMinimumInterruptPriority()

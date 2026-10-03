@@ -8,7 +8,7 @@ namespace AH64.Survivors.SkillStates
 {
     /// <summary>
     /// Utility. Forward-diagonal barrel roll — snaps move input to forward / left / right (never back).
-    /// Climbs through the maneuver, full procedural 360° on the model. Speed eases up from the entry
+    /// Utility. Forward/diagonal barrel roll with bounded analog steering and captured momentum.
     /// velocity then coasts down so it does not slam to a fixed multiplier. I-frames for the first half,
     /// plating armor for the length of the roll, flares through the move. Class name stays <c>ServoDash</c> for EntityState
     /// registration; player-facing name is Evasive Roll.
@@ -20,141 +20,66 @@ namespace AH64.Survivors.SkillStates
         public static float finalSpeedCoefficient = AH64StaticValues.dashFinalSpeedCoefficient;
 
         public static string dodgeSoundString = "Play_loader_m2_launch";
-        private const string travelLoopPlay = "Play_loader_m2_travel_loop";
-        private const string travelLoopStop = "Stop_loader_m2_travel_loop";
         public static float dodgeFOV = global::EntityStates.Commando.DodgeState.dodgeFOV;
 
         private const float thrusterSmokeScale = 0.35f;
         private const float thrusterSpacing = 0.55f;
 
-        private float dashSpeed;
-        private float entrySpeed;
-        private float peakSpeed;
-        private float exitSpeed;
+        private AH64ManeuverCapture capture;
+        private bool hasCapture;
+        internal AH64ManeuverCapture EntrySnapshot => capture;
+        internal float ManeuverProgress => hasCapture ? Mathf.Clamp01(fixedAge / capture.Duration) : 0f;
+        internal bool MotionYielded => motion && motion.IsYielding;
+        private AH64ManeuverMotor motion;
+        private AH64FlightVisuals flightVisuals;
         private Vector3 forwardDirection;
-        private Vector3 previousPosition;
         private float flareTimer;
-        private float climbHeight;
-        // -1 left, +1 right — always non-zero; drives the procedural barrel roll
-        private float rollSign;
 
         public override void OnEnter()
         {
             base.OnEnter();
 
-            if (isAuthority && characterDirection)
-            {
-                ResolveRollDirection(out forwardDirection, out rollSign);
-            }
-
-            CaptureEntrySpeed();
-            RecalculateDashSpeed();
-
+            flightVisuals = GetComponent<AH64FlightVisuals>();
             AH64HoverController hover = GetComponent<AH64HoverController>();
-            climbHeight = hover
-                ? hover.LimitUtilityClimb(AH64PlaytestConfig.DashClimbHeight)
-                : AH64PlaytestConfig.DashClimbHeight;
-
-            if (characterMotor)
+            if (isAuthority && !hasCapture)
             {
-                //KCC projects upward velocity onto the ground plane while stably grounded
-                if (characterMotor.isGrounded)
-                    characterMotor.Motor.ForceUnground();
-
-                float climbSpeed = ClimbVelocityAt(0f);
-                //start at entry speed (not peak) so the ramp is felt
-                characterMotor.velocity = forwardDirection * dashSpeed + Vector3.up * climbSpeed;
+                Vector3 facing = characterDirection ? characterDirection.forward : transform.forward;
+                Vector3 input = inputBank ? inputBank.moveVector : Vector3.zero;
+                capture = new AH64ManeuverCapture
+                {
+                    EntryVelocity = characterMotor ? characterMotor.velocity : Vector3.zero,
+                    Facing = AH64ManeuverMath.Horizontal(facing).normalized,
+                    Direction = AH64ManeuverMath.Direction(facing, input, false, AH64StaticValues.dashDiagonalBlend),
+                    EntryAttitude = flightVisuals ? flightVisuals.CaptureAttitude() : Quaternion.identity,
+                    Sign = Vector3.Dot(input, Vector3.Cross(Vector3.up, facing)) < -0.1f ? -1f : 1f,
+                    Duration = Mathf.Max(duration, 0.01f),
+                    Ramp = Mathf.Clamp(AH64PlaytestConfig.DashRampFraction, 0.05f, 0.9f),
+                    Climb = hover ? hover.LimitUtilityClimb(AH64PlaytestConfig.DashClimbHeight) : 0f,
+                    StartY = transform.position.y
+                };
+                AH64ManeuverMath.Speeds(ref capture, moveSpeedStat,
+                    AH64StaticValues.dashMinEntrySpeedFraction, AH64PlaytestConfig.DashPeakSpeed, AH64StaticValues.dashExitCarry);
+                hasCapture = true;
             }
-
-            Vector3 startingVelocity = characterMotor ? characterMotor.velocity : Vector3.zero;
-            previousPosition = transform.position - startingVelocity;
-
+            // Remote OnDeserialize supplies the complete snapshot before OnEnter.
+            if (!hasCapture) return;
+            forwardDirection = capture.Direction;
+            if (isAuthority && characterMotor)
+            {
+                motion = GetComponent<AH64ManeuverMotor>();
+                if (!motion) motion = gameObject.AddComponent<AH64ManeuverMotor>();
+                motion.Begin(this, capture);
+                if (hover && !motion.IsYielding) hover.BumpTargetHeight(capture.Climb);
+            }
             Util.PlaySound(dodgeSoundString, gameObject);
-            Util.PlaySound(travelLoopPlay, gameObject);
             PlayThrusterBurst();
-
-            //OnDeserialize runs before OnEnter on remotes, so rollSign is already filled there
-            AH64FlightVisuals flightVisuals = GetComponent<AH64FlightVisuals>();
-            if (flightVisuals)
-                flightVisuals.PlayBarrelRoll(rollSign, AH64StaticValues.dashDuration);
-
-            if (hover)
-                hover.BumpTargetHeight(climbHeight);
+            if (flightVisuals) flightVisuals.PlayBarrelRoll(this, capture.Sign, capture.Duration, capture.EntryAttitude);
 
             if (NetworkServer.active)
             {
-                characterBody.AddTimedBuff(AH64Buffs.platingBuff, AH64StaticValues.dashArmorDurationCoefficient * duration);
-                characterBody.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, AH64StaticValues.dashInvincibilityDurationCoefficient * duration);
+                characterBody.AddTimedBuff(AH64Buffs.platingBuff, AH64StaticValues.dashArmorDurationCoefficient * capture.Duration);
+                characterBody.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, AH64StaticValues.dashInvincibilityDurationCoefficient * capture.Duration);
             }
-        }
-
-        /// <summary>
-        /// Snap stick to forward / left / right relative to facing. L/R travel on a forward diagonal.
-        /// Backward input becomes forward so the utility never rolls into your own wake. Roll sign is
-        /// always ±1 (forward defaults right, or follows a light stick bias).
-        /// </summary>
-        private void ResolveRollDirection(out Vector3 direction, out float bankSign)
-        {
-            Vector3 facing = characterDirection.forward;
-            facing.y = 0f;
-            if (facing.sqrMagnitude < 0.0001f)
-                facing = transform.forward;
-            facing.Normalize();
-
-            Vector3 right = Vector3.Cross(Vector3.up, facing).normalized;
-
-            Vector3 move = inputBank && inputBank.moveVector != Vector3.zero
-                ? inputBank.moveVector
-                : facing;
-            move.y = 0f;
-            if (move.sqrMagnitude < 0.0001f)
-                move = facing;
-            move.Normalize();
-
-            float forwardDot = Vector3.Dot(move, facing);
-            float rightDot = Vector3.Dot(move, right);
-            float blend = AH64StaticValues.dashDiagonalBlend;
-
-            //prefer left/right when the stick is more sideways than forward; never pick back
-            if (Mathf.Abs(rightDot) > Mathf.Abs(forwardDot) && Mathf.Abs(rightDot) > 0.35f)
-            {
-                Vector3 side = rightDot >= 0f ? right : -right;
-                direction = (facing * blend + side).normalized;
-                bankSign = rightDot >= 0f ? 1f : -1f;
-            }
-            else
-            {
-                direction = facing;
-                //forward roll still needs a flip side — light stick bias, else default right
-                bankSign = Mathf.Abs(rightDot) > 0.1f ? Mathf.Sign(rightDot) : 1f;
-            }
-        }
-
-        private void CaptureEntrySpeed()
-        {
-            float floor = moveSpeedStat * AH64StaticValues.dashMinEntrySpeedFraction;
-            float horizontal = 0f;
-            if (characterMotor)
-            {
-                Vector3 v = characterMotor.velocity;
-                v.y = 0f;
-                horizontal = v.magnitude;
-            }
-
-            entrySpeed = Mathf.Max(horizontal, floor);
-            peakSpeed = entrySpeed * AH64PlaytestConfig.DashPeakSpeed;
-            exitSpeed = Mathf.Lerp(entrySpeed, peakSpeed, AH64StaticValues.dashExitCarry);
-        }
-
-        /// <summary>
-        /// Half-sine climb: y = H * sin(π/2 * t) so the hop ends elevated by <c>climbHeight</c>.
-        /// </summary>
-        private float ClimbVelocityAt(float age)
-        {
-            float t = Mathf.Clamp01(age / duration);
-            return climbHeight
-                * (Mathf.PI * 0.5f / duration)
-                * Mathf.Cos(Mathf.PI * 0.5f * t);
         }
 
         private void PlayThrusterBurst()
@@ -219,37 +144,10 @@ namespace AH64.Survivors.SkillStates
             }, false);
         }
 
-        /// <summary>
-        /// Ease into peak over <c>dashRampFraction</c>, then ease down toward exit carry. Smoothstep
-        /// on both legs so the roll reads as a shove-then-coast rather than a teleport.
-        /// </summary>
-        private void RecalculateDashSpeed()
-        {
-            float t = Mathf.Clamp01(fixedAge / duration);
-            float ramp = Mathf.Clamp(AH64PlaytestConfig.DashRampFraction, 0.05f, 0.9f);
-
-            if (t <= ramp)
-            {
-                float u = SmoothStep(t / ramp);
-                dashSpeed = Mathf.Lerp(entrySpeed, peakSpeed, u);
-            }
-            else
-            {
-                float u = SmoothStep((t - ramp) / (1f - ramp));
-                dashSpeed = Mathf.Lerp(peakSpeed, exitSpeed, u);
-            }
-        }
-
-        private static float SmoothStep(float x)
-        {
-            x = Mathf.Clamp01(x);
-            return x * x * (3f - 2f * x);
-        }
-
         public override void FixedUpdate()
         {
             base.FixedUpdate();
-            RecalculateDashSpeed();
+            if (!hasCapture) return;
 
             flareTimer -= GetDeltaTime();
             if (flareTimer <= 0f)
@@ -258,34 +156,18 @@ namespace AH64.Survivors.SkillStates
                 PopFlare();
             }
 
-            if (characterDirection) characterDirection.forward = forwardDirection;
-            if (cameraTargetParams) cameraTargetParams.fovOverride = Mathf.Lerp(dodgeFOV, 60f, fixedAge / duration);
-
-            float climbSpeed = ClimbVelocityAt(fixedAge);
-
-            Vector3 travelDirection = (transform.position - previousPosition);
-            travelDirection.y = 0f;
-            if (characterMotor && characterDirection)
+            if (flightVisuals) flightVisuals.SetManeuverProgress(this, fixedAge);
+            if (isAuthority)
             {
-                Vector3 velocity;
-                if (travelDirection.sqrMagnitude > 0.0001f)
-                {
-                    travelDirection.Normalize();
-                    velocity = travelDirection * dashSpeed;
-                    float forwardSpeed = Mathf.Max(Vector3.Dot(velocity, forwardDirection), 0f);
-                    velocity = forwardDirection * forwardSpeed;
-                }
-                else
-                {
-                    velocity = forwardDirection * dashSpeed;
-                }
-
-                velocity.y = climbSpeed;
-                characterMotor.velocity = velocity;
+                // Native aim is independent of the roll and trajectory; never rewrite forward.
+                if (characterDirection && inputBank) characterDirection.moveVector = inputBank.aimDirection;
+                Vector3 input = inputBank ? inputBank.moveVector : Vector3.zero;
+                Vector3 target = AH64ManeuverMath.Direction(capture.Facing, input,
+                    false, AH64StaticValues.dashDiagonalBlend);
+                if (motion) motion.Step(this, target, fixedAge, GetDeltaTime());
             }
-            previousPosition = transform.position;
 
-            if (isAuthority && fixedAge >= duration)
+            if (isAuthority && fixedAge >= capture.Duration)
             {
                 outer.SetNextStateToMain();
                 return;
@@ -294,40 +176,27 @@ namespace AH64.Survivors.SkillStates
 
         public override void OnExit()
         {
-            Util.PlaySound(travelLoopStop, gameObject);
-            if (cameraTargetParams) cameraTargetParams.fovOverride = -1f;
-
-            //Hand hover a soft horizontal carry at exitSpeed so Main does not inherit a hard cut.
-            if (characterMotor && forwardDirection.sqrMagnitude > 0.0001f)
-            {
-                Vector3 carry = forwardDirection.normalized * exitSpeed;
-                carry.y = characterMotor.velocity.y;
-                characterMotor.velocity = carry;
-            }
-
+            if (motion) motion.Release(this);
+            if (flightVisuals) flightVisuals.EndManeuver(this);
             base.OnExit();
-
-            if (characterMotor) characterMotor.disableAirControlUntilCollision = false;
         }
 
         public override void OnSerialize(NetworkWriter writer)
         {
             base.OnSerialize(writer);
-            writer.Write(forwardDirection);
-            writer.Write(rollSign);
-            writer.Write(entrySpeed);
-            writer.Write(peakSpeed);
-            writer.Write(exitSpeed);
+            capture.Write(writer);
         }
 
         public override void OnDeserialize(NetworkReader reader)
         {
             base.OnDeserialize(reader);
-            forwardDirection = reader.ReadVector3();
-            rollSign = reader.ReadSingle();
-            entrySpeed = reader.ReadSingle();
-            peakSpeed = reader.ReadSingle();
-            exitSpeed = reader.ReadSingle();
+            capture = AH64ManeuverCapture.Read(reader);
+            hasCapture = true;
+        }
+
+        public override InterruptPriority GetMinimumInterruptPriority()
+        {
+            return InterruptPriority.PrioritySkill;
         }
     }
 }
