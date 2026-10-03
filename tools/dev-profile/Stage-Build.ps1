@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Dll, [string]$Bundle, [string]$Bank, [string]$Config,
-    [string]$DependencyLock, [string]$AccessResult, [string]$AssetProvenance,
+    [string]$DependencyLock, [string]$AccessResult, [string]$AssetProvenance, [string]$RuntimePolicy,
     [string]$ProfileName = 'AH64 1.3 Dev',
     [string]$GameDirectory = 'C:\Program Files (x86)\Steam\steamapps\common\Risk of Rain 2',
     [string]$RuntimeReservation, [string]$RuntimeOwner, [string]$RuntimeLockPath, [switch]$AllowDirty
@@ -156,11 +156,29 @@ if ($LASTEXITCODE -ne 0) { throw "Candidate build failed; nothing staged. $build
 if (($snapshot | ConvertTo-Json -Depth 6 -Compress) -cne ((Get-CandidateSnapshot $repo) | ConvertTo-Json -Depth 6 -Compress)) { throw 'Source changed during compilation; nothing staged.' }
 $access = Get-Content -LiteralPath $AccessResult -Raw | ConvertFrom-Json
 $dllIdentity = Get-Identity $Dll
-if ($access.status -ne 'passed' -or $access.checkedMembers -le 0 -or @($access.unresolved).Count -gt 0 -or @($access.inaccessible).Count -gt 0 -or $access.candidateSha256 -ne $dllIdentity.sha256) {
-    throw 'Access scan must pass for these exact DLL bytes, with no unresolved references.'
+if ($access.status -ne 'passed' -or $access.candidateSha256 -ne $dllIdentity.sha256) {
+    throw 'Supplied access scan must pass for these exact DLL bytes.'
 }
+if ($RuntimePolicy) {
+    if ($access.mode -ne 'unity-mono-requestminimum-skipverification-v1' -or $access.runtimePolicy.sha256 -ne (Get-Identity $RuntimePolicy).sha256) { throw 'Supplied scan used a different runtime policy identity.' }
+} elseif ($access.mode -ne 'strict') { throw 'Supplied scan must use strict mode when no runtime policy is supplied.' }
 $managed = Join-Path $GameDirectory 'Risk of Rain 2_Data/Managed'
 if ([IO.Path]::GetFullPath($access.gameManaged) -ne [IO.Path]::GetFullPath($managed)) { throw 'Access scan game path mismatch.' }
+$suppliedAccess = Get-Identity $AccessResult
+$directories = @(@('core','plugins','patchers') | ForEach-Object {
+    $root = Join-Path $profile "BepInEx/$_"
+    Get-TreeIdentity $root '*.dll' | ForEach-Object { Split-Path -Parent $_.path }
+} | Sort-Object -Unique)
+# Rebuild our owned scanner and rescan bytes/metadata/runtime immediately. An edited
+# earlier access JSON can never authorize staging. This remains read-only for the profile.
+$scanRun = Join-Path $repo ('dist/access/stage-' + [guid]::NewGuid().ToString('N'))
+$fresh = & (Join-Path $PSScriptRoot 'Check-Access.ps1') -Dll $Dll -GameManaged $managed -DependencyDirectories $directories -OutputDirectory $scanRun -RuntimePolicy $RuntimePolicy -PassThru
+if ($fresh.exitCode -ne 0) { throw "Fresh staging access scan failed: $($fresh.resultPath)" }
+$access = Get-Content -LiteralPath $fresh.resultPath -Raw | ConvertFrom-Json
+if ($access.status -ne 'passed' -or $access.checkedMembers -le 0 -or @($access.unresolved).Count -gt 0 -or @($access.unsupported).Count -gt 0 -or @($access.policyErrors).Count -gt 0 -or $access.candidateSha256 -ne $dllIdentity.sha256) { throw 'Fresh access proof incomplete or failed.' }
+if ($RuntimePolicy) {
+    if ($access.mode -ne 'unity-mono-requestminimum-skipverification-v1' -or $access.runtimePolicy.sha256 -ne (Get-Identity $RuntimePolicy).sha256) { throw 'Runtime policy proof mismatch.' }
+} elseif ($access.mode -ne 'strict' -or @($access.inaccessible).Count -gt 0) { throw 'Strict mode may not support non-public sites.' }
 foreach ($assembly in $access.assemblies.PSObject.Properties) {
     if ((Get-Identity $assembly.Name).sha256 -ne $assembly.Value) { throw "Scanned assembly changed: $($assembly.Name)" }
 }
@@ -177,7 +195,14 @@ $inputs = @(
 )
 foreach ($input in $inputs) { Assert-ProfileTarget $profile $input.target }
 $support = @('core','plugins','patchers') | ForEach-Object { Get-TreeIdentity (Join-Path $profile "BepInEx/$_") '*.dll' }
-$game = @(Get-Identity (Join-Path $GameDirectory 'Risk of Rain 2.exe')) + @(Get-TreeIdentity $managed '*.dll')
+$game = @(Get-Identity (Join-Path $GameDirectory 'Risk of Rain 2.exe')) + @(Get-TreeIdentity $managed '*.dll') +
+    @(Get-Identity (Join-Path $GameDirectory 'UnityPlayer.dll')) + @(Get-Identity (Join-Path $GameDirectory 'MonoBleedingEdge/EmbedRuntime/mono-2.0-bdwgc.dll'))
+if ($RuntimePolicy) {
+    foreach ($runtime in @($access.reviewedPolicy.runtime.unityPlayer, $access.reviewedPolicy.runtime.mono)) {
+        $captured = @($game | Where-Object { [IO.Path]::GetFullPath($_.path) -eq [IO.Path]::GetFullPath($runtime.path) })
+        if ($captured.Count -ne 1 -or $captured[0].sha256 -ne $runtime.sha256) { throw 'Native runtime changed after policy scan.' }
+    }
+}
 $configBefore = @(Get-TreeIdentity (Join-Path $profile 'BepInEx/config') '*.cfg')
 if (Get-ChildItem -LiteralPath $plugin -Recurse -File -Filter Init.bnk) { throw 'Existing plugin contains forbidden Init.bnk; integrator must inspect it.' }
 $run = Join-Path $repo ('dist/autopilot/' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N'))
@@ -187,10 +212,17 @@ $record = [ordered]@{
     sourceSha = $sha; dirty = $dirty; pluginVersion = $manifest.version_number; profile = $profile; profileName = $ProfileName;
     gameDirectory = $GameDirectory; game = $game; inputs = $inputs;
     dependencies = $lock; assetProvenance = $provenance; buildEvidence = Get-Identity $buildLog; supportBefore = @($support); configBefore = $configBefore; replacements = @()
+    suppliedAccess = $suppliedAccess; accessEvidence = Get-Identity $fresh.resultPath; accessMode = $access.mode; supportedAccessSites = @($access.supported)
 }
 $recordPath = Join-Path $run 'stage.json'
 Copy-Item -LiteralPath $DependencyLock -Destination (Join-Path $run 'dependencies.json')
-Copy-Item -LiteralPath $AccessResult -Destination (Join-Path $run 'access.json')
+Copy-Item -LiteralPath $fresh.resultPath -Destination (Join-Path $run 'access.json')
+if ($RuntimePolicy) {
+    Copy-Item -LiteralPath $RuntimePolicy -Destination (Join-Path $run 'runtime-policy.json')
+    Copy-Item -LiteralPath $access.reviewedPolicy.reviewEvidence.path -Destination (Join-Path $run 'policy-review-evidence.json')
+    $record.runtimePolicy = Get-Identity (Join-Path $run 'runtime-policy.json')
+    if ($record.runtimePolicy.sha256 -ne $access.runtimePolicy.sha256 -or (Get-Identity (Join-Path $run 'policy-review-evidence.json')).sha256 -ne $access.reviewedPolicy.reviewEvidence.sha256) { throw 'Archived policy/review evidence identity changed.' }
+}
 $snapshot | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $run 'dirty.json')
 $record.dirtyWorkspaceFingerprint = (Get-Identity (Join-Path $run 'dirty.json')).sha256
 if (($snapshot | ConvertTo-Json -Depth 6 -Compress) -cne ((Get-CandidateSnapshot $repo) | ConvertTo-Json -Depth 6 -Compress)) { throw 'Source changed before staging; nothing replaced.' }

@@ -37,4 +37,45 @@ foreach ($case in @('public','private','unresolved')) {
     $checked++
 }
 $target.Dispose()
+$game = Split-Path -Parent (Split-Path -Parent $GameManaged)
+$runtime = @{ unityPlayer = @{ path = Join-Path $game 'UnityPlayer.dll'; sha256 = (Get-FileHash (Join-Path $game 'UnityPlayer.dll')).Hash };
+    mono = @{ path = Join-Path $game 'MonoBleedingEdge/EmbedRuntime/mono-2.0-bdwgc.dll'; sha256 = (Get-FileHash (Join-Path $game 'MonoBleedingEdge/EmbedRuntime/mono-2.0-bdwgc.dll')).Hash } }
+$evidence = Join-Path $root 'review-evidence.txt'; 'Synthetic reviewed private fixture; not a runtime test.' | Set-Content -LiteralPath $evidence
+$reviewed = @((Get-Content (Join-Path $root 'private.json') -Raw | ConvertFrom-Json).inaccessible)
+function Add-FixtureDeclaration($Module, [bool]$Skip) {
+    $attributeType = [Mono.Cecil.TypeReference]::new('System.Security.Permissions','SecurityPermissionAttribute',$Module,$Module.TypeSystem.CoreLibrary)
+    $attribute = [Mono.Cecil.SecurityAttribute]::new($attributeType)
+    $argument = [Mono.Cecil.CustomAttributeArgument]::new($Module.TypeSystem.Boolean, $Skip)
+    $attribute.Properties.Add([Mono.Cecil.CustomAttributeNamedArgument]::new('SkipVerification', $argument))
+    $declaration = [Mono.Cecil.SecurityDeclaration]::new([Mono.Cecil.SecurityAction]::RequestMinimum)
+    $declaration.SecurityAttributes.Add($attribute); $Module.Assembly.SecurityDeclarations.Add($declaration)
+    $unverifiable = [Mono.Cecil.TypeReference]::new('System.Security','UnverifiableCodeAttribute',$Module,$Module.TypeSystem.CoreLibrary)
+    $ctor = [Mono.Cecil.MethodReference]::new('.ctor',$Module.TypeSystem.Void,$unverifiable); $ctor.HasThis = $true
+    $Module.CustomAttributes.Add([Mono.Cecil.CustomAttribute]::new($ctor))
+}
+foreach ($case in @('supported','declared-strict','absent-declaration','false-declaration','absent-module','wrong-runtime','wrong-candidate','unreviewed-site','policy-unresolved')) {
+    $source = Join-Path $root 'private.dll'
+    $module = [Mono.Cecil.ModuleDefinition]::ReadModule($source)
+    if ($case -eq 'policy-unresolved') { $module.AssemblyReferences.Add([Mono.Cecil.AssemblyNameReference]::new('DeliberatelyMissingDependency', [version]'1.0.0.0')) }
+    if ($case -ne 'absent-declaration') { Add-FixtureDeclaration $module ($case -ne 'false-declaration') }
+    if ($case -eq 'absent-module') { $module.CustomAttributes.Clear() }
+    $path = Join-Path $root ($case + '.dll'); $module.Write($path); $module.Dispose()
+    $sites = $reviewed
+    if ($case -eq 'unreviewed-site') { $sites = @('unreviewed placeholder') }
+    $policy = @{ schema = 1; policy = 'unity-mono-requestminimum-skipverification-v1'; candidateSha256 = (Get-FileHash $path).Hash;
+        reviewEvidence = @{ path = $evidence; sha256 = (Get-FileHash $evidence).Hash }; runtime = $runtime; reviewedSites = $sites }
+    $policyPath = Join-Path $root ($case + '-policy.json')
+    if ($case -eq 'wrong-runtime') { $policy.runtime = $runtime | ConvertTo-Json -Depth 5 | ConvertFrom-Json; $policy.runtime.mono.sha256 = ('0' * 64) }
+    if ($case -eq 'wrong-candidate') { $policy.candidateSha256 = ('0' * 64) }
+    $policy | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $policyPath
+    $result = Join-Path $root ($case + '.json')
+    $policyArgs = @('--policy',$policyPath); if ($case -eq 'declared-strict') { $policyArgs = @() }
+    & dotnet $ScannerDll $path $GameManaged $result $root @policyArgs
+    $code = $LASTEXITCODE; $scan = Get-Content -LiteralPath $result -Raw | ConvertFrom-Json
+    if ($case -eq 'supported') {
+        if ($code -ne 0 -or @($scan.inaccessible).Count -ne 1 -or @($scan.supported).Count -ne 1 -or @($scan.unsupported).Count -ne 0) { throw 'Reviewed policy fixture failed or hid raw sites.' }
+    } elseif ($code -eq 0 -or $scan.status -ne 'failed') { throw "Unsafe policy case passed: $case" }
+    if ($case -eq 'policy-unresolved' -and @($scan.unresolved).Count -eq 0) { throw 'Policy hid unresolved reference.' }
+    $checked++
+}
 Write-Output "ACCESS_FIXTURES_PASS cases=$checked evidence=$root"

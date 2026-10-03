@@ -4,7 +4,7 @@ param(
     [string]$GameManaged = 'C:\Program Files (x86)\Steam\steamapps\common\Risk of Rain 2\Risk of Rain 2_Data\Managed',
     [string[]]$DependencyDirectories = @(),
     [string]$CecilPath,
-    [string]$OutputDirectory
+    [string]$OutputDirectory, [string]$RuntimePolicy, [switch]$PassThru
 )
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
@@ -29,12 +29,13 @@ if (!(Test-Path -LiteralPath $CecilPath -PathType Leaf)) { throw "Cecil missing:
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'Access output must be new.' }
 New-Item -ItemType Directory -Path $OutputDirectory | Out-Null
 $source = [Security.SecurityElement]::Escape((Join-Path $PSScriptRoot 'AccessScan.cs'))
+$policySource = [Security.SecurityElement]::Escape((Join-Path $PSScriptRoot 'AccessPolicy.cs'))
 $cecil = [Security.SecurityElement]::Escape((Resolve-Path $CecilPath).Path)
 $project = Join-Path $OutputDirectory 'AccessScan.csproj'
 @"
 <Project Sdk="Microsoft.NET.Sdk">
  <PropertyGroup><TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
- <ItemGroup><Compile Include="$source"/><Reference Include="Mono.Cecil"><HintPath>$cecil</HintPath></Reference></ItemGroup>
+ <ItemGroup><Compile Include="$source"/><Compile Include="$policySource"/><Reference Include="Mono.Cecil"><HintPath>$cecil</HintPath></Reference></ItemGroup>
 </Project>
 "@ | Set-Content -LiteralPath $project
 # No package downloads: this helper only references the already restored Cecil assembly.
@@ -42,7 +43,10 @@ $project = Join-Path $OutputDirectory 'AccessScan.csproj'
 if ($LASTEXITCODE -ne 0) { throw 'Access scanner restore failed; see restore.log.' }
 & dotnet build $project -c Release --no-restore -p:UseSharedCompilation=false -nodeReuse:false *> (Join-Path $OutputDirectory 'build.log')
 if ($LASTEXITCODE -ne 0) { throw 'Access scanner build failed; see build.log.' }
-& dotnet (Join-Path $OutputDirectory 'bin/Release/net8.0/AccessScan.dll') $Dll $GameManaged (Join-Path $OutputDirectory 'access.json') @DependencyDirectories
+$policyArguments = @(); if ($RuntimePolicy) { $policyArguments = @('--policy', (Resolve-Path -LiteralPath $RuntimePolicy).Path) }
+$scanOutput = & dotnet (Join-Path $OutputDirectory 'bin/Release/net8.0/AccessScan.dll') $Dll $GameManaged (Join-Path $OutputDirectory 'access.json') @DependencyDirectories @policyArguments
 $code = $LASTEXITCODE
-Write-Output "access-result=$(Join-Path $OutputDirectory 'access.json') exit=$code"
+Write-Host $scanOutput
+Write-Host "access-result=$(Join-Path $OutputDirectory 'access.json') exit=$code"
+if ($PassThru) { [pscustomobject]@{ exitCode = $code; resultPath = (Join-Path $OutputDirectory 'access.json') }; return }
 exit $code

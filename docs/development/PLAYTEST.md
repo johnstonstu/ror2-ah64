@@ -7,10 +7,11 @@ Normal launches install no autopilot hooks and write no autopilot evidence.
 
 Offline checkpoint: Release compilation passed with 0 errors and 25 warnings
 (22 baseline plus two FOV reads and one legacy teleport call in the harness).
-32 evidence/lease checks and three synthetic access fixtures passed. The real-game
+32 evidence/lease checks and 12 synthetic strict/policy access cases passed. The real-game
 scan resolves every reference and reports 31 non-public sites, exactly matching the
-unmodified baseline DLL with no added sites. This is an explicit staging blocker,
-not a runtime pass. The integrator's verified 1.2.1 bundle/bank snapshots are available;
+unmodified baseline DLL with no added sites. Strict mode rejects those sites; the
+explicit reviewed runtime policy below can classify them as supported. Neither
+result is a runtime pass. The integrator's verified 1.2.1 bundle/bank snapshots are available;
 this worker did not copy them into generated packaging paths or run the game.
 
 ## Integration hook and ownership
@@ -97,10 +98,55 @@ never publicized GameLibs. Supply explicit runtime dependency directories (inclu
 loader, hooks, R2API and patchers). Missing directories and every unresolved assembly,
 type or member are failures. Output identifies all resolved assembly paths/hashes.
 Protected inheritance is recognized; conservative non-public findings require review.
-This is an IL preflight, not a simulation of runtime publicizer patches. Existing
-baseline non-public sites are not silently grandfathered; staging stays blocked until
-the integrator resolves/classifies that actual-game access gate. Do not edit Modules
-or declare GameLibs compilation a game-access pass to clear it.
+Default mode remains strict. No generic private-access ignore option exists.
+
+### Explicit supported Unity Mono policy
+
+The existing plugin declares assembly `SecurityPermissionAttribute(RequestMinimum,
+SkipVerification=true)` and module `UnverifiableCodeAttribute`. Unity Mono's
+[assembly decoder](https://github.com/Unity-Technologies/mono/blob/unity-2021.3-mbe/mono/metadata/assembly.c#L5245),
+[eligibility check](https://github.com/Unity-Technologies/mono/blob/unity-2021.3-mbe/mono/mini/mini.c#L896) and
+[method/field checks](https://github.com/Unity-Technologies/mono/blob/unity-2021.3-mbe/mono/mini/method-to-ir.c#L5853)
+explain why this existing declaration supports the reviewed member accesses on the
+identified Unity Mono runtime. The scanner models that behavior only when supplied
+an explicit integrator-reviewed manifest. It changes no assembly, game, OS security
+setting or access grant, and verifies metadata without executing the candidate.
+
+Keep the manifest in ignored run evidence. Generate it after the final candidate
+build using the reviewed triage pins, never by automatically approving fresh findings:
+
+```powershell
+$triage = Get-Content -LiteralPath $triagePath -Raw | ConvertFrom-Json
+$policy = @{
+    schema = 1
+    policy = 'unity-mono-requestminimum-skipverification-v1'
+    candidateSha256 = (Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash
+    reviewEvidence = @{ path = (Resolve-Path $triagePath).Path; sha256 = (Get-FileHash -LiteralPath $triagePath).Hash }
+    runtime = @{
+        unityPlayer = @{ path = Join-Path $gameDirectory 'UnityPlayer.dll'; sha256 = $triage.UnityPlayerSHA256 }
+        mono = @{ path = Join-Path $gameDirectory 'MonoBleedingEdge/EmbedRuntime/mono-2.0-bdwgc.dll'; sha256 = $triage.MonoSHA256 }
+    }
+    reviewedSites = @($triage.UnmodeledNonPublicSites)
+}
+$policy | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $policyPath -Encoding UTF8
+pwsh -NoProfile -File tools/dev-profile/Check-Access.ps1 -Dll $dll -DependencyDirectories $runtimeDllDirectories -OutputDirectory $newAccessDirectory -RuntimePolicy $policyPath
+```
+
+The policy binds the exact candidate bytes, existing permission metadata, review
+evidence hash and installed UnityPlayer/Mono paths and hashes. The entire non-public
+site set (member, caller and IL offset) must match the distinct reviewed set. Changed,
+new, removed or unreviewed sites, absent/false declarations, runtime/hash mismatch,
+non-member/type visibility findings and unresolved references fail. A changed DLL
+requires a new candidate hash; altered sites or runtime require integrator re-review.
+Raw `inaccessible` findings remain in `access.json`, alongside `supported`,
+`unsupported`, `candidatePermission`, policy identities and `policyErrors`.
+
+Staging recompiles the candidate, rebuilds the owned scanner and performs a fresh
+scan against the installed game and actual profile dependency directories. Earlier
+or edited access JSON cannot authorize staging. Supply the same `-RuntimePolicy`
+manifest to the scan and stager. Stage archives the fresh proof, policy and review
+evidence; launch preflight also verifies the native runtime hashes. This establishes
+the modeled API-access gate, not actual game loading or gameplay acceptance.
 
 ## Reserved serial trial (integrator only; not performed by this task)
 
@@ -131,7 +177,7 @@ or declare GameLibs compilation a game-access pass to clear it.
 5. Invoke staging only after access review, then launch the retained lease:
 
 ```powershell
-pwsh -NoProfile -File tools/dev-profile/Stage-Build.ps1 -Dll $dll -Bundle $bundle -Bank $bank -Config $config -DependencyLock $dependencyLock -AccessResult $accessJson -AssetProvenance $provenance -RuntimeOwner $owner -RuntimeReservation $token -RuntimeLockPath $canonicalLock
+pwsh -NoProfile -File tools/dev-profile/Stage-Build.ps1 -Dll $dll -Bundle $bundle -Bank $bank -Config $config -DependencyLock $dependencyLock -AccessResult $accessJson -AssetProvenance $provenance -RuntimePolicy $policyPath -RuntimeOwner $owner -RuntimeReservation $token -RuntimeLockPath $canonicalLock
 pwsh -NoProfile -File tools/dev-profile/Run-Autopilot.ps1 -StageRecord $stageJson -RuntimeOwner $owner -RuntimeReservation $token -RuntimeLockPath $canonicalLock -ValidateOnly
 pwsh -NoProfile -File tools/dev-profile/Run-Autopilot.ps1 -StageRecord $stageJson -RuntimeOwner $owner -RuntimeReservation $token -RuntimeLockPath $canonicalLock
 ```

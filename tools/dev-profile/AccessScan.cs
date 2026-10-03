@@ -6,12 +6,13 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Mono.Cecil;
 
-// Conservative IL access preflight against unmodified installed assemblies. Findings are
-// blockers, not a simulation of RoR2BepInExPack's runtime publicizer or a runtime pass.
+// Strict IL access preflight by default; optional reviewed Unity Mono policy classifies
+// supported sites separately while retaining every raw finding. Neither mode is a runtime test.
 internal static class AccessScan
 {
     private static readonly HashSet<string> Unresolved = new HashSet<string>();
     private static readonly HashSet<string> Inaccessible = new HashSet<string>();
+    private static readonly HashSet<string> EligibleMemberSites = new HashSet<string>();
     private static readonly Dictionary<string, string> Assemblies = new Dictionary<string, string>();
     private static int checkedMembers;
 
@@ -95,6 +96,7 @@ internal static class AccessScan
             checkedMembers++;
             Remember(owner.Module);
             if (!accessible || !Visible(owner, caller)) Inaccessible.Add(site);
+            if (!accessible && Visible(owner, caller) && (reference is MethodReference || reference is FieldReference)) EligibleMemberSites.Add(site);
         }
     }
 
@@ -102,6 +104,8 @@ internal static class AccessScan
     {
         if (args.Length < 3) return 2;
         string status = "failed";
+        string candidateHash = AccessPolicy.Hash(args[0]);
+        var policy = new AccessPolicy.Result();
         try
         {
             using var resolver = new DefaultAssemblyResolver();
@@ -109,24 +113,36 @@ internal static class AccessScan
             resolver.RemoveSearchDirectory(".");
             resolver.RemoveSearchDirectory("bin");
             resolver.AddSearchDirectory(Path.GetFullPath(args[1]));
-            foreach (string directory in args.Skip(3))
+            string policyPath = null;
+            var directories = new List<string>();
+            for (int i = 3; i < args.Length; i++) {
+                if (args[i] == "--policy") {
+                    if (policyPath != null || ++i == args.Length) throw new ArgumentException("One --policy path required.");
+                    policyPath = args[i];
+                } else directories.Add(args[i]);
+            }
+            foreach (string directory in directories)
             {
                 if (!Directory.Exists(directory)) throw new DirectoryNotFoundException(directory);
                 resolver.AddSearchDirectory(Path.GetFullPath(directory));
             }
             using var module = ModuleDefinition.ReadModule(args[0], new ReaderParameters { AssemblyResolver = resolver });
             Scan(module);
-            status = checkedMembers > 0 && Unresolved.Count == 0 && Inaccessible.Count == 0 ? "passed" : "failed";
+            policy = AccessPolicy.Evaluate(module, policyPath, args[1], candidateHash, Inaccessible, EligibleMemberSites);
+            status = checkedMembers > 0 && Unresolved.Count == 0 && policy.errors.Count == 0 && Inaccessible.Count == policy.supported.Length ? "passed" : "failed";
         }
         catch (Exception e) { Unresolved.Add("SCANNER: " + e); }
         File.WriteAllText(args[2], JsonSerializer.Serialize(new {
             schema = 1, status, checkedMembers, candidate = Path.GetFullPath(args[0]),
-            candidateSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(args[0]))),
+            candidateSha256 = candidateHash,
             gameManaged = Path.GetFullPath(args[1]), assemblies = Assemblies,
-            unresolved = Unresolved.OrderBy(s => s).ToArray(), inaccessible = Inaccessible.OrderBy(s => s).ToArray()
+            unresolved = Unresolved.OrderBy(s => s).ToArray(), inaccessible = Inaccessible.OrderBy(s => s).ToArray(),
+            unsupported = Inaccessible.Except(policy.supported).OrderBy(s => s).ToArray(), supported = policy.supported,
+            mode = policy.mode, policyErrors = policy.errors, candidatePermission = policy.declaration,
+            runtimePolicy = policy.manifest, reviewedPolicy = policy.reviewedPolicy
         }, new JsonSerializerOptions { WriteIndented = true }));
         Console.WriteLine("ACCESS_" + status.ToUpperInvariant() + " checked=" + checkedMembers +
-            " unresolved=" + Unresolved.Count + " inaccessible=" + Inaccessible.Count);
+            " unresolved=" + Unresolved.Count + " inaccessible=" + Inaccessible.Count + " supported=" + policy.supported.Length + " policyErrors=" + policy.errors.Count);
         return status == "passed" ? 0 : 1;
     }
 }
