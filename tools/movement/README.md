@@ -11,8 +11,10 @@ asset, localization, version, foundation or profile changes.
   attitude, duration, speed profile, ramp, allowed climb and start world height.
   Remote `OnEnter` uses the received snapshot and never recaptures or writes motion.
 - Motor ownership is a runtime-only component lease. Air control temporarily
-  becomes zero so the actual game's `CharacterMotor.PreMove` does not accelerate
-  toward stale Main input. Entry does not overwrite velocity. Native aim input
+  becomes zero. A scoped PreMove guard also selects the air-control branch for
+  the duration of that call, including the grounded frame before KCC consumes a
+  queued unground, so PreMove does not accelerate toward stale Main input. Entry does
+  not overwrite velocity. Native aim input
   remains independent; the utility updates the native facing target, not `forward`.
 - Lateral stick strength continuously selects a direction within the existing
   roll diagonal cone, keeping forward/rearward roles. Backflip now accepts bounded
@@ -37,7 +39,8 @@ asset, localization, version, foundation or profile changes.
   Spin uses an explicit unwrapped +/-360-degree curve, never endpoint-quaternion
   interpolation. Interruption resumes normal smoothing from the last rendered pose.
   Exit, disable, destruction and crash clean up owned audio/FOV. Repeated/stale
-  cleanup cannot reset a replacing camera owner.
+  cleanup cannot reset a replacing camera owner. A value-ownership guard gives
+  up FOV writes/restoration when another system changes the active override.
 
 ## Offline validation
 
@@ -104,7 +107,11 @@ Focused playtest checklist:
    ordinary hover behavior after completion/interruption.
 4. Stun, death, body disable/re-enable and stage transition: no motor subscription,
    loop sound, FOV or model-owner leak. Check actual grounded/ForceUnground ordering
-   against PreMove; the offline lease tests do not reproduce KCC tick ordering.
+   against PreMove; offline tests model the inspected phase ordering but do not
+   execute actual KCC collision geometry, sweeps, callbacks or unground timers.
 5. Host, non-host authority and observer, with latency: identical received capture,
    no remote recapture/motor writes, native aim independent of cosmetic flip,
    progress/exit timing and visible recovery after collision/interruption.
+
+The follow-up corrective review, inspected engine identity, exact validation and
+remaining runtime gates are recorded in [REVIEW-FIXES.md](REVIEW-FIXES.md).

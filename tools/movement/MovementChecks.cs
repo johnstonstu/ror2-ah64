@@ -7,7 +7,7 @@ using RoR2;
 using UnityEngine;
 using UnityEngine.Networking;
 
-internal static class MovementChecks
+internal static partial class MovementChecks
 {
     private static int assertions;
     private static void Check(bool pass,string id){assertions++;if(!pass)throw new Exception(id);}
@@ -80,6 +80,7 @@ internal static class MovementChecks
         Check(Convert.ToBase64String(writer.ToArray())==Convert.ToBase64String(encoded.ToArray()),"all snapshot fields round-trip");
         foreach(bool flip in new[]{false,true})StateChecks(flip);
         MotorChecks();
+        ReviewRegressionChecks();
         Console.WriteLine("Movement offline checks passed: "+assertions+" assertions (API doubles; runtime unverified).");
     }
     private static BaseSkillState State(GameObject g,bool flip)
@@ -91,7 +92,7 @@ internal static class MovementChecks
         var entry=motor.velocity;state.OnEnter();Check(motor.velocity==entry,"entry world velocity preserved");
         Check(g.GetComponent<AH64HoverController>().limits==1,"one authority climb capture");
         Check(g.GetComponent<AH64FlightVisuals>().captures==1,"one authority attitude capture");
-        Check(state.GetMinimumInterruptPriority()==InterruptPriority.PrioritySkill,"no priority-skill reentry");
+        Check(state.GetMinimumInterruptPriority()==InterruptPriority.Pain,"minimum above utility activation priority");
         Check(g.GetComponent<CharacterBody>().buffs.Count==2,"baseline defensive grant count");
         var w=new NetworkWriter();state.OnSerialize(w);
         NetworkServer.active=false;
@@ -107,7 +108,7 @@ internal static class MovementChecks
         observed.FixedUpdate();Check(remote.GetComponent<CharacterMotor>().velocity==new Vector3(70,80,90),"remote tick never writes velocity");
         state.FixedUpdate();Check(g.GetComponent<CharacterDirection>().forward==Vector3.forward,"no facing snap");
         motor.velocity=new Vector3(2,-6,1);state.OnExit();Check(motor.velocity==new Vector3(2,-6,1),"interruption preserves replacing velocity");
-        Near(motor.airControl,1,"air control restored");Check(On.RoR2.CharacterMotor.Subscribers==0,"state force hook released");
+        Near(motor.airControl,1,"air control restored");Check(On.RoR2.CharacterMotor.Subscribers==0 && On.RoR2.CharacterMotor.PreMoveSubscribers==0,"state motor hooks released");
         observed.OnExit();Check(remote.GetComponent<CharacterMotor>().velocity==new Vector3(70,80,90),"remote exit never writes velocity");
         var complete=State(g,flip);complete.isAuthority=true;complete.OnEnter();
         while(!complete.outer.main)complete.FixedUpdate();
@@ -146,6 +147,6 @@ internal static class MovementChecks
             motion.Release(owner);On.RoR2.CharacterMotor.ApplyForceImpulse-=hoverHook;motor.airControl=1;
         }
         motion.Begin(owner,Capture(motor.velocity));typeof(AH64ManeuverMotor).GetMethod("OnDisable",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(motion,null);
-        Near(motor.airControl,1,"disable restores control");Check(On.RoR2.CharacterMotor.Subscribers==0 && motor.HitSubscribers==0,"disable releases subscriptions");
+        Near(motor.airControl,1,"disable restores control");Check(On.RoR2.CharacterMotor.Subscribers==0 && On.RoR2.CharacterMotor.PreMoveSubscribers==0 && motor.HitSubscribers==0,"disable releases subscriptions");
     }
 }

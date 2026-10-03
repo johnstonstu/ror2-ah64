@@ -47,6 +47,25 @@ internal static class VisualChecks
             if(flip)v.PlayBackflip(owner,1,entry);else v.PlayBarrelRoll(owner,1,1,entry);
             v.PlayCrash(1);Check(g.GetComponent<CameraTargetParams>().fovOverride==83,"death clears FOV");Call(v,"OnDestroy");
         }
+        foreach(bool flip in new[]{false,true})
+        foreach(int cleanup in new[]{0,1,2,3})
+        {
+            var g=Body();var v=g.GetComponent<AH64FlightVisuals>();var owner=new object();Call(v,"Start");
+            if(flip)v.PlayBackflip(owner,1,Quaternion.identity);else v.PlayBarrelRoll(owner,1,1,Quaternion.identity);
+            v.SetManeuverProgress(owner,.4f);Call(v,"LateUpdate");
+            g.GetComponent<CameraTargetParams>().fovOverride=99; // External change DURING the active maneuver.
+            if(cleanup==0)v.EndManeuver(owner);
+            else if(cleanup==1)Call(v,"OnDisable");
+            else if(cleanup==2)v.PlayCrash(1);
+            else
+            {
+                v.SetManeuverProgress(owner,.6f);Call(v,"LateUpdate");
+                Check(g.GetComponent<CameraTargetParams>().fovOverride==99,"external FOV change stops subsequent maneuver writes");
+                v.SetManeuverProgress(owner,.8f);Call(v,"LateUpdate");v.EndManeuver(owner);
+            }
+            Check(g.GetComponent<CameraTargetParams>().fovOverride==99,"active external FOV owner survives exit/disable/crash");
+            Call(v,"OnDestroy");
+        }
         int starts=RoR2.Util.sounds.FindAll(s=>s=="Play_loader_m2_travel_loop").Count;
         int stops=RoR2.Util.sounds.FindAll(s=>s=="Stop_loader_m2_travel_loop").Count;
         Check(starts==stops,"owned travel audio balanced on exit/disable/crash/destroy");

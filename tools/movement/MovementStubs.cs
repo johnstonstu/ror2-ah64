@@ -103,9 +103,22 @@ namespace RoR2
     public struct PhysForceInfo { public Vector3 force; }
     public class CharacterMotor:Component
     {
-        public Vector3 velocity; public bool hasEffectiveAuthority=true,isGrounded,disableAirControlUntilCollision,useCustomGravity;
+        public Vector3 velocity,moveDirection;public float acceleration=100,walkSpeed=12;public bool isAirControlForced; public bool hasEffectiveAuthority=true,isGrounded,disableAirControlUntilCollision,useCustomGravity;
         public float airControl=1; public bool isFlying=true,useGravity,rejectForces; public float capsuleYOffset,capsuleHeight=2;
-        public readonly Kcc Motor=new Kcc(); public class Kcc { public void ForceUnground(){} }
+        public readonly Kcc Motor=new Kcc();
+        public class Kcc
+        {
+            public bool mustUnground;public int UngroundCalls;
+            // Actual KCC only queues unground here; stable status survives until after PreMove.
+            public void ForceUnground(){mustUnground=true;UngroundCalls++;}
+        }
+        public void PhysicsStep(float dt)
+        {
+            On.RoR2.CharacterMotor.RunPreMove(this,dt);
+            if(Motor.mustUnground){isGrounded=false;Motor.mustUnground=false;}
+            // Simplified stable-floor projection, not KCC geometry/sweeps/timer emulation.
+            if(isGrounded)velocity.y=0;
+        }
         public struct MovementHitInfo { public Vector3 hitNormal; }
         public delegate void MovementHitDelegate(ref MovementHitInfo info);
         public event MovementHitDelegate onMovementHit;
@@ -140,6 +153,28 @@ namespace On.RoR2
         public delegate void hook_ApplyForceImpulse(orig_ApplyForceImpulse orig,global::RoR2.CharacterMotor self,ref PhysForceInfo info);
         public static event hook_ApplyForceImpulse ApplyForceImpulse;
         public static int Subscribers=>ApplyForceImpulse?.GetInvocationList().Length??0;
+        public delegate void orig_PreMove(global::RoR2.CharacterMotor self,float dt);
+        public delegate void hook_PreMove(orig_PreMove orig,global::RoR2.CharacterMotor self,float dt);
+        public static event hook_PreMove PreMove;
+        public static int PreMoveSubscribers=>PreMove?.GetInvocationList().Length??0;
+        public static void RunPreMove(global::RoR2.CharacterMotor self,float dt)
+        {
+            // Source model of installed CharacterMotor.PreMove's authority/ground/air branch.
+            orig_PreMove chain=(m,step)=>
+            {
+                if(!m.hasEffectiveAuthority)return;
+                float accel=m.acceleration;
+                if(m.isAirControlForced || !m.isGrounded)
+                    accel*=m.disableAirControlUntilCollision && m.useGravity?0:m.airControl;
+                var target=m.moveDirection*m.walkSpeed;
+                if(!m.isFlying)target.y=m.velocity.y;
+                m.velocity=UnityEngine.Vector3.MoveTowards(m.velocity,target,accel*step);
+                if(m.useGravity)m.velocity.y-=9.81f*step;
+            };
+            if(PreMove!=null)foreach(hook_PreMove hook in PreMove.GetInvocationList())
+            {var inner=chain;chain=(m,step)=>hook(inner,m,step);}
+            chain(self,dt);
+        }
         public static void Force(global::RoR2.CharacterMotor self,Vector3Proxy force)
         {
             var info=new PhysForceInfo{force=force.Value};
@@ -154,7 +189,7 @@ namespace On.RoR2
 namespace EntityStates
 {
     using RoR2;using UnityEngine;using UnityEngine.Networking;
-    public enum InterruptPriority { Any,PrioritySkill }
+    public enum InterruptPriority { Any,Skill,PrioritySkill,Pain,Taunt,Stun,Immobilize,Frozen,Vehicle,Death }
     public class BaseSkillState:Component
     {
         public bool isAuthority; public float moveSpeedStat=12,fixedAge;

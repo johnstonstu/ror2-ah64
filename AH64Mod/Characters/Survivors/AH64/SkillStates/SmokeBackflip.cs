@@ -118,6 +118,13 @@ namespace AH64.Survivors.SkillStates
             if (flightVisuals) flightVisuals.SetManeuverProgress(this, fixedAge);
             if (isAuthority)
             {
+                // H3AD-5T's vanilla-physics handoff lives in Main.ApplyHover. Releasing our lease
+                // alone would leave hover's flight/anti-gravity grants active during the slam.
+                if (motion && motion.NeedsMainHandoff)
+                {
+                    outer.SetNextStateToMain();
+                    return;
+                }
                 // Native aim is independent of the roll and trajectory; never rewrite forward.
                 if (characterDirection && inputBank) characterDirection.moveVector = inputBank.aimDirection;
                 Vector3 input = inputBank ? inputBank.moveVector : Vector3.zero;
@@ -155,7 +162,9 @@ namespace AH64.Survivors.SkillStates
 
         public override InterruptPriority GetMinimumInterruptPriority()
         {
-            return InterruptPriority.PrioritySkill;
+            // EntityStateMachine accepts equal priority (minimum <= incoming). Pain blocks our
+            // PrioritySkill activation from re-entering with extra stocks; stun/death still win.
+            return InterruptPriority.Pain;
         }
     }
 }

@@ -46,6 +46,8 @@ namespace AH64.Survivors.Components
         private Quaternion maneuverEntry;
         private CameraTargetParams maneuverCamera;
         private float priorFov;
+        private float lastFov;
+        private bool ownsFov;
         private bool travelAudio;
         private float barrelRollSign;
         private float barrelRollTimer;
@@ -171,6 +173,8 @@ namespace AH64.Survivors.Components
             maneuverSampleTime = Time.time;
             maneuverCamera = GetComponent<CameraTargetParams>();
             priorFov = maneuverCamera ? maneuverCamera.fovOverride : -1f;
+            lastFov = priorFov;
+            ownsFov = maneuverCamera;
             Util.PlaySound("Play_loader_m2_travel_loop", gameObject);
             travelAudio = true;
         }
@@ -186,7 +190,9 @@ namespace AH64.Survivors.Components
         {
             if (maneuverOwner == null || owner != maneuverOwner) return;
             if (travelAudio) Util.PlaySound("Stop_loader_m2_travel_loop", gameObject);
-            if (maneuverCamera) maneuverCamera.fovOverride = priorFov;
+            if (ownsFov && maneuverCamera && maneuverCamera.fovOverride == lastFov)
+                maneuverCamera.fovOverride = priorFov;
+            ownsFov = false;
             travelAudio = false;
             maneuverOwner = null;
             barrelRollTimer = backflipTimer = 0f;
@@ -197,8 +203,16 @@ namespace AH64.Survivors.Components
         {
             float age = maneuverAge + Mathf.Max(0f, Time.time - maneuverSampleTime);
             float t = Mathf.Clamp01(age / duration);
-            if (maneuverCamera) maneuverCamera.fovOverride = Mathf.Lerp(
-                global::EntityStates.Commando.DodgeState.dodgeFOV, 60f, t);
+            if (ownsFov && maneuverCamera)
+            {
+                // A different writer wins for the remainder of this cast, including cleanup.
+                if (maneuverCamera.fovOverride != lastFov) ownsFov = false;
+                else
+                {
+                    lastFov = Mathf.Lerp(global::EntityStates.Commando.DodgeState.dodgeFOV, 60f, t);
+                    maneuverCamera.fovOverride = lastFov;
+                }
+            }
             return t;
         }
 
