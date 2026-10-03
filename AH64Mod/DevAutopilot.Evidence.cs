@@ -179,7 +179,9 @@ namespace AH64
             bool prototypePassed = FinishPrototypeEvidence();
             bool balancePassed = FinishBalanceEvidence();
             bool brakingPassed = FinishBrakingEvidence();
-            if (!prototypePassed || !balancePassed || !brakingPassed) status = "failed";
+            CleanupBombingProbe();
+            bool bombingPassed = FinishBombingEvidence();
+            if (!prototypePassed || !balancePassed || !brakingPassed || !bombingPassed) status = "failed";
             if (status == "completed" && (checks.Count != ExpectedAssertions || failures > 0 || errors > 0 || warnings > 0 || visualFlags > 0)) status = "failed";
             var summary = new Summary { recordType = "summary", runId = Path.GetFileName(output), scenario = Suite, suite = Suite,
                 status = status, reason = reason, expectedAssertions = ExpectedAssertions, assertions = checks.Count,

@@ -42,6 +42,7 @@ namespace AH64
             runner.started = Time.realtimeSinceStartup;
             runner.OpenEvidence();
             runner.InstallHooks();
+            runner.InstallBombingProbeHooks();
             runner.StartCoroutine(runner.Guarded(runner.Script()));
         }
 
@@ -65,6 +66,7 @@ namespace AH64
             On.RoR2.PlayerCharacterMasterController.Update -= AfterAim;
             On.RoR2.Projectile.ProjectileManager.FireProjectile_FireProjectileInfo -= OnProjectile;
             Survivors.Components.AH64BombingRunTrace.Emitted -= OnBombingTrace;
+            CleanupBombingProbe();
             if (output != null && !finished) Finish("incomplete", "runner destroyed");
         }
 
@@ -135,6 +137,8 @@ namespace AH64
                 yield return M230BalanceCase();
             if (Environment.GetEnvironmentVariable("AH64_AUTOPILOT_BRAKING_CHECKS") == "braking-solo-v1")
                 yield return BrakingCases();
+            if (Environment.GetEnvironmentVariable("AH64_AUTOPILOT_BOMBING_CHECKS") == BombingSuite)
+                yield return BombingCases();
         }
 
         private void AfterInput(On.RoR2.PlayerCharacterMasterController.orig_FixedUpdate orig, PlayerCharacterMasterController self)

@@ -162,7 +162,11 @@ try {
     Assert-NoGame
     $env:AH64_AUTOPILOT_DIR = $out; $env:AH64_AUTOPILOT_MODE = 'solo-baseline-v1'
     $env:AH64_AUTOPILOT_WINDOW_CAPTURE = '1'
-    @{schema=1; runId=[IO.Path]::GetFileName($out); visibleWindow=[bool]$VisibleWindow; createdUtc=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $out 'launch-settings.json')
+    $flagRegistry = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Autopilot-Flags.json') -Raw | ConvertFrom-Json
+    if ($flagRegistry.schema -ne 1 -or $flagRegistry.flags.Count -ne 7 -or @($flagRegistry.flags | Select-Object -Unique).Count -ne 7) { throw 'Invalid opt-in flag registry.' }
+    $childFlags = @{}
+    foreach ($name in $flagRegistry.flags) { $childFlags[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+    @{schema=1; runId=[IO.Path]::GetFileName($out); visibleWindow=[bool]$VisibleWindow; createdUtc=[DateTime]::UtcNow.ToString('o'); childOptInFlags=$childFlags; flagRegistrySha256=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'Autopilot-Flags.json') -Algorithm SHA256).Hash} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $out 'launch-settings.json')
     $args = '--doorstop-enabled true --doorstop-target-assembly "' + $preloader + '" --r2profile "' + $stage.profileName + '" -logFile "' + (Join-Path $out 'Player.log') + '"'
     $windowStyle = $(if ($VisibleWindow) { 'Normal' } else { 'Hidden' })
     $helperArguments = '"' + (Join-Path $PSScriptRoot 'Capture-OwnedWindow.py') + '" "' + $StageRecord + '" "' + $out + '"'
