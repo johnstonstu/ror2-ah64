@@ -31,7 +31,7 @@ $includes = (Get-ChildItem -LiteralPath (Join-Path $repo 'AH64Mod') -Recurse -Fi
 $fallback = [Security.SecurityElement]::Escape((Join-Path $env:USERPROFILE '.nuget/packages'))
 $iconRoot = Join-Path $repo 'AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons'
 $resources = (Get-ChildItem -LiteralPath $iconRoot -File -Filter '*.png' -ErrorAction SilentlyContinue |
-    ForEach-Object { '<EmbeddedResource Include="' + [Security.SecurityElement]::Escape($_.FullName) + '" LogicalName="AH64.LoadoutIcons.' + $_.Name + '" />' }) -join "`n"
+    ForEach-Object { '<EmbeddedResource Include="' + [Security.SecurityElement]::Escape($_.FullName) + '" LogicalName="AH64.Content.LoadoutIcons.' + $_.Name + '" />' }) -join "`n"
 @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
