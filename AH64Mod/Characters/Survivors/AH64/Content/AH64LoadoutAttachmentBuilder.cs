@@ -80,20 +80,30 @@ namespace AH64.Survivors
                 Transform chest = Find(model, "Chest");
                 Vector3 fuselage = chest ? model.InverseTransformPoint(chest.position) : Vector3.up;
                 result.UtilityPivots = new Transform[5];
+                // A dedicated lighter mechanical finish improves small-module readability;
+                // normal CharacterModel/skin material ownership still applies.
+                Material utilityMaterial = new Material(frameMaterial) { name = frameMaterial.name + "_Utility" };
+                if (utilityMaterial.HasProperty("_Color"))
+                {
+                    Color tint = utilityMaterial.GetColor("_Color");
+                    utilityMaterial.SetColor("_Color", new Color(Mathf.Min(0.65f, tint.r * 1.55f),
+                        Mathf.Min(0.65f, tint.g * 1.55f), Mathf.Min(0.65f, tint.b * 1.55f), tint.a));
+                }
                 for (int side = 0; side < 2; side++)
                 {
                     float sign = side == 0 ? -1f : 1f;
                     string suffix = side == 0 ? "L" : "R";
-                    Transform jet = Part(result.UtilityRoots[0], "AH64JinkNozzle" + suffix, nozzle, frameMaterial,
-                        fuselage + new Vector3(sign * 0.43f, -0.14f, -0.22f), all).transform;
+                    Transform jet = Part(result.UtilityRoots[0], "AH64JinkNozzle" + suffix, nozzle, utilityMaterial,
+                        fuselage + new Vector3(sign * 0.50f, 0.02f, -0.22f), all).transform;
                     jet.localRotation = Quaternion.Euler(0f, sign * 90f, 0f);
                     result.UtilityPivots[side] = jet;
-                    Transform fin = Part(result.UtilityRoots[2], "AH64BankedFin" + suffix, brake, frameMaterial,
-                        fuselage + new Vector3(sign * 0.40f, 0.02f, -0.58f), all).transform;
+                    Transform fin = Part(result.UtilityRoots[2], "AH64BankedFin" + suffix, brake, utilityMaterial,
+                        fuselage + new Vector3(sign * 0.43f, 0.15f, -0.58f), all).transform;
+                    fin.localRotation = Quaternion.Euler(12f, 0f, 0f);
                     result.UtilityPivots[side + 3] = fin;
                 }
-                result.UtilityPivots[2] = Part(result.UtilityRoots[1], "AH64SmokeCanister", canister, frameMaterial,
-                    fuselage + new Vector3(0f, -0.15f, -0.73f), all).transform;
+                result.UtilityPivots[2] = Part(result.UtilityRoots[1], "AH64SmokeCanister", canister, utilityMaterial,
+                    fuselage + new Vector3(0f, 0.15f, -0.73f), all).transform;
                 // Interleave sides, outside stations first, to keep depletion balanced.
                 result.LongbowStores = new[] { stores[3], stores[7], stores[2], stores[6], stores[1], stores[5], stores[0], stores[4] };
                 result.RecoilPivots = recoil.ToArray();
@@ -166,11 +176,15 @@ namespace AH64.Survivors
             m.Box(new Vector3(0f, 0.015f, -0.10f), new Vector3(0.42f, 0.07f, 0.07f));
             carrier = m.Finish("AH64ShortBombCarrier");
             m = new AH64AttachmentMesh(); m.Box(Vector3.zero, new Vector3(0.17f, 0.055f, 0.13f)); latch = m.Finish("AH64ReleaseLatch");
-            m = new AH64AttachmentMesh(); m.Tube(Vector3.zero, 0.085f, 0.054f, 0.16f); nozzle = m.Finish("AH64VectorNozzle");
-            m = new AH64AttachmentMesh(); m.Box(Vector3.zero, new Vector3(0.30f, 0.13f, 0.23f));
-            for (int i = -1; i <= 1; i++) m.Tube(new Vector3(i * 0.08f, 0f, -0.13f), 0.033f, 0.022f, 0.06f);
+            m = new AH64AttachmentMesh(); m.Tube(Vector3.zero, 0.13f, 0.083f, 0.24f);
+            m.Tube(new Vector3(0f, 0f, 0.105f), 0.15f, 0.083f, 0.055f);
+            nozzle = m.Finish("AH64VectorNozzle");
+            m = new AH64AttachmentMesh(); m.Box(Vector3.zero, new Vector3(0.43f, 0.20f, 0.31f));
+            for (int i = -1; i <= 1; i++) m.Tube(new Vector3(i * 0.12f, 0f, -0.18f), 0.047f, 0.031f, 0.08f);
+            for (int i = -1; i <= 1; i++) m.Box(new Vector3(0f, 0.106f, i * 0.08f), new Vector3(0.34f, 0.025f, 0.025f));
             canister = m.Finish("AH64AftCountermeasures");
-            m = new AH64AttachmentMesh(); m.Box(new Vector3(0f, 0f, -0.10f), new Vector3(0.14f, 0.028f, 0.24f));
+            m = new AH64AttachmentMesh(); m.Box(new Vector3(0f, 0f, -0.16f), new Vector3(0.23f, 0.035f, 0.36f));
+            m.Box(new Vector3(0f, 0.024f, -0.16f), new Vector3(0.055f, 0.025f, 0.30f));
             brake = m.Finish("AH64AirbrakeFin");
             m = new AH64AttachmentMesh();
             m.Hull(new[] { -0.32f, -0.23f, 0.18f, 0.29f, 0.36f }, new[] { 0f, 0.105f, 0.105f, 0.07f, 0f });

@@ -27,6 +27,7 @@ namespace AH64.Survivors.Components
         private EntityState lastFire;
         private Vector3[] recoilRest;
         private Quaternion[] utilityRest;
+        private Vector3[] utilityPositions;
         private float recoilAge = 1f;
 
         public void Select(int special, int utility)
@@ -43,7 +44,12 @@ namespace AH64.Survivors.Components
             recoilRest = new Vector3[RecoilPivots == null ? 0 : RecoilPivots.Length];
             for (int i = 0; i < recoilRest.Length; i++) if (RecoilPivots[i]) recoilRest[i] = RecoilPivots[i].localPosition;
             utilityRest = new Quaternion[UtilityPivots == null ? 0 : UtilityPivots.Length];
-            for (int i = 0; i < utilityRest.Length; i++) if (UtilityPivots[i]) utilityRest[i] = UtilityPivots[i].localRotation;
+            utilityPositions = new Vector3[utilityRest.Length];
+            for (int i = 0; i < utilityRest.Length; i++) if (UtilityPivots[i])
+            {
+                utilityRest[i] = UtilityPivots[i].localRotation;
+                utilityPositions[i] = UtilityPivots[i].localPosition;
+            }
         }
 
         private bool Visible => PresentationReady && (IsDisplay || (body && body.healthComponent && body.healthComponent.alive
@@ -101,9 +107,16 @@ namespace AH64.Survivors.Components
             for (int i = 0; i < utilityRest.Length; i++)
             {
                 if (!UtilityPivots[i]) continue;
-                float angle = i < 2 ? (jink ? 18f : 0f) : i == 2 ? (smoke ? 12f : 0f) : (banked ? 42f : 0f);
-                Quaternion target = utilityRest[i] * Quaternion.Euler(angle, 0f, 0f);
-                UtilityPivots[i].localRotation = Quaternion.Slerp(UtilityPivots[i].localRotation, target, 1f - Mathf.Exp(-18f * Time.deltaTime));
+                // Deploy only while the replicated movement state is active. These local
+                // transforms never touch the aircraft root, flight path, or movement tuning.
+                float angle = i < 2 ? (jink ? 32f : 0f) : i == 2 ? (smoke ? 26f : 0f) : (banked ? 60f : 0f);
+                float flare = i >= 3 && banked ? (i == 3 ? -12f : 12f) : 0f;
+                Quaternion target = utilityRest[i] * Quaternion.Euler(angle, 0f, flare);
+                Vector3 extension = i < 2 && jink ? Vector3.right * (i == 0 ? -0.08f : 0.08f)
+                    : i == 2 && smoke ? new Vector3(0f, 0.08f, -0.07f) : Vector3.zero;
+                float response = 1f - Mathf.Exp(-22f * Time.deltaTime);
+                UtilityPivots[i].localRotation = Quaternion.Slerp(UtilityPivots[i].localRotation, target, response);
+                UtilityPivots[i].localPosition = Vector3.Lerp(UtilityPivots[i].localPosition, utilityPositions[i] + extension, response);
             }
         }
 
@@ -127,7 +140,11 @@ namespace AH64.Survivors.Components
         {
             Hide(Renderers);
             if (recoilRest != null) for (int i = 0; i < recoilRest.Length; i++) if (RecoilPivots[i]) RecoilPivots[i].localPosition = recoilRest[i];
-            if (utilityRest != null) for (int i = 0; i < utilityRest.Length; i++) if (UtilityPivots[i]) UtilityPivots[i].localRotation = utilityRest[i];
+            if (utilityRest != null) for (int i = 0; i < utilityRest.Length; i++) if (UtilityPivots[i])
+            {
+                UtilityPivots[i].localRotation = utilityRest[i];
+                UtilityPivots[i].localPosition = utilityPositions[i];
+            }
             lastFire = null; recoilAge = 1f;
         }
     }

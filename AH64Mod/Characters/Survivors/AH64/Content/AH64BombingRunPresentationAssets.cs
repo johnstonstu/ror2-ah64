@@ -75,7 +75,9 @@ namespace AH64.Survivors
             effect.effectIndex = EffectIndex.Invalid;
             effect.parentToReferencedTransform = false;
             effect.positionAtReferencedTransform = false;
-            effect.soundName = "Play_engi_M1_explo";
+            // Global-bank proc explosion: short (0.75-1.06 s), intended for repeated impacts.
+            // Unlike the Engineer event this does not depend on a selected survivor's bank.
+            effect.soundName = "Play_item_proc_behemoth";
             seed.AddComponent<VFXAttributes>().vfxPriority = VFXAttributes.VFXPriority.Medium;
             seed.AddComponent<DestroyOnTimer>().duration = AH64BombingRunVisualValues.ImpactLifetime;
             // Material reuse only: no donor debris, subemitters, light or shake survives.
