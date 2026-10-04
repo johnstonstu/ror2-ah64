@@ -40,7 +40,7 @@ The optional **Classic altitude controls** setting restores release-jump-to-desc
 
 ## The kit
 
-Skill values below describe the default settings. Older clips are labeled as historical; their visuals and tuning may differ from 1.3.
+Skill values below describe the default settings. New 1.3 clips show the current build in controlled in-game scenes with scripted inputs and camera framing. Older clips are labeled as historical; their visuals and tuning may differ from 1.3.
 
 ### Passive — Fire Control Radar
 
@@ -58,9 +58,7 @@ Paints the strongest nearby threat. Deal 12% more damage to the painted target, 
 
 A 20-round drum that reloads all at once. Rounds and the HE blast deal 75% damage within 10m and full damage from 30m. Tap at range to keep the burst tight. Attack speed helps both firing and reloading.
 
-<img src="docs/images/skills/m230-chain-gun.webp" width="320" alt="Historical pre-1.3 M230 Chain Gun gameplay">
-
-*Historical pre-1.3 footage.*
+<img src="docs/images/1.3.0/m230-chain-gun.webp" width="640" alt="Current 20-round M230 firing at a Golem">
 
 ### Primary variant — XM301 Rotary Cannon
 
@@ -102,7 +100,7 @@ A climbing forward-diagonal barrel roll chosen with movement input, with invulne
 
 *Historical pre-1.3 footage.*
 
-<!-- AH64_130_MEDIA_UTILITIES -->
+
 
 ### Utility variant — Smoke Backflip
 
@@ -120,7 +118,7 @@ Surge rearward through a climbing pitch loop, dumping smoke and cloaking briefly
 
 Bank through a sweeping 90-degree turn while maintaining flight. Choose left or right with movement input; neutral input turns right. Aim and fire throughout. Cooldown: 4 seconds.
 
-<!-- AH64_130_MEDIA_BANKED_BREAK -->
+<img src="docs/images/1.3.0/banked-break.webp" width="640" alt="Banked Break moving turn">
 
 ### Special — AGM-114L Longbow
 
@@ -138,7 +136,7 @@ Hold to paint radar locks while you keep firing your gun and Hydras, then releas
 
 Press Special to launch a slow lead missile. Hold Special to show the targeting laser and accelerate that missile toward your aim; release to slow it, then hold again to resume guiding the same live missile without spending stock. A fresh missile can launch once the previous lead ends. Primary and secondary stay available. Pocket I.C.B.M. adds two ballistic, unguided fan missiles; only the lead follows your laser.
 
-<!-- AH64_130_MEDIA_GUIDED_HELLFIRE -->
+<img src="docs/images/1.3.0/guided-hellfire.webp" width="640" alt="Guided Hellfire launch, release and rehold against a Golem">
 
 ### Special variant — Bombing Run
 
@@ -146,13 +144,13 @@ Press Special to launch a slow lead missile. Hold Special to show the targeting 
 
 Drop six bombs at 0.3-second intervals along the path you fly. Each deals 300% damage in a 6m blast, with at most three hits per enemy per run. Keep flying, aiming and using your primary, secondary or utility to shape the pattern. Interrupted drops are lost. Cooldown: 10 seconds.
 
-<!-- AH64_130_MEDIA_BOMBING_RUN -->
+<img src="docs/images/1.3.0/bombing-run.webp" width="640" alt="Six-bomb run over Golem targets">
 
 ## Choose your gunship
 
 Each primary has its own chin-mounted assembly. Special choices add open Longbow rails, enclosed Hellfire launchers or bomb carriers; utilities add their own thrusters, smoke canister or banking fins. Changing the loadout updates the character-select model and the live aircraft. Each active skill has a distinct illustrated icon.
 
-<!-- AH64_130_MEDIA_MODULAR_LOADOUTS -->
+<img src="docs/images/1.3.0/modular-loadouts.webp" width="640" alt="Three special and utility attachment combinations">
 
 Five paint schemes carry through into gameplay: Olive, Desert Tan, Arctic, Army Green, and Night Stalker, unlocked by the AH-64 Mastery achievement (beat the game or obliterate on Monsoon).
 

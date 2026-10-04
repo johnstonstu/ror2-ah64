@@ -24,3 +24,15 @@ The global deadline triggers at 238 seconds after helper initialization, with or
 `hit` records native server damage against owned target fixtures; `bomb-observed` records each discovered native owned bombing projectile once. `phase`, `activation`, `loadout`, and bootstrap records provide context. `capture-result.json` reports completion or failure and total hit observations, with a frozen DLL hash. Completion means script completion, not visual acceptance. Review footage for visible targets, all six drops, missile reacquisition and impacts; compare markers rather than assuming intent proves success.
 
 Compilation succeeded with only the existing two-argument TeleportBody and legacy assembly security attribute obsolescence warnings. No runtime launch, profile write, capture, or production source/DLL modification was performed during preparation.
+
+## Completed README recording, 2026-10-04
+
+The integration owner subsequently recorded the accepted f9cb6ce DLL. The initial helper attempt failed before capture because an internal reset method was searched with public-only reflection; the helper now explicitly includes nonpublic instance methods. Production gameplay was unchanged.
+
+- Run `704a40cc8207442c8d48c4c33bc6602d`: five scenes, 700 verified owned-client frames at 2560x1440; one Hellfire hit, 16 bombing damage events, 40 M230 damage events and six observed bombing projectiles. Retain its Hellfire, bombing and M230 clips.
+- Run `548632b95fbe4a2dab1c1037e6123a9d`: tighter Banked Break and attachment framing. Set `AH64_README_CAPTURE_SCENES=framing-retake` only for this two-scene mode. Retain its two clips.
+- Both successful runs exited normally, removed the temporary helper and released the runtime lease. Preservation reports contain no mismatches or restored files. Evidence is under `dist/readme-capture/<run>/`.
+- Final silent WebP loops are under `docs/images/1.3.0/`; each is 800x450 and retains recorded timing. MP4 versions and source recordings remain in ignored `dist`. These controlled showcase clips are not physical-controller or multiplayer acceptance.
+- Contact sheets and full-size attachment samples were reviewed. Target damage and bombing impacts are in view; the closer attachment view clearly shows utility changes. No claim of separately validated special-attachment geometry is made by this recording.
+
+The package README uses prospective public media URLs. `dist/readme-publication-manifest.json` lists exact asset paths/hashes; publication remains a separate approval step. Existing historical media paths are preserved.

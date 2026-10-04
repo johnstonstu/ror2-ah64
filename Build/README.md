@@ -40,7 +40,7 @@ The optional **Classic altitude controls** setting restores release-jump-to-desc
 
 ## The kit
 
-Skill values below describe the default settings. Older clips are labeled as historical; their visuals and tuning may differ from 1.3.
+Skill values below describe the default settings. New 1.3 clips show the current build in controlled in-game scenes with scripted inputs and camera framing. Older clips are labeled as historical; their visuals and tuning may differ from 1.3.
 
 ### Passive — Fire Control Radar
 
@@ -54,17 +54,15 @@ Paints the strongest nearby threat. Deal 12% more damage to the painted target, 
 
 ### Primary — M230 Chain Gun
 
-<!-- AH64_130_ICON_AH64Chaingun: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Chaingun.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Chaingun.png" width="64" alt="AH64Chaingun loadout icon">
 
 A 20-round drum that reloads all at once. Rounds and the HE blast deal 75% damage within 10m and full damage from 30m. Tap at range to keep the burst tight. Attack speed helps both firing and reloading.
 
-<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/m230-chain-gun.webp" width="320" alt="Historical pre-1.3 M230 Chain Gun gameplay">
-
-*Historical pre-1.3 footage.*
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/1.3.0/m230-chain-gun.webp" width="640" alt="Current 20-round M230 firing at a Golem">
 
 ### Primary variant — XM301 Rotary Cannon
 
-<!-- AH64_130_ICON_AH64Gatling: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Gatling.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Gatling.png" width="64" alt="AH64Gatling loadout icon">
 
 A six-barrel rotary cannon that spools up to about 18 rounds a second from a 60-round drum. Lighter rounds and blasts than the M230, with the same 75% damage within 10m rising to full at 30m.
 
@@ -74,7 +72,7 @@ A six-barrel rotary cannon that spools up to about 18 rounds a second from a 60-
 
 ### Primary variant — M789 Heavy Cannon
 
-<!-- AH64_130_ICON_AH64Cannon: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Cannon.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Cannon.png" width="64" alt="AH64Cannon loadout icon">
 
 Slow, heavy shells at 2.5 shots a second, each with a large blast. Eight to a magazine, and every shot kicks the airframe.
 
@@ -84,7 +82,7 @@ Slow, heavy shells at 2.5 shots a second, each with a large blast. Eight to a ma
 
 ### Secondary — Hydra-70 Pods
 
-<!-- AH64_130_ICON_AH64RocketPods: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64RocketPods.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64RocketPods.png" width="64" alt="AH64RocketPods loadout icon">
 
 A ripple salvo spread over most of a second: keep your aim on target through it. Rockets deal 75% damage within 8m of flight and full damage from 25m. Each rocket past the base six adds 0.8s to the reload. The pods stay available while your primary reloads.
 
@@ -94,7 +92,7 @@ A ripple salvo spread over most of a second: keep your aim on target through it.
 
 ### Utility — Evasive Roll
 
-<!-- AH64_130_ICON_AH64EvasiveJink: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64EvasiveJink.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64EvasiveJink.png" width="64" alt="AH64EvasiveJink loadout icon">
 
 A climbing forward-diagonal barrel roll chosen with movement input, with invulnerability through the first half and 200 armor for the roll (about 0.95s). Carries entry momentum through a smooth speed ramp and back into flight.
 
@@ -102,11 +100,11 @@ A climbing forward-diagonal barrel roll chosen with movement input, with invulne
 
 *Historical pre-1.3 footage.*
 
-<!-- AH64_130_MEDIA_UTILITIES -->
+
 
 ### Utility variant — Smoke Backflip
 
-<!-- AH64_130_ICON_AH64SmokeBackflip: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64SmokeBackflip.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64SmokeBackflip.png" width="64" alt="AH64SmokeBackflip loadout icon">
 
 Surge rearward through a climbing pitch loop, dumping smoke and cloaking briefly. Carries entry momentum through the maneuver and eases back into flight.
 
@@ -116,15 +114,15 @@ Surge rearward through a climbing pitch loop, dumping smoke and cloaking briefly
 
 ### Utility variant — Banked Break
 
-<!-- AH64_130_ICON_AH64BrakingTurn: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64BrakingTurn.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64BrakingTurn.png" width="64" alt="AH64BrakingTurn loadout icon">
 
 Bank through a sweeping 90-degree turn while maintaining flight. Choose left or right with movement input; neutral input turns right. Aim and fire throughout. Cooldown: 4 seconds.
 
-<!-- AH64_130_MEDIA_BANKED_BREAK -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/1.3.0/banked-break.webp" width="640" alt="Banked Break moving turn">
 
 ### Special — AGM-114L Longbow
 
-<!-- AH64_130_ICON_AH64Longbow: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Longbow.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Longbow.png" width="64" alt="AH64Longbow loadout icon">
 
 Hold to paint radar locks while you keep firing your gun and Hydras, then release to launch. The base rack holds six missiles; Lysate Cell adds one per stack. Per-missile damage stops climbing after the sixth lock.
 
@@ -134,25 +132,25 @@ Hold to paint radar locks while you keep firing your gun and Hydras, then releas
 
 ### Special variant — AGM-114 Hellfire
 
-<!-- AH64_130_ICON_AH64Hellfire: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Hellfire.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Hellfire.png" width="64" alt="AH64Hellfire loadout icon">
 
 Press Special to launch a slow lead missile. Hold Special to show the targeting laser and accelerate that missile toward your aim; release to slow it, then hold again to resume guiding the same live missile without spending stock. A fresh missile can launch once the previous lead ends. Primary and secondary stay available. Pocket I.C.B.M. adds two ballistic, unguided fan missiles; only the lead follows your laser.
 
-<!-- AH64_130_MEDIA_GUIDED_HELLFIRE -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/1.3.0/guided-hellfire.webp" width="640" alt="Guided Hellfire launch, release and rehold against a Golem">
 
 ### Special variant — Bombing Run
 
-<!-- AH64_130_ICON_AH64BombingRun: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64BombingRun.png after publication verification. -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64BombingRun.png" width="64" alt="AH64BombingRun loadout icon">
 
 Drop six bombs at 0.3-second intervals along the path you fly. Each deals 300% damage in a 6m blast, with at most three hits per enemy per run. Keep flying, aiming and using your primary, secondary or utility to shape the pattern. Interrupted drops are lost. Cooldown: 10 seconds.
 
-<!-- AH64_130_MEDIA_BOMBING_RUN -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/1.3.0/bombing-run.webp" width="640" alt="Six-bomb run over Golem targets">
 
 ## Choose your gunship
 
 Each primary has its own chin-mounted assembly. Special choices add open Longbow rails, enclosed Hellfire launchers or bomb carriers; utilities add their own thrusters, smoke canister or banking fins. Changing the loadout updates the character-select model and the live aircraft. Each active skill has a distinct illustrated icon.
 
-<!-- AH64_130_MEDIA_MODULAR_LOADOUTS -->
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/1.3.0/modular-loadouts.webp" width="640" alt="Three special and utility attachment combinations">
 
 Five paint schemes carry through into gameplay: Olive, Desert Tan, Arctic, Army Green, and Night Stalker, unlocked by the AH-64 Mastery achievement (beat the game or obliterate on Monsoon).
 

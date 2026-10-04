@@ -31,7 +31,11 @@ namespace ReadmeCapture
             if(best<35) throw new InvalidOperationException("Arena sightline shorter than 35m");
             aim=facing; scripting=true;
             Event("arena","controlled golemplains; seed1301; scripted inputs, camera and healthy native targets");
-            yield return Hellfire(); yield return Brake(); yield return Bombs(); yield return Loadouts(); yield return M230();
+            if (Environment.GetEnvironmentVariable("AH64_README_CAPTURE_SCENES") == "framing-retake") {
+                yield return Brake(); yield return Loadouts();
+            } else {
+                yield return Hellfire(); yield return Brake(); yield return Bombs(); yield return Loadouts(); yield return M230();
+            }
         }
         private IEnumerator Seconds(float seconds) { float end=Time.fixedTime+seconds; while(Time.fixedTime<end) yield return new WaitForFixedUpdate(); }
         private IEnumerator Ready(GenericSkill slot)
@@ -53,7 +57,9 @@ namespace ReadmeCapture
             segment=scene; move=Vector3.zero; held=primaryHeld=collective=false; aim=facing;
             TeleportHelper.TeleportBody(pilot,mark); pilot.characterMotor.velocity=Vector3.zero; pilot.characterDirection.forward=facing;
             var hover=pilot.GetComponents<MonoBehaviour>().Single(c=>c.GetType().Name=="AH64HoverController");
-            hover.GetType().GetMethod("ResetAfterTeleport").Invoke(hover,null);
+            var reset = hover.GetType().GetMethod("ResetAfterTeleport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            if (reset == null) throw new MissingMethodException("AH64HoverController.ResetAfterTeleport");
+            reset.Invoke(hover,null);
             fixedCamera=false; cameraOffset=-facing*17f+Vector3.up*9f+Vector3.Cross(Vector3.up,facing)*7f;
             yield return Seconds(1.5f);
         }
@@ -88,9 +94,10 @@ namespace ReadmeCapture
         {
             yield return Reset("banked-break");
             // Offset the real target so native captured aim creates a visible moving arc.
-            yield return Target(mark+Quaternion.AngleAxis(100f,Vector3.up)*facing*22f);
-            fixedCamera=true; cameraFocus=(mark+targets[0].corePosition)*0.5f;
-            cameraOffset=-facing*26f+Vector3.up*17f-Vector3.Cross(Vector3.up,facing)*15f;
+            var right=Vector3.Cross(Vector3.up,facing);
+            yield return Target(mark+facing*15f+right*15f);
+            fixedCamera=false;
+            cameraOffset=-facing*15f+Vector3.up*13f+right*13f;
             Choose(pilot.skillLocator.utility,"BrakingTurn"); yield return Ready(pilot.skillLocator.utility);
             Clip(true); move=facing; yield return Seconds(1.3f);
             aim=(targets[0].corePosition-pilot.inputBank.aimOrigin).normalized; move=Vector3.zero; Execute(pilot.skillLocator.utility);
@@ -108,7 +115,7 @@ namespace ReadmeCapture
         }
         private IEnumerator Loadouts()
         {
-            yield return Reset("loadouts"); fixedCamera=true; cameraFocus=pilot.corePosition; cameraOffset=facing*7f+Vector3.up*3f+Vector3.Cross(Vector3.up,facing)*9f;
+            yield return Reset("loadouts"); fixedCamera=true; cameraFocus=pilot.corePosition; cameraOffset=facing*3f+Vector3.up*2f+Vector3.Cross(Vector3.up,facing)*5f;
             Clip(true);
             string[] specials={"PaintLongbow","FireHellfire","BombingRun"}; string[] utilities={"ServoDash","SmokeBackflip","BrakingTurn"};
             for(int i=0;i<3;i++) { Choose(pilot.skillLocator.special,specials[i]); Choose(pilot.skillLocator.utility,utilities[i]); Event("phase","attachment pair "+specials[i]+" + "+utilities[i]); yield return Seconds(3f); }
