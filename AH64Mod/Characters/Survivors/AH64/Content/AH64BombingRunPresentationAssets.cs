@@ -69,6 +69,8 @@ namespace AH64.Survivors
             var seed = new GameObject("AH64BombImpactSeed");
             seed.SetActive(false);
             EffectComponent effect = seed.AddComponent<EffectComponent>();
+            // Geometry and particles are authored in metres. EffectComponent.Reset would
+            // replace the root scale with EffectData.scale if applyScale were enabled.
             effect.applyScale = false;
             effect.effectIndex = EffectIndex.Invalid;
             effect.parentToReferencedTransform = false;
@@ -76,10 +78,12 @@ namespace AH64.Survivors
             effect.soundName = "Play_engi_M1_explo";
             seed.AddComponent<VFXAttributes>().vfxPriority = VFXAttributes.VFXPriority.Medium;
             seed.AddComponent<DestroyOnTimer>().duration = AH64BombingRunVisualValues.ImpactLifetime;
-            // Material reuse only: no donor debris, subemitters, light, shockwave or shake survives.
-            Puff(seed.transform, "Flash", flash, 1, 1.65f, 0.07f, 0f, new Color(1f, 0.8f, 0.4f, 0.7f));
-            Puff(seed.transform, "Fire", fire, 3, 0.9f, 0.28f, 0.65f, new Color(1f, 0.55f, 0.18f, 0.85f));
-            Puff(seed.transform, "Smoke", smoke, 3, 0.65f, 0.65f, 0.5f, new Color(0.3f, 0.28f, 0.25f, 0.28f));
+            // Material reuse only: no donor debris, subemitters, light or shake survives.
+            // The contained core reads from hover height; the ring supplies the full blast footprint.
+            Puff(seed.transform, "Flash", flash, 1, 4.2f, 0.09f, 0f, new Color(1f, 0.8f, 0.4f, 0.7f));
+            Puff(seed.transform, "Fire", fire, 4, 3.2f, 0.34f, 1.1f, new Color(1f, 0.55f, 0.18f, 0.85f));
+            Puff(seed.transform, "Smoke", smoke, 3, 2.2f, 0.65f, 0.8f, new Color(0.3f, 0.28f, 0.25f, 0.28f));
+            AH64BombImpactFootprint.Build(seed.transform, fire);
             GameObject prefab = PrefabAPI.InstantiateClone(seed, "AH64BombImpact", false);
             UnityEngine.Object.Destroy(seed);
             prefab.SetActive(true);
