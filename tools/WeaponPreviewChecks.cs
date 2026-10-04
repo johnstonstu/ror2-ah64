@@ -29,7 +29,7 @@ static class WeaponPreviewChecks
         model.Add<ModelSkinController>();
         var visual = model.Add<AH64PrimaryWeaponVisuals>();
         Call(visual, "Awake"); Call(visual, "OnEnable");
-        if (lobby) { var preview = model.Add<AH64LobbyWeaponPreview>(); Call(preview, "OnEnable"); Call(preview, "Start"); }
+        if (lobby) { model.Add<AH64LoadoutSelection>(); var preview = model.Add<AH64LobbyWeaponPreview>(); Call(preview, "OnEnable"); Call(preview, "Start"); }
         return model;
     }
 
@@ -56,6 +56,11 @@ static class WeaponPreviewChecks
             Check(renderers[i].gameObject.active, "Selection deactivated an aiming transform");
         }
     }
+    static void Attachments(GameObject model, SkillDef special, SkillDef utility)
+    {
+        var selection = model.GetComponent<AH64LoadoutSelection>();
+        Check(selection.special == special && selection.utility == utility, "Wrong owner's special/utility attachment selection");
+    }
 
     public static void Main()
     {
@@ -67,13 +72,26 @@ static class WeaponPreviewChecks
             new SkillFamily.Variant { skillDef = AH64Assets.cannonSkillDef },
             new SkillFamily.Variant { skillDef = m230 },
             new SkillFamily.Variant { skillDef = AH64Assets.gatlingSkillDef } } };
-        prefab.Add<SkillLocator>().primary = primary;
+        var utility = prefab.Add<GenericSkill>(); var special = prefab.Add<GenericSkill>();
+        var utility0 = new SkillDef(); var utility1 = new SkillDef();
+        var special0 = new SkillDef(); var special1 = new SkillDef();
+        utility.skillFamily = new SkillFamily { variants = new[] {
+            new SkillFamily.Variant { skillDef = utility0 }, new SkillFamily.Variant { skillDef = utility1 } } };
+        special.skillFamily = new SkillFamily { variants = new[] {
+            new SkillFamily.Variant { skillDef = special0 }, new SkillFamily.Variant { skillDef = special1 } } };
+        var skills = prefab.Add<SkillLocator>(); skills.primary = primary; skills.utility = utility; skills.special = special;
         BodyCatalog.prefab = prefab;
         var survivor = new SurvivorDef { bodyPrefab = prefab };
         var a = User(survivor, 2); var b = User(survivor, 0);
         var slotA = Slot(a); var slotB = Slot(b);
         var modelA = Model(slotA, true); var modelB = Model(slotB, true);
         Visible(modelA, 1); Visible(modelB, 2);
+        Attachments(modelA, special0, utility0);
+        a.ChangeAttachments(1, 1);
+        Attachments(modelA, special1, utility1); Attachments(modelB, special0, utility0);
+        a.ChangeAttachments(99, 99);
+        Attachments(modelA, null, null); Attachments(modelB, special0, utility0);
+        a.ChangeAttachments(1, 1);
 
         // Lobby swap sound: silent for the first primary shown and for a repeated selection,
         // one clunk per real change, and only on the mannequin whose owner changed.
@@ -116,13 +134,17 @@ static class WeaponPreviewChecks
         // Reuse a slot for a different owner, then remove the owner.
         slotB.GetComponent<SurvivorMannequinSlotController>().networkUser = b;
         Call(modelA.GetComponent<AH64LobbyWeaponPreview>(), "LateUpdate"); Visible(modelA, 2);
+        Attachments(modelA, special0, utility0);
         slotB.GetComponent<SurvivorMannequinSlotController>().networkUser = null;
         Call(modelA.GetComponent<AH64LobbyWeaponPreview>(), "LateUpdate"); Visible(modelA, 0);
+        Attachments(modelA, null, null);
         // Disable detaches events; re-enable/return reads the latest loadout.
         var previewA = modelA.GetComponent<AH64LobbyWeaponPreview>();
         Call(previewA, "OnDisable"); b.Change(2); Visible(modelA, 0);
+        Attachments(modelA, null, null);
         slotB.GetComponent<SurvivorMannequinSlotController>().networkUser = b;
         Call(previewA, "OnEnable"); Visible(modelA, 1);
+        Attachments(modelA, special0, utility0);
 
         // Fresh gameplay body and skill override, independent of lobby code.
         var body = new GameObject(); var skill = body.Add<GenericSkill>();
@@ -133,7 +155,7 @@ static class WeaponPreviewChecks
         Call(bodyModel.GetComponent<AH64PrimaryWeaponVisuals>(), "LateUpdate"); Visible(bodyModel, 1);
         skill.skillDef = m230;
         Call(bodyModel.GetComponent<AH64PrimaryWeaponVisuals>(), "LateUpdate"); Visible(bodyModel, 0);
-        Check(modelA.components.All(c => c is AH64LobbyWeaponPreview || c is AH64PrimaryWeaponVisuals || c is ChildLocator || c is ModelSkinController), "Unexpected lobby component");
+        Check(modelA.components.All(c => c is AH64LobbyWeaponPreview || c is AH64PrimaryWeaponVisuals || c is AH64LoadoutSelection || c is ChildLocator || c is ModelSkinController), "Unexpected lobby component");
         Console.WriteLine("PASS: " + assertions + " assertions; 15 primary/skin callback combinations, 5 repetitions, owner isolation/swap/reuse, lobby swap sound, immediate events, late skin completion, cloak flags, disable/re-enable, body skill changes. Game APIs are doubles; live gameplay remains a playtest.");
     }
 }

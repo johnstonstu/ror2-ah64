@@ -42,7 +42,7 @@ namespace RoR2
 {
     public enum BodyIndex { None = -1, AH64 = 0 }
     public class GenericSkill : UnityEngine.Component { public Skills.SkillDef skillDef; public Skills.SkillFamily skillFamily; }
-    public class SkillLocator : UnityEngine.Component { public GenericSkill primary; }
+    public class SkillLocator : UnityEngine.Component { public GenericSkill primary, special, utility; }
     public class ModelSkinController : UnityEngine.Component
     {
         public event Action<int> onSkinApplied;
@@ -82,6 +82,18 @@ namespace RoR2
         public SurvivorDef survivor;
         public SurvivorDef GetSurvivorPreference() => survivor;
         public void Change(uint variant) { networkLoadout.data.bodyLoadoutManager.variants[1] = variant; onLoadoutChangedGlobal?.Invoke(this); }
+        public void ChangeAttachments(uint special, uint utility)
+        { networkLoadout.data.bodyLoadoutManager.variants[3] = special; networkLoadout.data.bodyLoadoutManager.variants[2] = utility; onLoadoutChangedGlobal?.Invoke(this); }
+    }
+}
+namespace AH64.Survivors.Components
+{
+    // Records the production lobby's selection boundary; attachment geometry is not simulated.
+    public class AH64LoadoutSelection : UnityEngine.MonoBehaviour
+    {
+        public RoR2.Skills.SkillDef special, utility;
+        public void Select(RoR2.Skills.SkillDef selectedSpecial, RoR2.Skills.SkillDef selectedUtility)
+        { special = selectedSpecial; utility = selectedUtility; }
     }
 }
 namespace RoR2.SurvivorMannequins
