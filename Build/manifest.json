@@ -3,7 +3,7 @@
     "author": "JohnstonStu",
     "version_number": "1.3.0",
     "website_url": "https://github.com/johnstonstu/ror2-ah64",
-    "description": "AH-64 Apache helicopter survivor mod. A flying attack helicopter gunship that hovers and never lands: M230 chain gun, Hydra rockets, Hellfire and Longbow missiles, evasive rolls. 3 primaries, 5 paint schemes. Playable chopper character.",
+    "description": "AH-64 Apache helicopter survivor. Guided Hellfire, Longbow locks and flight-path bombing; three primaries, three utilities, modular loadout attachments and five paint schemes. Hover, aim and fire through evasive maneuvers.",
     "dependencies": [
         "bbepis-BepInExPack-5.4.1905",
         "RiskofThunder-R2API_Core-5.0.3",
