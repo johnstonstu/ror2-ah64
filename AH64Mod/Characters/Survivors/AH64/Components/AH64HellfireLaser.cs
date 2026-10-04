@@ -10,6 +10,8 @@ namespace AH64.Survivors.Components
     public sealed class AH64HellfireLaser : MonoBehaviour
     {
         private AH64HellfireOwner owner;
+        private Transform laserAnchor;
+        private Renderer opticsRenderer;
         private GameObject beamObject;
         private LineRenderer beam;
         private Material material;
@@ -35,12 +37,34 @@ namespace AH64.Survivors.Components
             }
             if (!EnsureBeam())
                 return;
-            // Start on the exact native aim ray, avoiding a rail-offset beam that would shine
-            // through nearby cover while its endpoint claims a different designation.
+            // Only the visible origin moves to the nose optics. Designation and guidance still
+            // resolve the native aim ray; nearby geometry may clip this presentation line.
             Vector3 point = AH64HellfireAim.Resolve(owner.Body, ray);
-            beam.SetPosition(0, ray.origin);
+            beam.SetPosition(0, ResolveVisibleOrigin(ray.origin));
             beam.SetPosition(1, point);
             beam.enabled = true;
+        }
+
+        private Vector3 ResolveVisibleOrigin(Vector3 fallback)
+        {
+            if (!laserAnchor)
+            {
+                ModelLocator model = GetComponent<ModelLocator>();
+                ChildLocator locator = model && model.modelTransform
+                    ? model.modelTransform.GetComponent<ChildLocator>() : null;
+                if (locator)
+                {
+                    laserAnchor = locator.FindChild("NoseOptics");
+                    opticsRenderer = laserAnchor ? laserAnchor.GetComponent<Renderer>() : null;
+                    if (!laserAnchor)
+                        laserAnchor = locator.FindChild("ChinTurret");
+                }
+            }
+            // NoseOptics is joined geometry with its pivot at model zero. Its rendered bounds
+            // locate the actual front glass, including model scale and presentation rotation.
+            if (opticsRenderer)
+                return opticsRenderer.bounds.center;
+            return laserAnchor ? laserAnchor.position : fallback;
         }
 
         private bool EnsureBeam()

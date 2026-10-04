@@ -56,11 +56,13 @@ namespace AH64.Survivors.Components
             for (int i = 0; i < count; i++)
             {
                 Collider hit = hits[i];
-                if (!hit || !hit.isTrigger)
+                if (!hit || !hit.enabled || !hit.isTrigger)
                     continue;
 
                 GenericPickupController pickup = hit.GetComponentInParent<GenericPickupController>();
-                if (pickup && !pickup.consumed)
+                //The closed drop pod disables its Fuel Array controller until the panel opens.
+                //A direct callback bypasses that gate unless we honor the component state here.
+                if (pickup && pickup.isActiveAndEnabled && !pickup.consumed)
                     pickup.OnTriggerStay(capsule);
             }
         }
