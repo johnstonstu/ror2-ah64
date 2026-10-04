@@ -20,41 +20,147 @@
 
 The **AH-64** hovers above terrain and strafes like a ground character, with temporary altitude from collective input and evasive maneuvers. Its chin turret tracks the radar target while you reposition.
 
-**New in 1.2**
+**What's new in 1.3**
 
-- **Pick your altitude and stay there.** Hold jump to climb, and descend (B on controller, C on keyboard) to drop. Let go and the aircraft holds that height, level over rough ground, until its airtime runs out and it eases back down.
-- **Airtime that rewards fighting.** Hovering over one spot while you turn and shoot barely uses any; flying hard and straying far burns it faster. Kills briefly pause the drain, and touching back down refills it in about two seconds. A small white tick under the crosshair shows what's left.
-- **Your items work.** Hopoo Feather, Wax Quail, Bustling Fungus, H3AD-5T v2, Lysate Cell, Backup Magazine, Eclipse Lite and Pocket I.C.B.M. now behave with the AH-64's hover and skills the way they do for vanilla survivors. Items on the ground are collected as you hover over them.
-- **It flies like a helicopter, and it goes down like one.** Weapons kick the airframe, heavy hits knock it about, it banks into turns, it trails engine smoke when badly damaged, and on death it spins out and explodes instead of vanishing.
-- **Two new paint schemes and a model pass.** Army Green, and Night Stalker black as the Mastery reward. Desert Tan replaces Desert. Faceted canopy glass, a TADS sensor turret, a scissor tail rotor, rotors that spool up and wind down, colour-swatch skin icons and a new character portrait.
+- **Guide your Hellfire.** Press Special to launch, hold to accelerate and steer the live lead missile toward your aim, release to slow it, and hold again to resume guiding that same missile without spending another charge. Your gun and Hydras stay available.
+- **Banked Break.** A sweeping 90-degree utility turn that keeps you moving. Choose left or right with movement input; neutral input turns right. Aim and fire through the turn.
+- **Shape a Bombing Run with your flight path.** Drop six bombs over 1.5 seconds while moving and using your other weapons or utility. Each enemy can take at most three bomb hits per run; interrupted drops are lost.
+- **Momentum through maneuvers.** Evasive Roll and Smoke Backflip carry your entry motion into the maneuver and ease back into normal flight.
+- **Build a visibly different gunship.** Special and utility choices now have their own attachments in character select and gameplay, with distinct illustrated loadout icons. The M230 now carries a 20-round drum.
 
-**In 1.1:** distinct models for all three primaries, immediate weapon previews in character select, Olive/Desert/Arctic paint schemes, responsive rotor audio, and optional balance controls with a shareable settings report.
+**Still aboard from 1.2:** altitude hold and airtime, item compatibility improvements, five paint schemes, and an airframe that banks, recoils, smokes and crashes.
 
 [Thunderstore](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/AH64/) · [Changelog](https://github.com/johnstonstu/ror2-ah64/blob/main/CHANGELOG.md) · [Help balance AH-64](https://github.com/johnstonstu/ror2-ah64#help-balance-ah-64)
 
+## Flight controls
+
+Hold **jump** to climb and **descend** (default **B on controller**, **C on keyboard**) to drop. Release both to hold your altitude. Above resting height, airtime drains according to how you fly; returning to resting height refills it. Extra jumps extend airtime and climb height. The small tick below the crosshair shows your remaining airtime.
+
+The optional **Classic altitude controls** setting restores release-jump-to-descend controls without the airtime limit.
+
 ## The kit
 
-| Slot | Skill | What it does | In game |
-| :---: | --- | --- | :---: |
-| <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64PassiveIcon.png" width="64" alt="Fire Control Radar"><br>**Passive** | **Fire Control Radar** | Paints the strongest nearby threat and grants 30 armor while you are close to it. The chin turret tracks independently of where you are looking, so the gun stays on target while you reposition. | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/fire-control-radar.webp" width="320" alt="Fire Control Radar in game"> |
-| <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64PrimaryIcon.png" width="64" alt="M230 Chain Gun"><br>**Primary** | **M230 Chain Gun** | A fixed drum that reloads all at once rather than trickling. Rounds and the HE blast deal 75% damage within 10m and full damage from 30m, so tap at range to keep the burst tight. The reload runs whether or not you emptied it, so top up before you commit. Attack speed helps the reload, not just the fire rate. | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/m230-chain-gun.webp" width="320" alt="M230 Chain Gun in game"> |
-| <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64GatlingIcon.png" width="64" alt="XM301 Rotary Cannon"><br>*Primary variant* | **XM301 Rotary Cannon** | A six-barrel rotary cannon. Its rate of fire climbs as the barrels spool up, to about 18 rounds a second, from a 60-round drum. Lighter rounds and blasts than the M230, with the same 75% damage within 10m rising to full at 30m. | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/xm301-rotary-cannon.webp" width="320" alt="XM301 Rotary Cannon in game"> |
-| <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64CannonIcon.png" width="64" alt="M789 Heavy Cannon"><br>*Primary variant* | **M789 Heavy Cannon** | Slow, heavy shells, 2.5 a second, each with a large blast. Eight to a magazine, and every shot kicks the airframe. | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/m789-heavy-cannon.webp" width="320" alt="M789 Heavy Cannon in game"> |
-| <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64SecondaryIcon.png" width="64" alt="Hydra-70 Pods"><br>**Secondary** | **Hydra-70 Pods** | A ripple salvo spread over most of a second, so hold your aim through it. Rockets deal 75% damage within 8m of flight and full damage from 25m. Each rocket past the base six adds 0.8s to the reload. Runs on its own cooldown and stays available while the primary is reloading. | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/hydra-70-pods.webp" width="320" alt="Hydra-70 Pods in game"> |
-| <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64UtilityIcon.png" width="64" alt="Evasive Roll"><br>**Utility** | **Evasive Roll** | A climbing forward-diagonal barrel roll with i-frames through the first half and 200 armor for the length of the roll (about 0.95s). Hold jump to climb and descend (B on controller, C on keyboard) to drop; let go of both to hold your height. | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/evasive-roll.webp" width="320" alt="Evasive Roll in game"> |
-| *Utility variant* | **Smoke Backflip** | Surge backwards through a climbing pitch loop, then cloak briefly as you rejoin the fight. | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/smoke-backflip.webp" width="320" alt="Smoke Backflip in game"> |
-| <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64SpecialIcon.png" width="64" alt="AGM-114L Longbow"><br>**Special** | **AGM-114L Longbow** | Hold to paint radar locks while you keep firing the gun and the Hydras, then release to launch. Per-missile damage stops climbing after the sixth lock. | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/agm-114l-longbow.webp" width="320" alt="AGM-114L Longbow in game"> |
-| *Special variant* | **AGM-114 Hellfire** | An aimed, unguided missile fired from the wing rails. Can launch while the primary keeps firing. | <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/agm-114-hellfire.webp" width="320" alt="AGM-114 Hellfire in game"> |
+Skill values below describe the default settings. Older clips are labeled as historical; their visuals and tuning may differ from 1.3.
+
+### Passive — Fire Control Radar
+
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64UnityProject/Assets/AH64/Bundle/Icons/texAH64PassiveIcon.png" width="64" alt="Fire Control Radar">
+
+Paints the strongest nearby threat. Deal 12% more damage to the painted target, gain 15% movement speed while facing it, and 30 armor while close. The chin turret tracks independently of where you look.
+
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/fire-control-radar.webp" width="320" alt="Historical pre-1.3 Fire Control Radar gameplay">
+
+*Historical pre-1.3 footage.*
+
+### Primary — M230 Chain Gun
+
+<!-- AH64_130_ICON_AH64Chaingun: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Chaingun.png after publication verification. -->
+
+A 20-round drum that reloads all at once. Rounds and the HE blast deal 75% damage within 10m and full damage from 30m. Tap at range to keep the burst tight. Attack speed helps both firing and reloading.
+
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/m230-chain-gun.webp" width="320" alt="Historical pre-1.3 M230 Chain Gun gameplay">
+
+*Historical pre-1.3 footage.*
+
+### Primary variant — XM301 Rotary Cannon
+
+<!-- AH64_130_ICON_AH64Gatling: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Gatling.png after publication verification. -->
+
+A six-barrel rotary cannon that spools up to about 18 rounds a second from a 60-round drum. Lighter rounds and blasts than the M230, with the same 75% damage within 10m rising to full at 30m.
+
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/xm301-rotary-cannon.webp" width="320" alt="Historical pre-1.3 XM301 Rotary Cannon gameplay">
+
+*Historical pre-1.3 footage.*
+
+### Primary variant — M789 Heavy Cannon
+
+<!-- AH64_130_ICON_AH64Cannon: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Cannon.png after publication verification. -->
+
+Slow, heavy shells at 2.5 shots a second, each with a large blast. Eight to a magazine, and every shot kicks the airframe.
+
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/m789-heavy-cannon.webp" width="320" alt="Historical pre-1.3 M789 Heavy Cannon gameplay">
+
+*Historical pre-1.3 footage.*
+
+### Secondary — Hydra-70 Pods
+
+<!-- AH64_130_ICON_AH64RocketPods: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64RocketPods.png after publication verification. -->
+
+A ripple salvo spread over most of a second: keep your aim on target through it. Rockets deal 75% damage within 8m of flight and full damage from 25m. Each rocket past the base six adds 0.8s to the reload. The pods stay available while your primary reloads.
+
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/hydra-70-pods.webp" width="320" alt="Historical pre-1.3 Hydra-70 Pods gameplay">
+
+*Historical pre-1.3 footage.*
+
+### Utility — Evasive Roll
+
+<!-- AH64_130_ICON_AH64EvasiveJink: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64EvasiveJink.png after publication verification. -->
+
+A climbing forward-diagonal barrel roll chosen with movement input, with invulnerability through the first half and 200 armor for the roll (about 0.95s). Carries entry momentum through a smooth speed ramp and back into flight.
+
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/evasive-roll.webp" width="320" alt="Historical pre-1.3 Evasive Roll gameplay">
+
+*Historical pre-1.3 footage.*
+
+<!-- AH64_130_MEDIA_UTILITIES -->
+
+### Utility variant — Smoke Backflip
+
+<!-- AH64_130_ICON_AH64SmokeBackflip: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64SmokeBackflip.png after publication verification. -->
+
+Surge rearward through a climbing pitch loop, dumping smoke and cloaking briefly. Carries entry momentum through the maneuver and eases back into flight.
+
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/smoke-backflip.webp" width="320" alt="Historical pre-1.3 Smoke Backflip gameplay">
+
+*Historical pre-1.3 footage.*
+
+### Utility variant — Banked Break
+
+<!-- AH64_130_ICON_AH64BrakingTurn: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64BrakingTurn.png after publication verification. -->
+
+Bank through a sweeping 90-degree turn while maintaining flight. Choose left or right with movement input; neutral input turns right. Aim and fire throughout. Cooldown: 4 seconds.
+
+<!-- AH64_130_MEDIA_BANKED_BREAK -->
+
+### Special — AGM-114L Longbow
+
+<!-- AH64_130_ICON_AH64Longbow: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Longbow.png after publication verification. -->
+
+Hold to paint radar locks while you keep firing your gun and Hydras, then release to launch. The base rack holds six missiles; Lysate Cell adds one per stack. Per-missile damage stops climbing after the sixth lock.
+
+<img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skills/agm-114l-longbow.webp" width="320" alt="Historical pre-1.3 AGM-114L Longbow gameplay">
+
+*Historical pre-1.3 footage.*
+
+### Special variant — AGM-114 Hellfire
+
+<!-- AH64_130_ICON_AH64Hellfire: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64Hellfire.png after publication verification. -->
+
+Press Special to launch a slow lead missile. Hold Special to show the targeting laser and accelerate that missile toward your aim; release to slow it, then hold again to resume guiding the same live missile without spending stock. A fresh missile can launch once the previous lead ends. Primary and secondary stay available. Pocket I.C.B.M. adds two ballistic, unguided fan missiles; only the lead follows your laser.
+
+<!-- AH64_130_MEDIA_GUIDED_HELLFIRE -->
+
+### Special variant — Bombing Run
+
+<!-- AH64_130_ICON_AH64BombingRun: insert https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons/AH64BombingRun.png after publication verification. -->
+
+Drop six bombs at 0.3-second intervals along the path you fly. Each deals 300% damage in a 6m blast, with at most three hits per enemy per run. Keep flying, aiming and using your primary, secondary or utility to shape the pattern. Interrupted drops are lost. Cooldown: 10 seconds.
+
+<!-- AH64_130_MEDIA_BOMBING_RUN -->
 
 ## Choose your gunship
 
-Each primary has its own chin-mounted assembly. Changing your loadout updates the lobby model immediately. Five paint schemes carry through into gameplay: Olive, Desert Tan, Arctic, Army Green, and Night Stalker, unlocked by the AH-64 Mastery achievement (beat the game or obliterate on Monsoon).
+Each primary has its own chin-mounted assembly. Special choices add open Longbow rails, enclosed Hellfire launchers or bomb carriers; utilities add their own thrusters, smoke canister or banking fins. Changing the loadout updates the character-select model and the live aircraft. Each active skill has a distinct illustrated icon.
+
+<!-- AH64_130_MEDIA_MODULAR_LOADOUTS -->
+
+Five paint schemes carry through into gameplay: Olive, Desert Tan, Arctic, Army Green, and Night Stalker, unlocked by the AH-64 Mastery achievement (beat the game or obliterate on Monsoon).
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/johnstonstu/ror2-ah64/main/docs/images/skin-lineup.png" alt="The AH-64 1.2 model in its five paint schemes: Olive, Desert Tan, Arctic, Army Green and Night Stalker" width="100%">
 </p>
 
-*Blender model preview; in-game lighting varies. The title banner is promotional artwork from an earlier airframe revision.*
+*Historical 1.2 Blender model preview; in-game lighting varies. The title banner is promotional artwork from an earlier airframe revision.*
 
 ## Install
 
@@ -111,7 +217,6 @@ The tuning menu needs [Risk of Options](https://thunderstore.io/c/riskofrain2/p/
 - Missile rack depletion reflects local special stock, including Longbow reservations while painting locks. Remote and late-join presentation still needs dedicated verification.
 - Gameplay tuning is not synchronized between players.
 - Deep drops beyond the ground sensor use normal falling physics. Jump-pad and lift handling has been improved; report any remaining stage-specific problems.
-- Laser-guided Hellfire is deferred. The current Hellfire variant is unguided; Longbow supplies radar-guided fire.
 
 ## More mods by JohnstonStu
 

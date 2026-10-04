@@ -8,6 +8,26 @@ presents to players as a lobby rejection.
 
 ---
 
+## 1.3.0 (unreleased)
+
+Guided Hellfire, Banked Break, flight-path bombing, and modular loadout presentation.
+
+### Added
+
+- AGM-114 Hellfire laser guidance: press Special to launch a slow lead missile, hold to accelerate and steer toward your aim, release to slow it, then hold again to guide the same live lead without spending stock. The laser originates at the nose optics. A new lead can launch after the previous one ends; primary and secondary stay available. Pocket I.C.B.M.'s two fan missiles remain ballistic and unguided.
+- Banked Break utility: a sweeping 90-degree turn that maintains flight. Movement input selects left or right; neutral input turns right. Aim and fire throughout. Default cooldown: 4 seconds.
+- Bombing Run special: six bombs released every 0.3 seconds along your flight path. Each deals 300% damage in a 6m blast, with at most three hits per enemy per run and a 10-second default cooldown. Other weapons and utilities remain available; interrupted drops are lost. Bomb carriers, release animation, impact footprint and explosion audio make the run visible and audible.
+- Separate special and utility attachments in character select and gameplay: Longbow rails, Hellfire launchers, bomb carriers, and utility thrusters, smoke hardware or banking fins.
+- Distinct illustrated icons for all ten active loadout skills, embedded in the plugin independently of the Unity bundle. The passive retains its original icon.
+
+### Changed
+
+- M230 magazine reduced to 20 rounds.
+- Evasive Roll and Smoke Backflip capture entry momentum and ease through their speed ramp into normal flight.
+- Both READMEs describe the current controls and loadouts in stacked skill sections that fit narrow screens. Retained pre-1.3 media is explicitly labeled as historical.
+
+---
+
 ## 1.2.1
 
 Balance patch. Hover height and airtime are unchanged, and so is the Hellfire.
@@ -156,7 +176,7 @@ Documentation only. No gameplay changes.
 
 - Gameplay tuning is not synchronized between players.
 - Missile rack depletion follows local special stock, including Longbow lock reservations; remote and late-join presentation needs dedicated verification.
-- Laser-guided Hellfire remains deferred.
+- Laser-guided Hellfire was deferred in 1.1; guidance is added in 1.3.0.
 
 ---
 ## 1.0.1
