@@ -353,6 +353,11 @@ namespace AH64.Survivors
             AddSecondarySkills();
             AddUtilitySkills();
             AddSpecialSkills();
+            foreach (GenericSkill slot in bodyPrefab.GetComponents<GenericSkill>())
+                if (slot.skillFamily)
+                    foreach (SkillFamily.Variant variant in slot.skillFamily.variants)
+                        if (variant.skillDef)
+                            variant.skillDef.icon = AH64LoadoutIcons.Get(variant.skillDef.skillName, variant.skillDef.icon);
         }
 
         /// <summary>

@@ -920,8 +920,8 @@ namespace AH64.Survivors
         {
             ProjectileController source = hellfireProjectilePrefab
                 ? hellfireProjectilePrefab.GetComponent<ProjectileController>() : null;
-            if (!source || !source.ghostPrefab || !hellfireExplosionEffect)
-                throw new System.InvalidOperationException("AH64 bombing requires the existing Hellfire ghost and impact effect.");
+            if (!source || !source.ghostPrefab)
+                throw new System.InvalidOperationException("AH64 bombing requires the existing Hellfire ghost.");
             AH64BombingRunPresentationAssets.Build(source.ghostPrefab, hellfireExplosionEffect);
             Content.CreateAndAddEffectDef(AH64BombingRunPresentationAssets.Impact);
             GameObject bomb = AH64BombingRunProjectiles.Build(

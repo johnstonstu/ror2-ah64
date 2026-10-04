@@ -21,6 +21,7 @@
   <ItemGroup>
     <None Remove=".gitignore" />
     <None Remove="nuget.config" />
+    <EmbeddedResource Include="Characters\Survivors\AH64\Content\LoadoutIcons\*.png" />
   </ItemGroup>
 
 	<ItemGroup>

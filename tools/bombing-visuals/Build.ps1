@@ -29,6 +29,9 @@ $includes = (Get-ChildItem -LiteralPath (Join-Path $repo 'AH64Mod') -Recurse -Fi
     Where-Object { $_.FullName -notmatch '[\\/](obj|bin)[\\/]' } |
     ForEach-Object { '<Compile Include="' + [Security.SecurityElement]::Escape($_.FullName) + '" />' }) -join "`n"
 $fallback = [Security.SecurityElement]::Escape((Join-Path $env:USERPROFILE '.nuget/packages'))
+$iconRoot = Join-Path $repo 'AH64Mod/Characters/Survivors/AH64/Content/LoadoutIcons'
+$resources = (Get-ChildItem -LiteralPath $iconRoot -File -Filter '*.png' -ErrorAction SilentlyContinue |
+    ForEach-Object { '<EmbeddedResource Include="' + [Security.SecurityElement]::Escape($_.FullName) + '" LogicalName="AH64.LoadoutIcons.' + $_.Name + '" />' }) -join "`n"
 @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -40,6 +43,7 @@ $fallback = [Security.SecurityElement]::Escape((Join-Path $env:USERPROFILE '.nug
   </PropertyGroup>
   <ItemGroup>$refs</ItemGroup>
   <ItemGroup>$includes</ItemGroup>
+  <ItemGroup>$resources</ItemGroup>
 </Project>
 "@ | Set-Content -LiteralPath (Join-Path $out 'Compile.csproj')
 '<configuration><packageSources><clear /></packageSources></configuration>' | Set-Content -LiteralPath (Join-Path $out 'NuGet.Config')
