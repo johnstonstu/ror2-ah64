@@ -16,6 +16,7 @@ namespace AH64.Survivors.Components
         private SurvivorMannequinSlotController slot;
         private NetworkUser owner;
         private AH64PrimaryWeaponVisuals visuals;
+        private AH64LoadoutSelection attachments;
         private readonly Loadout loadout = new Loadout();
         //Only a change on the same owner's mannequin is a swap; the first primary shown is not.
         private SkillDef shownPrimary;
@@ -24,6 +25,7 @@ namespace AH64.Survivors.Components
         private void OnEnable()
         {
             visuals = GetComponent<AH64PrimaryWeaponVisuals>();
+            attachments = GetComponent<AH64LoadoutSelection>();
             NetworkUser.onLoadoutChangedGlobal += OnLoadoutChanged;
             RefreshOwner();
         }
@@ -34,6 +36,7 @@ namespace AH64.Survivors.Components
         {
             NetworkUser.onLoadoutChangedGlobal -= OnLoadoutChanged;
             owner = null;
+            if (attachments) attachments.Select(null, null);
         }
 
         private void LateUpdate() => RefreshOwner();
@@ -64,6 +67,7 @@ namespace AH64.Survivors.Components
             if (!owner)
             {
                 visuals.Select(null);
+                if (attachments) attachments.Select(null, null);
                 return;
             }
             // Read fresh network state: the slot's private cached loadout is stale during
@@ -75,6 +79,8 @@ namespace AH64.Survivors.Components
             if (bodyIndex == BodyIndex.None) return;
             SkillLocator locator = survivor.bodyPrefab.GetComponent<SkillLocator>();
             GenericSkill[] slots = BodyCatalog.GetBodyPrefabSkillSlots(bodyIndex);
+            if (attachments) attachments.Select(SelectedSkill(bodyIndex, slots, locator ? locator.special : null),
+                SelectedSkill(bodyIndex, slots, locator ? locator.utility : null));
             int primaryIndex = locator ? Array.IndexOf(slots, locator.primary) : -1;
             if (primaryIndex < 0) return;
             var family = locator.primary.skillFamily;
@@ -91,6 +97,14 @@ namespace AH64.Survivors.Components
             shownPrimary = primary;
             hasShownPrimary = true;
             visuals.Select(primary);
+        }
+
+        private SkillDef SelectedSkill(BodyIndex bodyIndex, GenericSkill[] slots, GenericSkill skill)
+        {
+            int index = skill ? Array.IndexOf(slots, skill) : -1;
+            if (index < 0 || !skill.skillFamily) return null;
+            uint variant = loadout.bodyLoadoutManager.GetSkillVariant(bodyIndex, index);
+            return variant < skill.skillFamily.variants.Length ? skill.skillFamily.variants[variant].skillDef : null;
         }
     }
 }

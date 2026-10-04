@@ -147,7 +147,7 @@ namespace AH64.Survivors
 
             InitializeEntityStateMachines();
             InitializeSkills();
-            InstallBombingRackPresentation();
+            InstallLoadoutAttachments();
             InitializeSkins();
             InitializeCharacterMaster();
 
@@ -192,7 +192,6 @@ namespace AH64.Survivors
             //Harmless while the M230 is equipped — it finds ChinGatling, sees no fire
             //input, and holds at 0 rpm without touching the transform.
             bodyPrefab.AddComponent<AH64GatlingSpin>();
-            bodyPrefab.AddComponent<AH64PylonMissiles>();
             AH64HellfireOwner.Install(bodyPrefab);
             bodyPrefab.AddComponent<AH64FlightVisuals>();
             bodyPrefab.AddComponent<AH64FlightAudio>();
@@ -753,37 +752,55 @@ namespace AH64.Survivors
         #endregion skills
         
         #region skins
-        private void InstallBombingRackPresentation()
+        private void InstallLoadoutAttachments()
         {
+            CharacterModel displayModel = displayPrefab.GetComponent<CharacterModel>();
+            if (!displayModel || !prefabCharacterModel.GetComponent<ChildLocator>()
+                || !displayModel.GetComponent<ChildLocator>())
+            {
+                Log.Warning("AH64 modular attachments unavailable: body/display model anchors missing.");
+                return;
+            }
             Material frameMaterial = null;
             foreach (CharacterModel.RendererInfo info in prefabCharacterModel.baseRendererInfos)
                 if (info.renderer && info.renderer.name == "AirframeDark")
                     frameMaterial = info.defaultMaterial;
             if (!frameMaterial)
-                throw new InvalidOperationException("Bomb rack requires the converted airframe material.");
-
-            AH64BombingRunRack rack = AH64BombingRunPresentationAssets.BuildRack(prefabCharacterModel.transform, frameMaterial);
-            rack.BombingSkill = AH64Assets.bombingSkillDef;
-            RegisterBombingRack(prefabCharacterModel, rack);
-            // Display skins map every body renderer by exact name, including hidden attachments.
-            CharacterModel displayModel = displayPrefab.GetComponent<CharacterModel>();
-            if (!displayModel)
-                throw new InvalidOperationException("Bomb rack requires the display CharacterModel.");
-            AH64BombingRunRack displayRack = AH64BombingRunPresentationAssets.BuildRack(displayPrefab.transform, frameMaterial);
-            displayRack.BombingSkill = AH64Assets.bombingSkillDef;
-            RegisterBombingRack(displayModel, displayRack);
-            displayRack.PresentationReady = false;
-            rack.PresentationReady = true;
+            {
+                Log.Warning("AH64 modular attachments unavailable: converted airframe material missing.");
+                return;
+            }
+            // Build both sets before skins; each body renderer has an exact display counterpart.
+            AH64LoadoutAttachments bodyAttachments = AH64LoadoutAttachmentBuilder.Build(prefabCharacterModel.transform, frameMaterial);
+            AH64LoadoutAttachments displayAttachments = AH64LoadoutAttachmentBuilder.Build(displayModel.transform, frameMaterial);
+            if (!MatchingAttachmentRenderers(bodyAttachments, displayAttachments))
+            {
+                Log.Warning("AH64 modular attachments omitted: body/display renderer sets do not match.");
+                return;
+            }
+            RegisterLoadoutAttachments(prefabCharacterModel, bodyAttachments, false);
+            RegisterLoadoutAttachments(displayModel, displayAttachments, true);
         }
 
-        private static void RegisterBombingRack(CharacterModel model, AH64BombingRunRack rack)
+        private static bool MatchingAttachmentRenderers(AH64LoadoutAttachments body, AH64LoadoutAttachments display)
         {
+            if (!body || !display || body.Renderers == null || display.Renderers == null
+                || body.Renderers.Length != display.Renderers.Length) return false;
+            var names = new HashSet<string>();
+            foreach (Renderer renderer in body.Renderers)
+                if (!renderer || !names.Add(renderer.name)) return false;
+            foreach (Renderer renderer in display.Renderers)
+                if (!renderer || !names.Remove(renderer.name)) return false;
+            return names.Count == 0;
+        }
+
+        private static void RegisterLoadoutAttachments(CharacterModel model, AH64LoadoutAttachments attachments, bool display)
+        {
+            if (!attachments) return;
             ChildLocator locator = model.GetComponent<ChildLocator>();
-            if (!locator)
-                throw new InvalidOperationException("Bomb rack renderer registration requires ChildLocator.");
             var infos = new List<CharacterModel.RendererInfo>(model.baseRendererInfos);
             var pairs = new List<ChildLocator.NameTransformPair>(locator.transformPairs);
-            foreach (Renderer renderer in rack.Renderers)
+            foreach (Renderer renderer in attachments.Renderers)
             {
                 infos.Add(new CharacterModel.RendererInfo
                 {
@@ -796,6 +813,12 @@ namespace AH64.Survivors
             }
             model.baseRendererInfos = infos.ToArray();
             locator.transformPairs = pairs.ToArray();
+            attachments.IsDisplay = display;
+            if (attachments.BombRack) attachments.BombRack.BombingSkill = AH64Assets.bombingSkillDef;
+            var selection = model.gameObject.AddComponent<AH64LoadoutSelection>();
+            selection.IsDisplay = display;
+            selection.Attachments = attachments;
+            attachments.PresentationReady = true;
         }
 
         public override void InitializeSkins()
