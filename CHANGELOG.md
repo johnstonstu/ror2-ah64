@@ -8,7 +8,9 @@ presents to players as a lobby rejection.
 
 ---
 
-## Unreleased
+## 1.3.1
+
+README footage refresh and localization patch. Gameplay balance is unchanged.
 
 ### Added
 
@@ -17,6 +19,11 @@ presents to players as a lobby rejection.
 ### Changed
 
 - Skill tooltips and the character description are filled from `AH64.language`. The numbers still come from the mod, so translated tooltips retain the existing default balance values and dynamic descend bindings. The gatling splash tooltip prints 13.5% instead of the raw float 13.500001%. The Agile keyword on the chin guns and the Hydra is separated from the next word by a space.
+- The English and translated READMEs describe the current controls and loadouts in stacked skill sections that fit narrow screens. Seven newly recorded skill clips span Titanic Plains, Distant Roost and Siphoned Forest; five current clips are retained, all twelve share uniform sizing, and the historical skill loops are removed.
+
+### Fixed
+
+- Embedded English text remains available when the loose translation file is missing, malformed, or incomplete. Recovery logs a warning instead of leaving players with raw language tokens.
 
 ---
 
@@ -36,9 +43,6 @@ Guided Hellfire, Banked Break, flight-path bombing, and modular loadout presenta
 
 - M230 magazine reduced to 20 rounds.
 - Evasive Roll and Smoke Backflip capture entry momentum and ease through their speed ramp into normal flight.
-- Both READMEs describe the current controls and loadouts in stacked skill sections that fit narrow screens. Seven newly recorded skill clips span Titanic Plains, Distant Roost and Siphoned Forest; five current clips are retained, all twelve share uniform sizing, and the historical skill loops are removed.
-
-
 ---
 
 ## 1.2.1
