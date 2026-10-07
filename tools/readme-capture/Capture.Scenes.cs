@@ -19,6 +19,25 @@ namespace ReadmeCapture
         {
             yield return Bootstrap(); DisableCombatDirectors();
             pilot.AddBuff(RoR2Content.Buffs.HiddenInvincibility);
+            string batch = Environment.GetEnvironmentVariable("AH64_README_CAPTURE_SCENES");
+            if (batch == "coastal" || batch == "guns" || batch == "maneuvers") {
+                Screen.SetResolution(1280,720,false);
+                yield return Seconds(2f);
+                PrepareArena(); aim=facing; scripting=true;
+                Event("arena", "current skills; " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name + "; batch=" + batch);
+                float readyDeadline = Time.realtimeSinceStartup + 60f;
+                Event("recorder-ready", "waiting for bounded game-window recorder");
+                StartCoroutine(Guarded(RecordFrames()));
+                while (!System.IO.File.Exists(System.IO.Path.Combine(output,"recording.ready"))) {
+                    if (Time.realtimeSinceStartup > readyDeadline) throw new TimeoutException("Window recorder readiness");
+                    yield return null;
+                }
+                yield return Seconds(1f);
+                if (batch == "coastal") { yield return Radar(); yield return Hydra(); yield return Longbow(); }
+                if (batch == "guns") { yield return Gun("xm301-rotary-cannon","FireGatling"); yield return Gun("m789-heavy-cannon","FireCannon"); }
+                if (batch == "maneuvers") { yield return Maneuver("evasive-roll","ServoDash"); yield return Maneuver("smoke-backflip","SmokeBackflip"); }
+                yield break;
+            }
             RaycastHit floor;
             if(!Physics.Raycast(new Vector3(-112.88f,-129.02f,-374.76f),Vector3.down,out floor,30f,LayerIndex.world.mask,QueryTriggerInteraction.Ignore)) throw new InvalidOperationException("Arena terrain missing");
             mark=floor.point+Vector3.up*2f;
@@ -54,7 +73,7 @@ namespace ReadmeCapture
         {
             foreach(var master in targetMasters) if(master) { if(master.GetBody()) NetworkServer.Destroy(master.GetBody().gameObject); NetworkServer.Destroy(master.gameObject); }
             targetMasters.Clear(); targets.Clear();
-            segment=scene; move=Vector3.zero; held=primaryHeld=collective=false; aim=facing;
+            segment=scene; move=Vector3.zero; held=primaryHeld=secondaryHeld=collective=false; aim=facing;
             TeleportHelper.TeleportBody(pilot,mark); pilot.characterMotor.velocity=Vector3.zero; pilot.characterDirection.forward=facing;
             var hover=pilot.GetComponents<MonoBehaviour>().Single(c=>c.GetType().Name=="AH64HoverController");
             var reset = hover.GetType().GetMethod("ResetAfterTeleport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
@@ -63,11 +82,11 @@ namespace ReadmeCapture
             fixedCamera=false; cameraOffset=-facing*17f+Vector3.up*9f+Vector3.Cross(Vector3.up,facing)*7f;
             yield return Seconds(1.5f);
         }
-        private IEnumerator Target(Vector3 point)
+        private IEnumerator Target(Vector3 point, string masterName = "GolemMaster")
         {
             RaycastHit floor;
             if(!Physics.Raycast(point+Vector3.up*15f,Vector3.down,out floor,45f,LayerIndex.world.mask,QueryTriggerInteraction.Ignore)) throw new InvalidOperationException("Target lacks terrain");
-            var master=new MasterSummon {masterPrefab=MasterCatalog.FindMasterPrefab("GolemMaster"),position=floor.point+Vector3.up,rotation=Quaternion.LookRotation(-facing),teamIndexOverride=TeamIndex.Monster,ignoreTeamMemberLimit=true,
+            var master=new MasterSummon {masterPrefab=MasterCatalog.FindMasterPrefab(masterName),position=floor.point+Vector3.up,rotation=Quaternion.LookRotation(-facing),teamIndexOverride=TeamIndex.Monster,ignoreTeamMemberLimit=true,
                 preSpawnSetupCallback=m=>{foreach(var ai in m.GetComponents<BaseAI>()) ai.enabled=false;} }.Perform();
             if(!master) throw new InvalidOperationException("Target summon failed"); targetMasters.Add(master);
             float end=Time.realtimeSinceStartup+5;
@@ -75,7 +94,7 @@ namespace ReadmeCapture
             var body=master.GetBody(); foreach(var ai in master.GetComponents<BaseAI>()) ai.enabled=false;
             // Damage still runs normally and yields hit numbers; large disposable health avoids fixture death.
             body.baseMaxHealth=100000f; body.RecalculateStats(); body.healthComponent.Networkhealth=body.maxHealth;
-            targets.Add(body); Event("target","native Golem; AI off; 100000HP; position="+body.corePosition);
+            targets.Add(body); Event("target","native " + masterName + "; AI off; 100000HP; position="+body.corePosition);
             yield return Seconds(0.4f);
         }
         private IEnumerator Hellfire()
