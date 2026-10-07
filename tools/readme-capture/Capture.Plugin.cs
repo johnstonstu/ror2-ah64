@@ -24,7 +24,7 @@ namespace ReadmeCapture
         private const string FrozenHash = "DEB8659CB3D1DAE028B8525D4E6C3EADA5C88DE5DD9FA57E1AA98846BD02D266";
         private CharacterBody pilot;
         private string output, segment = "startup";
-        private bool gameLoaded, scripting, finished, held, primaryHeld, collective;
+        private bool gameLoaded, scripting, finished, held, primaryHeld, secondaryHeld, collective;
         private float started, quitAt;
         private Vector3 mark, facing = Vector3.forward, move, aim, cameraOffset;
         private Vector3 cameraFocus;
@@ -55,7 +55,7 @@ namespace ReadmeCapture
         {
             if (markers == null) return;
             if (finished) { if (Time.realtimeSinceStartup >= quitAt) Application.Quit(exitCode); return; }
-            if (Time.realtimeSinceStartup-started >= 238f) Finish(false,"240 second budget");
+            if (Time.realtimeSinceStartup-started >= 418f) Finish(false,"420 second budget");
             if (LocalUserManager.readOnlyLocalUsersList.Count>1 || NetworkUser.readOnlyInstancesList.Count>1) Finish(false,"solo guard");
             if (scripting && pilot && segment == "path-bombing") foreach(var projectile in FindObjectsOfType<RoR2.Projectile.ProjectileController>())
                 if(projectile.owner == pilot.gameObject && projectile.GetComponents<MonoBehaviour>().Any(c=>c && c.GetType().Name=="AH64BombingRunProjectile") && bombsSeen.Add(projectile.GetInstanceID())) Event("bomb-observed","instance="+projectile.GetInstanceID()+" ordinal="+bombsSeen.Count);
@@ -93,7 +93,7 @@ namespace ReadmeCapture
         private void Input()
         {
             var b=pilot.inputBank; b.moveVector=move; b.aimDirection=aim;
-            b.skill1.down=primaryHeld; b.skill2.down=false; b.skill3.down=false; b.skill4.down=held; b.jump.down=collective; b.sprint.down=false;
+            b.skill1.down=primaryHeld; b.skill2.down=secondaryHeld; b.skill3.down=false; b.skill4.down=held; b.jump.down=collective; b.sprint.down=false;
         }
         private void Damage(DamageReport report)
         { if(pilot && report.attackerBody==pilot && targets.Contains(report.victimBody)) { hits++; Event("hit","target="+report.victimBody.name+" damage="+report.damageDealt); } }

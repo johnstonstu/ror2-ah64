@@ -1,4 +1,11 @@
 <p align="center">
+  <a href="README.md">English</a> |
+  <a href="README.zh-CN.md">简体中文</a> |
+  <a href="README.ru.md">Русский</a> |
+  <a href="README.pt-BR.md">Português (BR)</a>
+</p>
+
+<p align="center">
   <img src="docs/images/banner.jpg" alt="AH-64, an Apache survivor for Risk of Rain 2" width="100%">
 </p>
 
@@ -18,17 +25,15 @@
 
 <h3 align="center">The Gunship. A survivor that never lands.</h3>
 
-The **AH-64** hovers above terrain and strafes like a ground character, with temporary altitude from collective input and evasive maneuvers. Its chin turret tracks the radar target while you reposition.
+The **AH-64** turns a crowded fight into a gunship sortie. Hover above the terrain and strafe like a ground survivor while your chin turret tracks a radar target. Ripple Hydra rockets into the pack, then choose your special: paint Longbow locks, guide a Hellfire, or lay a trail of bombs along your flight path.
+
+Hold jump to climb, pick your angle, and use a roll, backflip or banked turn to reposition. Three primaries, three utilities, three specials and five paint schemes let you build your own gunship.
+
+[Install](#install) · [Flight controls](#flight-controls) · [Skills](#the-kit) · [Combos](#put-it-together) · [Feedback](#help-balance-ah-64)
 
 **What's new in 1.3**
 
-- **Guide your Hellfire.** Press Special to launch, hold to accelerate and steer the live lead missile toward your aim, release to slow it, and hold again to resume guiding that same missile without spending another charge. Your gun and Hydras stay available.
-- **Banked Break.** A sweeping 90-degree utility turn that keeps you moving. Choose left or right with movement input; neutral input turns right. Aim and fire through the turn.
-- **Shape a Bombing Run with your flight path.** Drop six bombs over 1.5 seconds while moving and using your other weapons or utility. Each enemy can take at most three bomb hits per run; interrupted drops are lost.
-- **Momentum through maneuvers.** Evasive Roll and Smoke Backflip carry your entry motion into the maneuver and ease back into normal flight.
-- **Build a visibly different gunship.** Special and utility choices now have their own attachments in character select and gameplay, with distinct illustrated loadout icons. The M230 now carries a 20-round drum.
-
-**Still aboard from 1.2:** altitude hold and airtime, item compatibility improvements, five paint schemes, and an airframe that banks, recoils, smokes and crashes.
+Laser-guided Hellfire, the sweeping Banked Break utility, and flight-path Bombing Run join the kit. Rolls and backflips carry your entry momentum; special and utility choices add their own visible attachments. The M230 now carries a 20-round drum. See the [changelog](CHANGELOG.md) for the full update.
 
 [Thunderstore](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/AH64/) · [Changelog](CHANGELOG.md) · [Help balance AH-64](#help-balance-ah-64)
 
@@ -36,11 +41,13 @@ The **AH-64** hovers above terrain and strafes like a ground character, with tem
 
 Hold **jump** to climb and **descend** (default **B on controller**, **C on keyboard**) to drop. Release both to hold your altitude. Above resting height, airtime drains according to how you fly; returning to resting height refills it. Extra jumps extend airtime and climb height. The small tick below the crosshair shows your remaining airtime.
 
+Holding position while turning and firing spends airtime slowly. Flying hard, climbing and straying from where you lifted off spend it faster; kills briefly pause the drain. Return to resting hover height to refill and collect ground items.
+
 The optional **Classic altitude controls** setting restores release-jump-to-descend controls without the airtime limit.
 
 ## The kit
 
-Skill values below describe the default settings. New 1.3 clips show the current build in controlled in-game scenes with scripted inputs and camera framing. Older clips are labeled as historical; their visuals and tuning may differ from 1.3.
+Skill values below describe the default settings. The clips show the current 1.3 build across Titanic Plains, Distant Roost and Siphoned Forest. These are controlled in-game showcases with scripted inputs and camera framing.
 
 ### Passive — Fire Control Radar
 
@@ -48,9 +55,7 @@ Skill values below describe the default settings. New 1.3 clips show the current
 
 Paints the strongest nearby threat. Deal 12% more damage to the painted target, gain 15% movement speed while facing it, and 30 armor while close. The chin turret tracks independently of where you look.
 
-<img src="docs/images/skills/fire-control-radar.webp" width="320" alt="Historical pre-1.3 Fire Control Radar gameplay">
-
-*Historical pre-1.3 footage.*
+<img src="docs/images/1.3.0/fire-control-radar.webp" width="640" alt="Fire Control Radar tracking targets on Distant Roost">
 
 ### Primary — M230 Chain Gun
 
@@ -66,9 +71,7 @@ A 20-round drum that reloads all at once. Rounds and the HE blast deal 75% damag
 
 A six-barrel rotary cannon that spools up to about 18 rounds a second from a 60-round drum. Lighter rounds and blasts than the M230, with the same 75% damage within 10m rising to full at 30m.
 
-<img src="docs/images/skills/xm301-rotary-cannon.webp" width="320" alt="Historical pre-1.3 XM301 Rotary Cannon gameplay">
-
-*Historical pre-1.3 footage.*
+<img src="docs/images/1.3.0/xm301-rotary-cannon.webp" width="640" alt="XM301 sustained fire and reload on Titanic Plains">
 
 ### Primary variant — M789 Heavy Cannon
 
@@ -76,9 +79,7 @@ A six-barrel rotary cannon that spools up to about 18 rounds a second from a 60-
 
 Slow, heavy shells at 2.5 shots a second, each with a large blast. Eight to a magazine, and every shot kicks the airframe.
 
-<img src="docs/images/skills/m789-heavy-cannon.webp" width="320" alt="Historical pre-1.3 M789 Heavy Cannon gameplay">
-
-*Historical pre-1.3 footage.*
+<img src="docs/images/1.3.0/m789-heavy-cannon.webp" width="640" alt="M789 heavy shells and recoil on Titanic Plains">
 
 ### Secondary — Hydra-70 Pods
 
@@ -86,9 +87,7 @@ Slow, heavy shells at 2.5 shots a second, each with a large blast. Eight to a ma
 
 A ripple salvo spread over most of a second: keep your aim on target through it. Rockets deal 75% damage within 8m of flight and full damage from 25m. Each rocket past the base six adds 0.8s to the reload. The pods stay available while your primary reloads.
 
-<img src="docs/images/skills/hydra-70-pods.webp" width="320" alt="Historical pre-1.3 Hydra-70 Pods gameplay">
-
-*Historical pre-1.3 footage.*
+<img src="docs/images/1.3.0/hydra-70-pods.webp" width="640" alt="Hydra rocket ripple against grouped Golems on Distant Roost">
 
 ### Utility — Evasive Roll
 
@@ -96,11 +95,7 @@ A ripple salvo spread over most of a second: keep your aim on target through it.
 
 A climbing forward-diagonal barrel roll chosen with movement input, with invulnerability through the first half and 200 armor for the roll (about 0.95s). Carries entry momentum through a smooth speed ramp and back into flight.
 
-<img src="docs/images/skills/evasive-roll.webp" width="320" alt="Historical pre-1.3 Evasive Roll gameplay">
-
-*Historical pre-1.3 footage.*
-
-
+<img src="docs/images/1.3.0/evasive-roll.webp" width="640" alt="Evasive Roll climbing maneuver on Siphoned Forest">
 
 ### Utility variant — Smoke Backflip
 
@@ -108,9 +103,7 @@ A climbing forward-diagonal barrel roll chosen with movement input, with invulne
 
 Surge rearward through a climbing pitch loop, dumping smoke and cloaking briefly. Carries entry momentum through the maneuver and eases back into flight.
 
-<img src="docs/images/skills/smoke-backflip.webp" width="320" alt="Historical pre-1.3 Smoke Backflip gameplay">
-
-*Historical pre-1.3 footage.*
+<img src="docs/images/1.3.0/smoke-backflip.webp" width="640" alt="Smoke Backflip rearward pitch loop on Siphoned Forest">
 
 ### Utility variant — Banked Break
 
@@ -126,9 +119,7 @@ Bank through a sweeping 90-degree turn while maintaining flight. Choose left or 
 
 Hold to paint radar locks while you keep firing your gun and Hydras, then release to launch. The base rack holds six missiles; Lysate Cell adds one per stack. Per-missile damage stops climbing after the sixth lock.
 
-<img src="docs/images/skills/agm-114l-longbow.webp" width="320" alt="Historical pre-1.3 AGM-114L Longbow gameplay">
-
-*Historical pre-1.3 footage.*
+<img src="docs/images/1.3.0/agm-114l-longbow.webp" width="640" alt="Longbow target painting and missile launch on Distant Roost">
 
 ### Special variant — AGM-114 Hellfire
 
@@ -146,6 +137,13 @@ Drop six bombs at 0.3-second intervals along the path you fly. Each deals 300% d
 
 <img src="docs/images/1.3.0/bombing-run.webp" width="640" alt="Six-bomb run over Golem targets">
 
+## Put it together
+
+- **Keep pressure through a reload.** Your primary and Hydra pods reload independently. Use the rockets while your gun reloads, and keep your aim on the pack until the ripple finishes. The M230, XM301 and Hydras deal more damage at range.
+- **Paint while you fire.** With Longbow equipped, hold Special to build locks while your gun and Hydras keep working, then release the missiles into the fight.
+- **Guide, release, guide again.** With Hellfire equipped, hold Special to steer the lead missile toward your aim. Release to slow it while you adjust your angle, then hold again to guide that same missile. Your gun and Hydras stay available throughout.
+- **Draw your bombing pattern.** Climb for an approach, start Bombing Run over the pack, and keep moving through the drops. Banked Break can curve the path while you keep aiming and firing. Each enemy can take at most three bomb hits from a run, so spread the drops through the group.
+
 ## Choose your gunship
 
 Each primary has its own chin-mounted assembly. Special choices add open Longbow rails, enclosed Hellfire launchers or bomb carriers; utilities add their own thrusters, smoke canister or banking fins. Changing the loadout updates the character-select model and the live aircraft. Each active skill has a distinct illustrated icon.
@@ -160,6 +158,12 @@ Five paint schemes carry through into gameplay: Olive, Desert Tan, Arctic, Army 
 
 *Historical 1.2 Blender model preview; in-game lighting varies. The title banner is promotional artwork from an earlier airframe revision.*
 
+## Languages
+
+AH-64 follows the language you set in Risk of Rain 2 (**Settings → Language**). Simplified Chinese, Russian, and Brazilian Portuguese are included. Any other language falls back to English. The in-game tuning menu stays in English.
+
+These translations are machine-translated. Corrections are welcome — see [Translating](docs/TRANSLATING.md).
+
 ## Install
 
 **Mod manager (recommended):** install with [r2modman](https://thunderstore.io/c/riskofrain2/p/ebkr/r2modman/) or Thunderstore Mod Manager. Required dependencies are installed automatically.
@@ -169,9 +173,12 @@ Five paint schemes carry through into gameplay: Olive, Desert Tan, Arctic, Army 
 ```text
 JohnstonStu-AH64/
   AH64.dll
+  AH64.language
   AssetBundles/ah64
   SoundBanks/AH64Rotor.bnk
 ```
+
+`AH64.language` has to sit somewhere under `BepInEx/plugins`. Next to the DLL is the layout this package uses. Without it, the game falls back to English.
 
 Everyone in a lobby needs the **same mod version**. Gameplay tuning is local, so agree on matching settings before a multiplayer run.
 
@@ -218,7 +225,7 @@ The tuning menu needs [Risk of Options](https://thunderstore.io/c/riskofrain2/p/
 
 ## More mods by JohnstonStu
 
-**[Hollow Saint](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/Hollow_Saint/)**: my other Risk of Rain 2 survivor mod.
+**[Hollow Saint](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/Hollow_Saint/)**: a storm-saint survivor with chain lightning, a sticking Stormspear and Thunderbolts that answer your hits.
 
 ## Credits and license
 
@@ -264,6 +271,7 @@ Plugin dependencies come from NuGet. Builds stage the DLL in `Build/plugins/`; a
 ### 3. Check and package
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File tools/check-language.ps1
 powershell -ExecutionPolicy Bypass -File tools/check-feedback.ps1
 powershell -ExecutionPolicy Bypass -File tools/check-weapon-previews.ps1
 powershell -ExecutionPolicy Bypass -File tools/pack.ps1 -SkipBuild

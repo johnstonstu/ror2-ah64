@@ -73,14 +73,17 @@ namespace ReadmeCapture
             yield return BootstrapWait(() => Run.instance && user.cachedBody && BodyProblem(user).Length == 0,
                 60f, "first-body/AH64-prerequisites", user);
             RequireBody(user);
-            var arena = SceneCatalog.FindSceneDef("golemplains");
+            string arenaName = Environment.GetEnvironmentVariable("AH64_README_CAPTURE_ARENA") ?? "golemplains";
+            if (arenaName != "golemplains" && arenaName != "blackbeach" && arenaName != "snowyforest")
+                throw new InvalidOperationException("Unsupported capture arena: " + arenaName);
+            var arena = SceneCatalog.FindSceneDef(arenaName);
             if (!arena) throw new InvalidOperationException("Fixed arena missing.");
-            if (SceneManager.GetActiveScene().name != "golemplains") {
+            if (SceneManager.GetActiveScene().name != arenaName) {
                 var previousBody = user.cachedBody;
                 Run.instance.AdvanceStage(arena);
                 // Scene load can precede LocalUser's control-chain rebuild. An old cached
                 // body must never satisfy the new stage's readiness gate.
-                yield return BootstrapWait(() => SceneManager.GetActiveScene().name == "golemplains" &&
+                yield return BootstrapWait(() => SceneManager.GetActiveScene().name == arenaName &&
                     user.cachedBody && !ReferenceEquals(user.cachedBody, previousBody) && BodyProblem(user).Length == 0,
                     60f, "fixed-arena/new-body", user);
             }
