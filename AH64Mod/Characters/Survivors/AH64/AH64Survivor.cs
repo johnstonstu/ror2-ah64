@@ -30,6 +30,10 @@ namespace AH64.Survivors
 
         //used when registering your survivor's language tokens
         public override string survivorTokenPrefix => AH64_PREFIX;
+
+        //The logbook entry is not a field on the body. The game takes baseNameToken and
+        //replaces "_NAME" with "_LORE", so AH64_NAME is read back as AH64_LORE.
+        public const string LoreToken = AH64_PREFIX + "LORE";
         
         public override BodyInfo bodyInfo => new BodyInfo
         {

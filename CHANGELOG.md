@@ -8,6 +8,18 @@ presents to players as a lobby rejection.
 
 ---
 
+## Unreleased
+
+### Added
+
+- Simplified Chinese (zh-CN), Russian (ru), and Brazilian Portuguese (pt-BR) for the survivor's in-game text: name, subtitle, description, lore, outros, skills, skins, passive, radar chat, and the Mastery achievement. AH-64 follows **Settings → Language** and falls back to English. These translations are machine-translated; corrections are welcome.
+
+### Changed
+
+- Skill tooltips and the character description are filled from `AH64.language`. The numbers still come from the mod, so translated tooltips retain the existing default balance values and dynamic descend bindings. The gatling splash tooltip prints 13.5% instead of the raw float 13.500001%. The Agile keyword on the chin guns and the Hydra is separated from the next word by a space.
+
+---
+
 ## 1.3.0
 
 Guided Hellfire, Banked Break, flight-path bombing, and modular loadout presentation.
@@ -24,7 +36,8 @@ Guided Hellfire, Banked Break, flight-path bombing, and modular loadout presenta
 
 - M230 magazine reduced to 20 rounds.
 - Evasive Roll and Smoke Backflip capture entry momentum and ease through their speed ramp into normal flight.
-- Both READMEs describe the current controls and loadouts in stacked skill sections that fit narrow screens. Retained pre-1.3 media is explicitly labeled as historical.
+- Both READMEs describe the current controls and loadouts in stacked skill sections that fit narrow screens. Seven newly recorded skill clips span Titanic Plains, Distant Roost and Siphoned Forest; five current clips are retained, all twelve share uniform sizing, and the historical skill loops are removed.
+
 
 ---
 

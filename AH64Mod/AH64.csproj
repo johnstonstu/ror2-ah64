@@ -24,6 +24,17 @@
     <EmbeddedResource Include="Characters\Survivors\AH64\Content\LoadoutIcons\*.png" />
   </ItemGroup>
 
+  <!--
+    R2API.Language reads every *.language file under BepInEx/plugins. The loose file
+    next to the DLL is what players translate. The embedded copy is only the English
+    fallback when that file was not deployed.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Language\AH64.language">
+      <LogicalName>AH64.AH64.language</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="BepInEx.Analyzers" Version="1.0.*">
 			<PrivateAssets>all</PrivateAssets>
@@ -42,7 +53,7 @@
 		<PackageReference Include="R2API.Sound" Version="1.*" />
 	</ItemGroup>
   <!--
-    Post-build copies only the DLL. The assetbundle is owned by Unity
+    Post-build copies the DLL and AH64.language. The assetbundle is owned by Unity
     (AH64BundleBuilder / AH64Phase4Builder) and must not be overwritten here.
   -->
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
@@ -60,7 +71,11 @@
       <R2Install Condition="'$(AH64DeployToProfiles)' == 'true'" Include="$(AppData)\r2modmanPlus-local\RiskOfRain2\profiles\*\BepInEx\plugins\JohnstonStu-AH64\manifest.json" />
     </ItemGroup>
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ProjectDir)..\Build\plugins" />
+    <Copy SourceFiles="$(ProjectDir)Language\AH64.language" DestinationFolder="$(TargetDir)" />
+    <Copy SourceFiles="$(ProjectDir)Language\AH64.language" DestinationFolder="$(ProjectDir)..\Build\plugins" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="%(R2Install.RootDir)%(R2Install.Directory)"
+          Condition="'@(R2Install)' != ''" />
+    <Copy SourceFiles="$(ProjectDir)Language\AH64.language" DestinationFolder="%(R2Install.RootDir)%(R2Install.Directory)"
           Condition="'@(R2Install)' != ''" />
     <Message Importance="high" Text="AH64: installed $(TargetFileName) to %(R2Install.RootDir)%(R2Install.Directory)"
              Condition="'@(R2Install)' != ''" />
