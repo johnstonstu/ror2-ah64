@@ -31,7 +31,7 @@ Hold jump to climb, pick your angle, and use a roll, backflip or banked turn to 
 
 [Install](#install) · [Flight controls](#flight-controls) · [Skills](#the-kit) · [Combos](#put-it-together) · [Feedback](#help-balance-ah-64)
 
-**1.3.3 patch candidate:** Restores AH-64 on RoR2 1.5, including rocket smoke and item displays, and fixes an audio shutdown crash. Keep dependencies updated; this retains 1.3.2's reduced damage-hit knockback.
+**1.3.3 patch:** Restores AH-64 on RoR2 1.5, including rocket smoke and item displays, and fixes an audio shutdown crash. Keep dependencies updated; this retains 1.3.2's reduced damage-hit knockback.
 
 **What's new in 1.3**
 

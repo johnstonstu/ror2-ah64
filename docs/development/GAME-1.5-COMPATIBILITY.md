@@ -160,7 +160,7 @@ for the Animator pair, so attribution to AH-64 is unconfirmed. Pool cleanup erro
 alone do not establish the cause of a missing trail. Normal play writes BepInEx's
 LogOutput.log and Unity's Player.log; it does not generate a separate weapon report.
 
-Still required before release: targeted Longbow acquisition/salvo and damage
+Additional coverage still outstanding: targeted Longbow acquisition/salvo and damage
 checks, held-fire and guided-Hellfire controls, audio, all skin appearances,
 knockback/item interactions, death and host/client play. Reassess the startup
 dependency warnings above. Repair the two offline harness issues separately.
@@ -176,9 +176,15 @@ after both runs. Evidence directories (local and ignored):
 - `dist/patch-1.5-required-d3c02598eb1241beb35c0f0b2e723055/`
 - `dist/patch-1.5-options-248d310432d445888f16ee78ac85c853/`
 
-ZIP SHA-256: `2897AA1195DAF7C8F5FE3CC2596756101FB7E3458D2B824C5252088D1B024187`.
+Tested candidate ZIP SHA-256: `2897AA1195DAF7C8F5FE3CC2596756101FB7E3458D2B824C5252088D1B024187`.
 
-Publication remains pending explicit approval naming 1.3.3. The broader manual
+The 1.3.3 GitHub release is approved. Thunderstore upload is reserved for the
+maintainer. The release ZIP is repacked only to finalize its changelog; verify
+every other packaged file against the tested candidate. The broader manual
 and multiplayer checks above remain outstanding.
+
+Final release ZIP SHA-256: `97379EAE89230987DC12E03CFA7A6AA601537E8FF35B4806CEC169E37BAC3257`.
+All nine other entries match the tested candidate byte for byte; only
+`CHANGELOG.md` differs, removing the candidate label and pending-approval text.
 
 Official announcement: [October 8 patch notes](https://support.2k.com/hc/en-us/articles/56193476123795-Risk-of-Rain-2-Patch-Notes-October-8-2026).

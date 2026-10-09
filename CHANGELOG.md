@@ -8,7 +8,7 @@ presents to players as a lobby rejection.
 
 ---
 
-## 1.3.3 — release candidate
+## 1.3.3
 
 Compatibility patch for the Hallowed Concepts game update. Keeps 1.3.2's knockback tuning.
 
@@ -26,7 +26,7 @@ Compatibility patch for the Hallowed Concepts game update. Keeps 1.3.2's knockba
 - Updated dependency minimums to the tested versions, including SeekersPatcher 1.4.3 and MiscFixes 1.6.0, so old compatibility patches are upgraded with the mod.
 - Shortened the Thunderstore README into a quick guide with a loadout summary, essential controls and links to full skill footage. Added a linked Hollow Saint icon.
 
-See `docs/development/GAME-1.5-COMPATIBILITY.md` for the dependency audit and validation limits. Publication is pending approval.
+See `docs/development/GAME-1.5-COMPATIBILITY.md` for the dependency audit and validation limits.
 
 ---
 
