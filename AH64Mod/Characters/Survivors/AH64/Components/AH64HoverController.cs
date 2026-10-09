@@ -113,12 +113,14 @@ namespace AH64.Survivors.Components
         {
             MapZone.onBodyTeleportGlobal += OnMapZoneTeleport;
             On.RoR2.CharacterMotor.ApplyForceImpulse += OnApplyForceImpulse;
+            On.RoR2.HealthComponent.TakeDamageForce_DamageInfo_bool_bool += OnTakeDamageForce;
         }
 
         private void OnDisable()
         {
             MapZone.onBodyTeleportGlobal -= OnMapZoneTeleport;
             On.RoR2.CharacterMotor.ApplyForceImpulse -= OnApplyForceImpulse;
+            On.RoR2.HealthComponent.TakeDamageForce_DamageInfo_bool_bool -= OnTakeDamageForce;
             SetHoverGranters(false);
         }
 

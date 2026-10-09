@@ -153,7 +153,7 @@ namespace AH64
             } finally {
                 brakingCollective = false; prototypeAim = Vector3.zero; move = Vector3.zero;
                 slot.UnsetSkillOverride(this, skill, GenericSkill.SkillOverridePriority.Contextual);
-                if (spare) pilot.inventory.RemoveItem(RoR2Content.Items.UtilitySkillMagazine);
+                if (spare) pilot.inventory.RemoveItem(RoR2Content.Items.UtilitySkillMagazine.itemIndex);
                 if (removedSafety && pilot && pilot.healthComponent.alive) pilot.AddBuff(RoR2Content.Buffs.HiddenInvincibility);
             }
         }

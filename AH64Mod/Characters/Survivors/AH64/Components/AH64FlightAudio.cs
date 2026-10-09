@@ -13,6 +13,7 @@ namespace AH64.Survivors.Components
         private AH64RotorSpin rotorSpin;
         private GameObject emitter;
         private uint playingId;
+        private float playbackCheckAt;
         private int startAttempts;
         private float retryAt;
         private float load;
@@ -173,21 +174,23 @@ namespace AH64.Survivors.Components
 
         private void EnsurePlaying()
         {
-            if (playingId != 0 || startAttempts >= 3 || Time.unscaledTime < retryAt) return;
+            if (playingId != 0)
+            {
+                if (Time.unscaledTime < playbackCheckAt) return;
+                playbackCheckAt = Time.unscaledTime + 1f;
+                if (AkSoundEngine.GetEventIDFromPlayingID(playingId) != 0) return;
+                Log.Warning($"AH-64 rotor loop ended unexpectedly: id={playingId}.");
+                playingId = 0;
+            }
+            if (startAttempts >= 3 || Time.unscaledTime < retryAt) return;
             startAttempts++;
             retryAt = Time.unscaledTime + 3f;
+            // 1.5 drains end callbacks after native engine termination. Poll our
+            // owned event instead, avoiding a rotor callback into that freed queue.
             playingId = AkSoundEngine.PostEvent("Play_AH64_Rotor", emitter,
-                (uint)(AkCallbackType.AK_EndOfEvent | AkCallbackType.AK_EnableGetSourcePlayPosition),
-                OnAudioEvent, null);
+                (uint)AkCallbackType.AK_EnableGetSourcePlayPosition, null, null);
+            playbackCheckAt = Time.unscaledTime + 1f;
             if (playingId == 0) Log.Error($"AH-64 rotor event failed to start (attempt {startAttempts}).");
-        }
-
-        private void OnAudioEvent(object cookie, AkCallbackType type, AkCallbackInfo info)
-        {
-            AkEventCallbackInfo ended = info as AkEventCallbackInfo;
-            if (type != AkCallbackType.AK_EndOfEvent || ended == null || ended.playingID != playingId) return;
-            Log.Warning($"AH-64 rotor loop ended unexpectedly: id={playingId}.");
-            playingId = 0;
         }
 
         [ConCommand(commandName = "ah64_audio_status", flags = ConVarFlags.None,
@@ -237,7 +240,7 @@ namespace AH64.Survivors.Components
         private void StopRotor()
         {
             uint stopped = playingId;
-            playingId = 0; // End callback must not classify an intentional stop as a failure.
+            playingId = 0;
             if (stopped != 0) AkSoundEngine.StopPlayingID(stopped);
         }
     }

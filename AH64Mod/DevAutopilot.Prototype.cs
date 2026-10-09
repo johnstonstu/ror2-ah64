@@ -114,7 +114,7 @@ namespace AH64
                     "FOV="+(camera ? camera.fovOverride.ToString() : "missing")+" entry="+entryFov+" airControl="+pilot.characterMotor.airControl+" entryAirControl="+entryAirControl+"; native lease/audio/FOV ownership released");
             } finally {
                 slot.UnsetSkillOverride(this, skill, GenericSkill.SkillOverridePriority.Contextual);move=Vector3.zero;
-                pilot.inventory.RemoveItem(RoR2Content.Items.UtilitySkillMagazine);
+                pilot.inventory.RemoveItem(RoR2Content.Items.UtilitySkillMagazine.itemIndex);
                 if(removedArenaInvulnerability) pilot.AddBuff(RoR2Content.Buffs.HiddenInvincibility);
             }
         }
@@ -191,7 +191,7 @@ namespace AH64
             } finally {
                 prototypeHeld=false; prototypeAim=Vector3.zero;
                 slot.UnsetSkillOverride(this,skill,GenericSkill.SkillOverridePriority.Contextual);
-                if(icbm) pilot.inventory.RemoveItem(DLC1Content.Items.MoreMissile);
+                if(icbm) pilot.inventory.RemoveItem(DLC1Content.Items.MoreMissile.itemIndex);
             }
         }
 

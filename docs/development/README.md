@@ -5,6 +5,7 @@
 - [Flight visuals](FLIGHT-VISUALS.md): terrain wash and missile presentation limitations.
 - [Local tooling](TOOLING.md): optional Blender/Unity MCP configuration.
 - [Release checks](RELEASING.md): source, package and playtest gates.
+- [Game 1.5 compatibility](GAME-1.5-COMPATIBILITY.md): confirmed API changes, AH-64 testing, and the ROR2 Lightning migration checklist.
 - [Translating](../TRANSLATING.md): language file, codes, and how to test a correction.
 
 [AGENTS.md](../../AGENTS.md) is the single source of project instructions.

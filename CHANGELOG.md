@@ -8,6 +8,38 @@ presents to players as a lobby rejection.
 
 ---
 
+## 1.3.3
+
+Compatibility patch for the Hallowed Concepts game update. Keeps 1.3.2's knockback tuning.
+
+### Fixed
+
+- Restored survivor initialization on RoR2 1.5 by removing a deleted projectile lifetime flag.
+- Restored item display models when vanilla donor rules use addressable prefab references.
+- Avoided repeated aiming-animation exceptions on the rigid helicopter model, which has no Animator.
+- Updated developer-test inventory cleanup to use the retained item-index overload.
+- Restored Hydra, Hellfire and Longbow missile visuals and smoke trails when cloned vanilla projectiles inherit an addressable ghost reference.
+- Avoided a Wwise shutdown crash by checking the owned rotor event periodically instead of registering an end-of-event callback.
+
+### Changed
+
+- Updated dependency minimums to the tested versions, including SeekersPatcher 1.4.3 and MiscFixes 1.6.0, so old compatibility patches are upgraded with the mod.
+- Shortened the Thunderstore README into a quick guide with a loadout summary, essential controls and links to full skill footage. Added a linked Hollow Saint icon.
+
+See `docs/development/GAME-1.5-COMPATIBILITY.md` for the dependency audit and validation limits.
+
+---
+
+## 1.3.2
+
+Small knockback balance patch.
+
+### Changed
+
+- Reduced incoming damage-hit knockback by 50% to make overlapping enemy attacks easier to control. Hits still push the aircraft; damage taken is unchanged. Jump pads and non-damage movement forces retain their existing strength.
+
+---
+
 ## 1.3.1
 
 README footage refresh and localization patch. Gameplay balance is unchanged.

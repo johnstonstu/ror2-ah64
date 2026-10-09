@@ -73,8 +73,8 @@ namespace AH64
                 if (bombingSpecialOverride) pilot.skillLocator.special.UnsetSkillOverride(this, bombingSpecialOverride, GenericSkill.SkillOverridePriority.Contextual);
                 if (bombingUtilityOverride) pilot.skillLocator.utility.UnsetSkillOverride(this, bombingUtilityOverride, GenericSkill.SkillOverridePriority.Contextual);
                 if (pilot.inventory) {
-                    if (bombingAddedBleed) pilot.inventory.RemoveItem(RoR2Content.Items.BleedOnHit, 20);
-                    if (bombingAddedIcbm) pilot.inventory.RemoveItem(DLC1Content.Items.MoreMissile, 1);
+                    if (bombingAddedBleed) pilot.inventory.RemoveItem(RoR2Content.Items.BleedOnHit.itemIndex, 20);
+                    if (bombingAddedIcbm) pilot.inventory.RemoveItem(DLC1Content.Items.MoreMissile.itemIndex, 1);
                 }
             }
             bombingSpecialOverride = bombingUtilityOverride = null;

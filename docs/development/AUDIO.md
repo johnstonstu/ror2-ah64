@@ -19,6 +19,12 @@ the game's existing SFX bus. Never ship the author's `Init.bnk`.
 
 Each aircraft owns one emitter and tracks its playing ID. Disable, death and
 destruction stop that event. Failed bank loads/event starts have bounded retries.
+The flight rotor checks its owned event ID once per second to detect an unexpected
+stop, while retaining source-position queries for explicit diagnostics. It does
+not register an end-of-event callback: on game 1.5, native tests crashed in
+Wwise's shutdown callback drain with that callback present and exited cleanly
+after replacing it with the owned-ID check. Do not reinstate it without verifying
+both continued playback and process shutdown in the actual game.
 The local pilot hears a 2D bed; remote aircraft receive spatial panning and distance
 fading. Master/SFX volume, pause and focus mute are owned by the game.
 

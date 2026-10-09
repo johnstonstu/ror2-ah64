@@ -1,6 +1,7 @@
 using RoR2;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace AH64.Modules
 {
@@ -61,7 +62,7 @@ namespace AH64.Modules
 
                 for (int j = 0; j < rules.Length; j++)
                 {
-                    GameObject followerPrefab = rules[j].followerPrefab;
+                    GameObject followerPrefab = ResolveFollower(rules[j], bodyName);
                     if (followerPrefab)
                     {
                         string key = followerPrefab.name?.ToLowerInvariant();
@@ -71,6 +72,30 @@ namespace AH64.Modules
                         }
                     }
                 }
+            }
+        }
+
+        private static GameObject ResolveFollower(ItemDisplayRule rule, string bodyName)
+        {
+            if (rule.followerPrefab)
+                return rule.followerPrefab;
+            if (rule.followerPrefabAddress == null || !rule.followerPrefabAddress.RuntimeKeyIsValid())
+                return null; // Limb-mask rules intentionally have no follower.
+
+            // 1.5 donor rules use addresses instead of direct references. Retain the
+            // load for the session: our generated display rules keep using this prefab.
+            try
+            {
+                GameObject prefab = Addressables.LoadAssetAsync<GameObject>(
+                    rule.followerPrefabAddress.RuntimeKey).WaitForCompletion();
+                if (!prefab)
+                    throw new System.InvalidOperationException("Addressable item display resolved to null.");
+                return prefab;
+            }
+            catch (System.Exception error)
+            {
+                Log.Error($"Failed loading {bodyName} item display {rule.followerPrefabAddress.RuntimeKey}: {error}");
+                throw;
             }
         }
 

@@ -31,6 +31,8 @@ Hold jump to climb, pick your angle, and use a roll, backflip or banked turn to 
 
 [Install](#install) · [Flight controls](#flight-controls) · [Skills](#the-kit) · [Combos](#put-it-together) · [Feedback](#help-balance-ah-64)
 
+**1.3.3 patch:** Restores AH-64 on RoR2 1.5, including rocket smoke and item displays, and fixes an audio shutdown crash. Keep dependencies updated; this retains 1.3.2's reduced damage-hit knockback.
+
 **What's new in 1.3**
 
 Laser-guided Hellfire, the sweeping Banked Break utility, and flight-path Bombing Run join the kit. Rolls and backflips carry your entry momentum; special and utility choices add their own visible attachments. The M230 now carries a 20-round drum. See the [changelog](CHANGELOG.md) for the full update.
@@ -225,7 +227,9 @@ The tuning menu needs [Risk of Options](https://thunderstore.io/c/riskofrain2/p/
 
 ## More mods by JohnstonStu
 
-**[Hollow Saint](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/Hollow_Saint/)**: a storm-saint survivor with chain lightning, a sticking Stormspear and Thunderbolts that answer your hits.
+<a href="https://thunderstore.io/c/riskofrain2/p/JohnstonStu/Hollow_Saint/"><img src="https://ccdn.thunderstore.io/live/repository/icons/JohnstonStu-Hollow_Saint-1.1.1.png" width="64" height="64" alt="Hollow Saint — view on Thunderstore"></a>
+
+**[Hollow Saint](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/Hollow_Saint/)** — my storm-saint survivor, with chain lightning, a sticking Stormspear and Thunderbolts. [View on Thunderstore →](https://thunderstore.io/c/riskofrain2/p/JohnstonStu/Hollow_Saint/)
 
 ## Credits and license
 
