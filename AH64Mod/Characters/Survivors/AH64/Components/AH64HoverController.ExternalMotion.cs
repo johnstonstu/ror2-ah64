@@ -67,6 +67,31 @@ namespace AH64.Survivors.Components
             providingHoverGranters = enabled;
         }
 
+        private void OnTakeDamageForce(
+            On.RoR2.HealthComponent.orig_TakeDamageForce_DamageInfo_bool_bool orig,
+            HealthComponent self, DamageInfo damageInfo, bool alwaysApply, bool disableAirControlUntilCollision)
+        {
+            if (!body || self != body.healthComponent || crashing)
+            {
+                orig(self, damageInfo, alwaysApply, disableAirControlUntilCollision);
+                return;
+            }
+
+            //Scope this to the damage overload, before CharacterMotor forwards to the owning client.
+            //Changing mass or all motor forces would also weaken pads, pulls and item movement.
+            Vector3 originalForce = damageInfo.force;
+            damageInfo.force = originalForce * AH64StaticValues.incomingDamageForceMultiplier;
+            try
+            {
+                orig(self, damageInfo, alwaysApply, disableAirControlUntilCollision);
+            }
+            finally
+            {
+                //DamageInfo is shared with damage reports/procs; only this force application is scaled.
+                damageInfo.force = originalForce;
+            }
+        }
+
         private void OnApplyForceImpulse(On.RoR2.CharacterMotor.orig_ApplyForceImpulse orig,
             CharacterMotor self, ref PhysForceInfo forceInfo)
         {

@@ -958,7 +958,7 @@ namespace AH64.Survivors
                 : null;
 
             if (controller && hellfireController && hellfireController.ghostPrefab)
-                controller.ghostPrefab = hellfireController.ghostPrefab;
+                SetRocketGhost(controller, hellfireController.ghostPrefab);
             if (controller)
                 controller.startSound = string.Empty;
 
@@ -995,7 +995,8 @@ namespace AH64.Survivors
             explosion.destroyOnWorld = true;
             explosion.timerAfterImpact = false;
             explosion.fireChildren = false;
-            explosion.explodeOnLifeTimeExpiration = true;
+            // RoR2 1.5 removed explodeOnLifeTimeExpiration; FixedUpdate now detonates
+            // unconditionally when lifetime expires. Keep the lifetime below.
             explosion.impactEffect = longbowExplosionEffect
                 ? longbowExplosionEffect
                 : hellfireExplosionEffect;
@@ -1008,6 +1009,18 @@ namespace AH64.Survivors
 
             if (explosion.lifetime <= 0f)
                 explosion.lifetime = 15f;
+        }
+
+        // Keep building against the pinned 1.4.1 references, which lack this 1.5 field.
+        private static readonly System.Reflection.FieldInfo RocketGhostAddressField =
+            typeof(ProjectileController).GetField("ghostPrefabAddress");
+
+        private static void SetRocketGhost(ProjectileController controller, GameObject ghost)
+        {
+            // 1.5's Awake prefers the donor's address over ghostPrefab. Clear that
+            // inherited address so our missile model and smoke are actually used.
+            RocketGhostAddressField?.SetValue(controller, null);
+            controller.ghostPrefab = ghost;
         }
 
         /// <summary>
@@ -1082,7 +1095,7 @@ namespace AH64.Survivors
             ProjectileController controller = hellfireProjectilePrefab.GetComponent<ProjectileController>();
 
             if (_assetBundle.LoadAsset<GameObject>("AH64HellfireGhost") != null)
-                controller.ghostPrefab = _assetBundle.CreateProjectileGhostPrefab("AH64HellfireGhost");
+                SetRocketGhost(controller, _assetBundle.CreateProjectileGhostPrefab("AH64HellfireGhost"));
 
             controller.startSound = "";
             //same hazard as the Hydra rocket: the Commando grenade clone's procCoefficient must not
@@ -1129,9 +1142,9 @@ namespace AH64.Survivors
 
             GameObject hydraGhost = CreateHydraRocketGhost();
             if (hydraGhost)
-                controller.ghostPrefab = hydraGhost;
+                SetRocketGhost(controller, hydraGhost);
             else if (_assetBundle.LoadAsset<GameObject>("AH64HellfireGhost") != null)
-                controller.ghostPrefab = _assetBundle.CreateProjectileGhostPrefab("AH64HellfireGhost");
+                SetRocketGhost(controller, _assetBundle.CreateProjectileGhostPrefab("AH64HellfireGhost"));
 
             controller.startSound = "";
             //carried over explicitly rather than inherited from the grenade — six rockets land per

@@ -541,6 +541,10 @@ namespace AH64.Modules
 
         private static void SetupAimAnimator(GameObject prefab, GameObject model)
         {
+            // Rigid models aim procedurally. RoR2 1.5's AimAnimator dereferences
+            // its Animator during Update, so attaching it without one throws every frame.
+            if (!model.GetComponent<Animator>())
+                return;
             AimAnimator aimAnimator = model.AddComponent<AimAnimator>();
             aimAnimator.directionComponent = prefab.GetComponent<CharacterDirection>();
             aimAnimator.pitchRangeMax = 60f;

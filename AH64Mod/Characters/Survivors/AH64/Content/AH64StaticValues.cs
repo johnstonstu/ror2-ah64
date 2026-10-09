@@ -170,6 +170,11 @@ namespace AH64.Survivors
         //Playtest: 0.75–1.0 if strafing feels skatey; 1.0 is the current weight target.
         public const float hoverAirControl = 1f;
 
+        //Hover never gets CharacterMotor's grounded protection against small knock-ups. Halve
+        //damage-hit impulses so overlapping attacks are manageable without removing hit feedback.
+        //Applied before motor authority forwarding; jump pads and non-damage forces keep full strength.
+        public const float incomingDamageForceMultiplier = 0.5f;
+
         //Interactor.maxInteractionDistance is both the aim-ray length and the overlap sphere around
         //aimOrigin. Commando's cloned 1u never reaches a chest from hoverHeight — the feet sit at 3.75u
         //and aimOrigin is another ~2.5u above that. 12u covers resting hover and a little collective.
